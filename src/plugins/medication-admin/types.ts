@@ -1,11 +1,35 @@
+export interface TimeStatus {
+  time: string;
+  completed: boolean;
+}
+
 export interface Medication {
   name: string;
-  times: string[];
+  times: TimeStatus[];
   tabsAvailable?: number;
   frequency?: string;
   dosage?: string;
   administrationTimes?: string;
-  complete?: boolean;
+  route?: string;
+  dosageForm?: string;
+  diagnosis?: string;
+  startDate?: Date;
+  endDate?: Date;
+  ndc?: string;
+  pharmacy?: string;
+  pharmacyNpi?: string;
+  pharmacyAddress?: string;
+  pharmacyPhone?: string;
+  pharmacyDea?: string;
+  prescriberInfo?: string;
+  prescriberDeaNpi?: string;
+  rxNumber?: string;
+  scriptFillDate?: string;
+  refills?: number;
+  refillReminderDate?: Date;
+  expirationDate?: string;
+  instructions?: string;
+  prn?: boolean;
 }
 
 export interface MedicationStatus {
