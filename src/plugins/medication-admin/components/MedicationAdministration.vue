@@ -1,16 +1,80 @@
 <script setup lang="ts">
-import { ref, computed, watch, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, defineProps, withDefaults, defineEmits } from 'vue';
+import { useRouter } from 'vue-router';
 import 'flatpickr/dist/flatpickr.css';
 import flatpickr from 'flatpickr';
 import ExpandableDetails from './ExpandableDetails.vue';
 import AddMedicationForm from './AddMedicationForm.vue';
+import HoldTimeSelector from './HoldTimeSelector.vue';
 import type { Medication } from '../types';
 
+const router = useRouter();
 const medications = ref<Medication[]>([]);
 const sortBy = ref<string>('');
+const currentDate = ref(new Date());
+const showSelectDropdown = ref(false);
+const showAddForm = ref(false);
+const selectedMedication = ref<Medication | null>(null);
+const selectedFrequency = ref('');
+const selectedDosage = ref('1');
+const selectedTimes = ref<string[]>([]);
+const dateList = ref<Date[]>([]);
+const selectedTimeElement = ref<HTMLElement | null>(null);
+const selectedTime = ref<string>('');
+const selectedAction = ref<string>('');
+const medicationStatus = ref<Record<string, any>>({});
+const selectedStatus = ref<string | null>(null);
+const showHoldSelector = ref(false);
+const selectedMedicationForHold = ref<Medication | null>(null);
+const showTimeModal = ref(false);
+const selectedMedicationForTime = ref<Medication | null>(null);
+const timeInputs = ref<string[]>([]);
+
+const frequencyOptions = [
+  '1 times daily',
+  '2 times daily',
+  '3 times daily',
+  '4 times daily',
+  'every other day',
+  'at bedtime',
+  'every hour',
+  'every 2 hours',
+  'every 3 hours',
+  'every 4 hours',
+  'every 6 hours',
+  'every 8 hours',
+  'every 12 hours',
+  'every 24 hours',
+  'monday, wednesday, friday, sunday',
+  'tuesday, thursday, saturday'
+];
+
+const formatDate = (date: Date) => {
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric'
+  });
+};
+
+const statusOptions = [
+  { value: 'active', label: 'Active', color: '#d4edda' },
+  { value: 'discontinue', label: 'Discontinue', color: '#f8d7da' },
+  { value: 'hold', label: 'Hold', color: '#fff3cd' },
+  { value: 'new', label: 'New', color: '#869ccd' },
+  { value: 'pending', label: 'Pending', color: '#bf86cd' },
+  { value: 'change', label: 'Change', color: '#bf8d05' },
+  { value: 'completed', label: 'Completed', color: '#00f445' },
+  { value: 'partial', label: 'Partial', color: '#ff69b4' }
+];
 
 const handleSort = (type: string) => {
   sortBy.value = type;
+};
+
+const handleStatusFilter = (status: string | null) => {
+  selectedStatus.value = selectedStatus.value === status ? null : status;
 };
 
 const routeCategories = [
@@ -28,16 +92,20 @@ const routeCategories = [
   'Otic'
 ];
 
+// Group meds according to selected sort
 const groupedMedications = computed(() => {
   let sortedMeds = [...medications.value];
+  
+  if (selectedStatus.value) {
+    sortedMeds = sortedMeds.filter(med => med.status === selectedStatus.value);
+  }
+  
   const groups: Record<string, Medication[]> = {};
 
-  // If sorting by time is selected
   if (sortBy.value === 'time') {
-    // Get all unique times
     const allTimes = new Set<string>();
     sortedMeds.forEach(med => {
-      if (!med.prn) { // Skip PRN medications for time sorting
+      if (!med.prn) {
         med.times.forEach(timeStatus => {
           const [hours, minutes] = timeStatus.time.split(':');
           const hour = parseInt(hours);
@@ -49,18 +117,16 @@ const groupedMedications = computed(() => {
       }
     });
 
-    // Sort times chronologically
     const sortedTimes = Array.from(allTimes).sort((a, b) => {
       const timeA = new Date(`1970/01/01 ${a}`);
       const timeB = new Date(`1970/01/01 ${b}`);
       return timeA.getTime() - timeB.getTime();
     });
 
-    // Create groups for each time and duplicate medications for each time they appear
     sortedTimes.forEach(time => {
       groups[time] = [];
       sortedMeds.forEach(med => {
-        if (!med.prn) { // Skip PRN medications
+        if (!med.prn) {
           med.times.forEach(t => {
             const [hours, minutes] = t.time.split(':');
             const hour = parseInt(hours);
@@ -80,14 +146,12 @@ const groupedMedications = computed(() => {
       });
     });
   } 
-  // If sorting by PRN is selected
   else if (sortBy.value === 'prn') {
     const prnMeds = sortedMeds.filter(med => med.prn);
     if (prnMeds.length > 0) {
       groups['PRN Medications'] = prnMeds;
     }
   }
-  // If sorting by route is selected
   else if (sortBy.value === 'route') {
     routeCategories.forEach(route => {
       const medsForRoute = sortedMeds.filter(med => med.route === route);
@@ -101,8 +165,8 @@ const groupedMedications = computed(() => {
       groups['Uncategorized'] = uncategorizedMeds;
     }
   }
-  // Handle other sorting options
   else {
+    // Default sorts: medication or diagnosis
     switch (sortBy.value) {
       case 'medication':
         sortedMeds.sort((a, b) => a.name.localeCompare(b.name));
@@ -124,6 +188,7 @@ const groupedMedications = computed(() => {
   return groups;
 });
 
+// Local storage load
 const loadMedications = () => {
   const savedMedications = localStorage.getItem('medications');
   if (savedMedications) {
@@ -135,6 +200,7 @@ watch(medications, (newMeds) => {
   localStorage.setItem('medications', JSON.stringify(newMeds));
 }, { deep: true });
 
+// Define props and watch for initial load
 const props = withDefaults(defineProps<{
   medications?: Medication[];
 }>(), {
@@ -147,6 +213,7 @@ watch(() => props.medications, (newMeds) => {
   }
 }, { immediate: true });
 
+// Define emits
 const emit = defineEmits<{
   (e: 'statusChange', medication: Medication, status: string): void;
   (e: 'medicationTaken', medication: Medication, time: string, action: string): void;
@@ -154,98 +221,85 @@ const emit = defineEmits<{
   (e: 'tabsChange', medication: Medication, tabs: number): void;
 }>();
 
-const dateList = ref<Date[]>([]);
-const selectedTimeElement = ref<HTMLElement | null>(null);
-const selectedTime = ref<string>('');
-const selectedAction = ref<string>('');
-const medicationStatus = ref<Record<string, any>>({});
-
-const showSelectDropdown = ref(false);
-const showAddForm = ref(false);
-const selectedMedication = ref<Medication | null>(null);
-const selectedFrequency = ref('');
-const selectedDosage = ref('1');
-const selectedTimes = ref<string[]>([]);
-
-const statusOptions = [
-  { value: 'active', label: 'Active', color: '#d4edda' },
-  { value: 'discontinue', label: 'Discontinue', color: '#f8d7da' },
-  { value: 'hold', label: 'Hold', color: '#fff3cd' },
-  { value: 'new', label: 'New', color: '#869ccd' },
-  { value: 'pending', label: 'Pending', color: '#bf86cd' },
-  { value: 'change', label: 'Change', color: '#bf8d05' },
-  { value: 'completed', label: 'Completed', color: '#00f445' }
-];
-
+// Frequency utility
 const getTimesCountFromFrequency = (frequency: string): number => {
   if (!frequency) return 0;
   
-  const match = frequency.match(/(\d+)/);
-  if (match) {
-    return parseInt(match[1], 10);
+  // Handle "X times daily" format
+  const dailyMatch = frequency.match(/(\d+)\s*times?\s*daily/);
+  if (dailyMatch) {
+    return parseInt(dailyMatch[1], 10);
   }
   
+  // Handle "every X hours" format
+  const hoursMatch = frequency.match(/every\s*(\d+)\s*hours?/);
+  if (hoursMatch) {
+    const hours = parseInt(hoursMatch[1], 10);
+    return Math.floor(24 / hours); // Calculate slots based on 24-hour day
+  }
+  
+  // Handle special cases
   switch (frequency) {
+    case 'every hour':
+      return 24;
     case 'daily':
     case 'at bedtime':
     case 'every 24 hours':
+    case 'every other day':
       return 1;
-    case 'every 12 hours':
-      return 2;
-    case 'every 8 hours':
-      return 3;
-    case 'every 6 hours':
+    case 'monday, wednesday, friday, sunday':
       return 4;
-    case 'every 4 hours':
-      return 6;
-    case 'every 3 hours':
-      return 8;
-    case 'every 2 hours':
-      return 12;
-    case 'every hour':
-      return 24;
+    case 'tuesday, thursday, saturday':
+      return 3;
     default:
       return 1;
   }
 };
 
+// Watch the selected frequency to update times
 watch(selectedFrequency, (newFrequency) => {
-  if (!newFrequency || (selectedMedication.value && selectedMedication.value.prn)) {
-    selectedTimes.value = [];
+  if (!newFrequency || (selectedMedicationForTime.value && selectedMedicationForTime.value.prn)) {
+    timeInputs.value = [];
     return;
   }
   
   const timesCount = getTimesCountFromFrequency(newFrequency);
-  selectedTimes.value = Array(timesCount).fill('');
+  timeInputs.value = Array(timesCount).fill('');
 });
 
+// Modal toggling
 const toggleSelectDropdown = (medication: Medication) => {
-  selectedMedication.value = medication;
-  selectedTimes.value = [];
-  selectedFrequency.value = '';
-  showSelectDropdown.value = true;
+  selectedMedicationForTime.value = medication;
+  showTimeModal.value = true;
 };
 
 const handleSave = () => {
-  if (selectedMedication.value) {
-    selectedMedication.value.frequency = selectedFrequency.value;
-    selectedMedication.value.dosage = selectedDosage.value;
+  if (selectedMedicationForTime.value) {
+    selectedMedicationForTime.value.frequency = selectedFrequency.value;
+    selectedMedicationForTime.value.dosage = selectedDosage.value;
     
-    if (!selectedMedication.value.prn) {
-      selectedMedication.value.times = selectedTimes.value.map(time => ({ time, completed: false }));
-      selectedMedication.value.administrationTimes = selectedTimes.value.join(', ');
+    if (!selectedMedicationForTime.value.prn) {
+      selectedMedicationForTime.value.times = timeInputs.value
+        .filter(time => time) // Filter out empty times
+        .map(time => ({ time, completed: false }));
+      selectedMedicationForTime.value.administrationTimes = timeInputs.value.join(', ');
     } else {
-      selectedMedication.value.times = [];
-      selectedMedication.value.administrationTimes = 'As needed';
+      selectedMedicationForTime.value.times = [];
+      selectedMedicationForTime.value.administrationTimes = 'As needed';
     }
   }
-  showSelectDropdown.value = false;
+  showTimeModal.value = false;
+  selectedMedicationForTime.value = null;
+  timeInputs.value = [];
 };
 
 const handleCancel = () => {
-  showSelectDropdown.value = false;
+  showTimeModal.value = false;
+  selectedMedicationForTime.value = null;
+  timeInputs.value = [];
 };
 
+// Handle new medication
 const handleNewMedication = (medication: Partial<Medication>) => {
   const newMedication: Medication = {
     name: medication.medicationDetails || '',
@@ -278,10 +332,10 @@ const handleNewMedication = (medication: Partial<Medication>) => {
   showAddForm.value = false;
   
   if (!newMedication.prn) {
-    selectedMedication.value = newMedication;
+    selectedMedicationForTime.value = newMedication;
     selectedFrequency.value = newMedication.frequency;
     selectedDosage.value = '1';
-    showSelectDropdown.value = true;
+    showTimeModal.value = true;
   }
   
   populateMedicationTable();
@@ -294,26 +348,13 @@ const handleMedicationUpdate = (updatedMedication: Medication) => {
   }
 };
 
-const addTime = () => {
-  selectedTimes.value.push('');
-};
-
-const removeTime = (index: number) => {
-  selectedTimes.value.splice(index, 1);
-};
-
-onMounted(() => {
-  loadMedications();
-  initializeDateRangePicker();
-  populateMedicationTable();
-});
-
 const formatDateToYYYYMMDD = (date: Date): string => {
   return date.getFullYear() + '-' +
          String(date.getMonth() + 1).padStart(2, '0') + '-' +
          String(date.getDate()).padStart(2, '0');
 };
 
+// Date range picker
 const initializeDateRangePicker = () => {
   const dateRangePicker = document.getElementById('date-range-picker');
   if (dateRangePicker) {
@@ -337,15 +378,16 @@ const updateDateRange = (startDate: Date, endDate: Date) => {
   }
 
   dateList.value = [];
-  let currentDate = new Date(startDate);
-  while (currentDate <= endDate) {
-    dateList.value.push(new Date(currentDate));
-    currentDate.setDate(currentDate.getDate() + 1);
+  let currentDateVal = new Date(startDate);
+  while (currentDateVal <= endDate) {
+    dateList.value.push(new Date(currentDateVal));
+    currentDateVal.setDate(currentDateVal.getDate() + 1);
   }
 
   populateMedicationTable();
 };
 
+// Populate medication status by date/time
 const populateMedicationTable = () => {
   dateList.value.forEach(date => {
     const dateStr = formatDateToYYYYMMDD(date);
@@ -370,18 +412,73 @@ const handleStatusChange = (event: Event, medIndex: number) => {
   const status = select.value;
   const row = select.closest('tr');
   
+  if (status === 'hold') {
+    selectedMedicationForHold.value = medications.value[medIndex];
+    showHoldSelector.value = true;
+    return;
+  }
+  
   if (row) {
-    row.classList.remove('active-row', 'discontinued-row', 'hold-row', 'new-row', 'pending-row');
+    row.classList.remove('active-row', 'discontinued-row', 'hold-row', 'new-row', 'pending-row', 'change-row', 'completed-row', 'partial-row');
     row.classList.add(`${status}-row`);
   }
   
   emit('statusChange', medications.value[medIndex], status);
 };
 
+const handleHoldSubmit = (data: { 
+  dateRange: [Date, Date]; 
+  times: string[] | null; 
+  reason: string;
+  holdType: 'all' | 'specific';
+}) => {
+  if (!selectedMedicationForHold.value) return;
+
+  const medication = selectedMedicationForHold.value;
+  
+  const index = medications.value.findIndex(med => med === medication);
+  if (index !== -1) {
+    const row = document.querySelector(`tr[data-med-index="${index}"]`);
+    if (row) {
+      row.classList.remove('active-row', 'discontinued-row', 'hold-row', 'new-row', 'pending-row', 'change-row', 'completed-row', 'partial-row');
+      row.classList.add('hold-row');
+      
+      const select = row.querySelector('.status-dropdown') as HTMLSelectElement;
+      if (select) {
+        select.value = 'hold';
+      }
+    }
+    
+    medication.holdInfo = {
+      dateRange: data.dateRange,
+      times: data.times,
+      reason: data.reason,
+      type: data.holdType
+    };
+    
+    emit('statusChange', medication, 'hold');
+  }
+  
+  showHoldSelector.value = false;
+  selectedMedicationForHold.value = null;
+};
+
 const handleTabsChange = (medication: Medication, newValue: number) => {
   medication.tabsAvailable = newValue;
   emit('tabsChange', medication, newValue);
 };
+
+// Row styling
+const getRowStatusClass = (medication: Medication) => {
+  if (medication.holdInfo) return 'hold-row';
+  return 'active-row';
+};
+
+onMounted(() => {
+  loadMedications();
+  initializeDateRangePicker();
+  populateMedicationTable();
+});
 </script>
 
 <template>
@@ -389,6 +486,31 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
     <h2>Administration</h2>
 
     <div class="table-container">
+      <!-- Status Filter -->
+      <div class="status-filter">
+        <h3>Filter by Status:</h3>
+        <div class="status-buttons">
+          <button 
+            class="status-button"
+            :class="{ active: selectedStatus === null }"
+            @click="handleStatusFilter(null)"
+          >
+            Show All
+          </button>
+          <button 
+            v-for="option in statusOptions"
+            :key="option.value"
+            class="status-button"
+            :class="{ active: selectedStatus === option.value }"
+            :style="{ backgroundColor: option.color }"
+            @click="handleStatusFilter(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Date Range and Add Form -->
       <div class="date-range-selector">
         <label for="date-range-picker">Select Date Range:</label>
         <input type="text" id="date-range-picker" placeholder="Select date range">
@@ -397,6 +519,7 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
         </button>
       </div>
 
+      <!-- Sorting Controls -->
       <div class="sort-controls">
         <button 
           class="sort-button" 
@@ -435,6 +558,7 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
         </button>
       </div>
 
+      <!-- Grouped Medications -->
       <template v-for="(medications, category) in groupedMedications" :key="category">
         <div v-if="medications.length > 0" class="category-section">
           <h3 class="category-header">{{ category }}</h3>
@@ -447,11 +571,16 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
                 <th>Frequency</th>
                 <th>Dosage</th>
                 <th>Select Time and Dosage</th>
-                <th>Administration Times</th>
+                <th>Administration Times ({{ formatDate(currentDate) }})</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="(med, medIndex) in medications" :key="medIndex" class="medication-row active-row">
+              <tr 
+                v-for="(med, medIndex) in medications" 
+                :key="medIndex" 
+                class="medication-row active-row"
+                :data-med-index="medIndex"
+              >
                 <td>
                   <ExpandableDetails 
                     :medication="med"
@@ -477,7 +606,7 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
                     </option>
                   </select>
                 </td>
-                <td class="tabs-available">
+                <td class="tabs-available" :class="getRowStatusClass(med)">
                   <div class="tabs-counter">
                     <input 
                       type="number" 
@@ -489,7 +618,7 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
                 </td>
                 <td>{{ med.frequency || 'Not set' }}</td>
                 <td>{{ med.dosage || 'Not set' }}</td>
-                <td class="select-time-dosage">
+                <td class="select-time-dosage" :class="getRowStatusClass(med)">
                   <button class="select-button" @click="toggleSelectDropdown(med)">Select</button>
                 </td>
                 <td>
@@ -509,81 +638,56 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
       </template>
     </div>
 
+    <!-- Add Medication Form -->
     <AddMedicationForm
       :show="showAddForm"
       @close="showAddForm = false"
       @save="handleNewMedication"
     />
 
-    <div v-if="showSelectDropdown" class="select-dropdown-overlay">
-      <div class="select-dropdown">
-        <h3>Make Selections</h3>
-        
-        <div class="frequency-dosage-row">
-          <div class="frequency-group">
-            <label for="frequency-select">Frequency</label>
-            <select v-model="selectedFrequency" class="frequency-select" id="frequency-select">
-              <option value="">Select frequency</option>
-              <option>1 times daily</option>
-              <option>2 times daily</option>
-              <option>3 times daily</option>
-              <option>4 times daily</option>
-              <option>every other day</option>
-              <option>at bedtime</option>
-              <option>every hour</option>
-              <option>every 2 hours</option>
-              <option>every 3 hours</option>
-              <option>every 4 hours</option>
-              <option>every 6 hours</option>
-              <option>every 8 hours</option>
-              <option>every 12 hours</option>
-              <option>every 24 hours</option>
-            </select>
-          </div>
+    <!-- Hold Time Selector Modal -->
+    <div v-if="showHoldSelector" class="modal-overlay">
+      <div class="modal-content">
+        <HoldTimeSelector
+          v-if="selectedMedicationForHold"
+          :medication-times="selectedMedicationForHold.times.map(t => t.time)"
+          @submit="handleHoldSubmit"
+          @cancel="showHoldSelector = false"
+        />
+      </div>
+    </div>
 
-          <div class="dosage-group">
-            <label for="dosage-select">Dosage</label>
-            <select v-model="selectedDosage" class="dosage-select" id="dosage-select">
-              <option>1</option>
-              <option>2</option>
-              <option>3</option>
-              <option>4</option>
-              <option>5</option>
-            </select>
+    <!-- Time and Dosage Modal -->
+    <div v-if="showTimeModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>Select Time and Dosage</h3>
+        <div class="form-group">
+          <label>Frequency:</label>
+          <select v-model="selectedFrequency" class="form-select">
+            <option value="">Select frequency</option>
+            <option v-for="option in frequencyOptions" :key="option" :value="option">
+              {{ option }}
+            </option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Dosage:</label>
+          <input type="number" v-model="selectedDosage" min="1" step="1">
+        </div>
+        <div v-if="timeInputs.length > 0" class="form-group">
+          <label>Administration Times:</label>
+          <div v-for="(_, index) in timeInputs" :key="index" class="time-input-row">
+            <input 
+              type="time" 
+              v-model="timeInputs[index]"
+              class="time-input"
+              required
+            >
           </div>
         </div>
-
-        <template v-if="!selectedMedication?.prn">
-          <div class="times-container">
-            <div v-for="(time, index) in selectedTimes" :key="index" class="time-row">
-              <input type="time" v-model="selectedTimes[index]" class="time-input">
-              <div class="time-actions">
-                <button class="time-button remove" @click="removeTime(index)">Remove</button>
-                <button class="time-button change">Change</button>
-              </div>
-            </div>
-          </div>
-
-          <div class="selected-times">
-            <h4>Selected Times:</h4>
-            <div class="times-list">
-              <div v-for="time in selectedTimes" :key="time">{{ time }}</div>
-            </div>
-          </div>
-        </template>
-        <div v-else class="prn-notice">
-          <p>This medication is marked as PRN (As Needed). No specific administration times are required.</p>
-        </div>
-
-        <div class="button-group">
-          <button class="cancel-button" @click="handleCancel">Cancel</button>
-          <button 
-            class="save-button" 
-            @click="handleSave"
-            :disabled="!selectedFrequency || (!selectedMedication?.prn && selectedTimes.some(time => !time))"
-          >
-            Save
-          </button>
+        <div class="form-actions">
+          <button @click="handleSave" class="btn-save">Save</button>
+          <button @click="handleCancel" class="btn-cancel">Cancel</button>
         </div>
       </div>
     </div>
@@ -591,6 +695,41 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
 </template>
 
 <style scoped>
+.status-filter {
+  margin-bottom: 1.5rem;
+}
+
+.status-filter h3 {
+  margin-bottom: 0.5rem;
+  color: #333;
+  font-size: 1rem;
+}
+
+.status-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.status-button {
+  padding: 0.5rem 1rem;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+  color: #333;
+}
+
+.status-button:hover {
+  filter: brightness(0.95);
+}
+
+.status-button.active {
+  border-color: #0c8687;
+  box-shadow: 0 0 0 2px rgba(12, 134, 135, 0.2);
+}
+
 .table-container {
   margin: 20px auto;
   width: 90%;
@@ -686,7 +825,7 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
   background-color: #f8f9fa;
 }
 
-.select-dropdown-overlay {
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
@@ -699,139 +838,79 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
   z-index: 1000;
 }
 
-.select-dropdown {
-  background-color: white;
-  padding: 24px;
+.modal-content {
+  background: white;
   border-radius: 8px;
-  width: 500px;
-  max-width: 90%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  width: 90%;
+  max-width: 500px;
+  padding: 2rem;
 }
 
-.select-dropdown h3 {
-  margin: 0 0 24px 0;
-  text-align: center;
-  font-size: 20px;
+.form-group {
+  margin-bottom: 1rem;
 }
 
-.frequency-dosage-row {
-  display: flex;
-  gap: 24px;
-  margin-bottom: 20px;
+.form-group label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: 500;
 }
 
-.frequency-group,
-.dosage-group {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.frequency-group {
-  flex: 2;
-}
-
-.dosage-group {
-  flex: 1;
-}
-
-.frequency-select,
-.dosage-select {
+.form-group select,
+.form-group input {
   width: 100%;
-  padding: 8px;
+  padding: 0.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 1rem;
 }
 
-.times-container {
-  margin-bottom: 20px;
-}
-
-.time-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
+.time-input-row {
+  margin-bottom: 0.5rem;
 }
 
 .time-input {
-  flex: 1;
-  padding: 8px;
+  width: 100%;
+  padding: 0.5rem;
   border: 1px solid #ddd;
   border-radius: 4px;
-  font-size: 14px;
+  font-size: 1rem;
 }
 
-.time-actions {
-  display: flex;
-  gap: 8px;
-}
-
-.time-button {
-  padding: 6px 12px;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.time-button.remove {
-  background-color: #f8d7da;
-  color: #721c24;
-}
-
-.time-button.change {
-  background-color: #e2e3e5;
-  color: #383d41;
-}
-
-.add-time-button {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: none;
-  border: none;
-  color: #0066cc;
-  cursor: pointer;
-  padding: 8px 0;
-  font-size: 14px;
-  margin-bottom: 20px;
-}
-
-.plus-icon {
-  font-size: 18px;
-  font-weight: bold;
-}
-
-.selected-times {
-  margin-bottom: 24px;
-}
-
-.selected-times h4 {
-  margin: 0 0 12px 0;
-  color: #666;
-}
-
-.times-list {
-  min-height: 60px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 12px;
-}
-
-.button-group {
+.form-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 12px;
+  gap: 1rem;
+  margin-top: 1.5rem;
 }
 
-.save-button,
-.cancel-button {
-  padding: 8px 24px;
+.btn-save,
+.btn-cancel {
+  padding: 0.5rem 1rem;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 0.9rem;
+  transition: all 0.2s ease;
+}
+
+.btn-save {
+  background-color: #0c8687;
+  color: white;
+}
+
+.btn-save:hover {
+  background-color: #0a7273;
+}
+
+.btn-cancel {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-cancel:hover {
+  background-color: #5a6268;
 }
 
 .save-button {
@@ -873,13 +952,54 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
   background-color: #0a7273;
 }
 
-.medication-row.active-row { background-color: #d4edda; }
-.medication-row.discontinued-row { background-color: #f8d7da; }
-.medication-row.hold-row { background-color: #fff3cd; }
-.medication-row.new-row { background-color: #869ccd; }
-.medication-row.pending-row { background-color: #bf86cd; }
-.medication-row.change-row { background-color: #bf8d05; }
-.medication-row.completed-row { background-color: #00f445; }
+/* Row Status Classes */
+.medication-row.active-row,
+.medication-row.active-row .tabs-available,
+.medication-row.active-row .select-time-dosage { 
+  background-color: #d4edda; 
+}
+
+.medication-row.discontinue-row,
+.medication-row.discontinue-row .tabs-available,
+.medication-row.discontinue-row .select-time-dosage { 
+  background-color: #f8d7da; 
+}
+
+.medication-row.hold-row,
+.medication-row.hold-row .tabs-available,
+.medication-row.hold-row .select-time-dosage { 
+  background-color: #fff3cd !important; 
+}
+
+.medication-row.new-row,
+.medication-row.new-row .tabs-available,
+.medication-row.new-row .select-time-dosage { 
+  background-color: #869ccd; 
+}
+
+.medication-row.pending-row,
+.medication-row.pending-row .tabs-available,
+.medication-row.pending-row .select-time-dosage { 
+  background-color: #bf86cd; 
+}
+
+.medication-row.change-row,
+.medication-row.change-row .tabs-available,
+.medication-row.change-row .select-time-dosage { 
+  background-color: #bf8d05; 
+}
+
+.medication-row.completed-row,
+.medication-row.completed-row .tabs-available,
+.medication-row.completed-row .select-time-dosage { 
+  background-color: #00f445; 
+}
+
+.medication-row.partial-row,
+.medication-row.partial-row .tabs-available,
+.medication-row.partial-row .select-time-dosage { 
+  background-color: #ff69b4; 
+}
 
 .administration-times {
   display: flex;
@@ -913,18 +1033,23 @@ const handleTabsChange = (medication: Medication, newValue: number) => {
   border-radius: 0 0 4px 4px;
 }
 
-.prn-notice {
-  background-color: #fff3cd;
-  border: 1px solid #ffeeba;
-  border-radius: 4px;
-  padding: 1rem;
-  margin: 1rem 0;
-  color: #856404;
-  text-align: center;
-}
-
 .prn-indicator {
   font-style: italic;
   color: #666;
+}
+
+.form-select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
+  background-color: white;
+}
+
+.form-select:focus {
+  border-color: #0c8687;
+  outline: none;
+  box-shadow: 0 0 0 2px rgba(12, 134, 135, 0.1);
 }
 </style>
