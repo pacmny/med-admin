@@ -11,10 +11,6 @@ import type { Medication } from '../types'
 
 /*
   --- REACTIVE DATA, PROPS, AND EMITS ---
-
-  We include everything from our previous "checkpoint" code, 
-  but we now allow "discontinue" (and "change") to use the same popup logic 
-  as "hold" and "new."
 */
 
 // Core router
@@ -51,7 +47,7 @@ const showHoldSelector = ref(false)
 const selectedMedicationForHold = ref<Medication | null>(null)
 /**
  * This can be 'hold', 'new', 'discontinue', or 'change'
- * so we can reuse the same popup for all these statuses.
+ * so we can reuse the same popup for these statuses.
  */
 const selectedStatusOption = ref<'hold' | 'new' | 'discontinue' | 'change'>('hold')
 
@@ -64,13 +60,17 @@ const timeInputs = ref<string[]>([])
 const showTimeActionPopup = ref(false)
 const selectedDateAndTime = ref<{ dateObj: Date; timeObj: any } | null>(null)
 
-// Early/Late Confirmation Popup variables
+// Early/Late Confirmation Popup
 const showTimeConfirmationPopup = ref(false)
 const confirmationMessage = ref("")
 const pendingDateAndTime = ref<{ dateObj: Date; timeObj: any } | null>(null)
 const isEarly = ref(false)
 const showEarlyReasonInput = ref(false)
 const earlyReason = ref("")
+
+// Error Modal for validations
+const showErrorModal = ref(false)
+const errorMessage = ref("")
 
 /*
   FREQUENCY OPTIONS
@@ -95,7 +95,7 @@ const frequencyOptions = [
 ]
 
 /*
-  Normalize a Date => midnight
+  Helper: normalize date => midnight
 */
 function normalizeToMidnight(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
@@ -114,21 +114,20 @@ function formatDate(date: Date) {
 }
 
 /*
-  Helper: Format time to 12-hour format (e.g., "9:27 AM")
+  Format time => 12-hour format (e.g., "9:27 AM")
 */
 function formatTime12Hour(date: Date): string {
   let hours = date.getHours()
   const minutes = date.getMinutes()
   const ampm = hours >= 12 ? 'PM' : 'AM'
   hours = hours % 12
-  hours = hours ? hours : 12 // if hour is 0, display as 12
+  hours = hours ? hours : 12
   const minutesStr = minutes < 10 ? '0' + minutes : minutes
   return hours + ":" + minutesStr + " " + ampm
 }
 
 /*
-  Helper: Get scheduled DateTime by combining dateObj and the scheduled time string.
-  timeString is expected to be simple like "9:00" (or with appended text, which we ignore).
+  Return scheduled DateTime by combining date + time string
 */
 function getScheduledDateTime(dateObj: Date, timeString: string): Date {
   let scheduledTime = timeString
@@ -137,8 +136,8 @@ function getScheduledDateTime(dateObj: Date, timeString: string): Date {
   }
   const parts = scheduledTime.split(":")
   const hours = parseInt(parts[0])
-  const minutes = parseInt(parts[1])
-  return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), hours, minutes)
+  const mins = parseInt(parts[1])
+  return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), hours, mins)
 }
 
 /*
@@ -306,7 +305,7 @@ const allColumns = computed(() => {
 /*
   3) LOCAL STORAGE LOAD/SAVE
 */
-const loadMedications = () => {
+function loadMedications() {
   const savedMedications = localStorage.getItem('medications')
   if (savedMedications) {
     medications.value = JSON.parse(savedMedications)
@@ -322,7 +321,6 @@ const props = withDefaults(defineProps<{
 }>(), {
   medications: () => []
 })
-
 watch(() => props.medications, (newMeds) => {
   if (!localStorage.getItem('medications')) {
     medications.value = [...newMeds]
@@ -366,35 +364,75 @@ function getTimesCountFromFrequency(frequency: string): number {
       return 1
   }
 }
-watch(selectedFrequency, (newFreq) => {
+watch(selectedFrequency, (newFreq, oldFreq) => {
   if (!newFreq || (selectedMedicationForTime.value && selectedMedicationForTime.value.prn)) {
     timeInputs.value = []
     return
   }
-  const timesCount = getTimesCountFromFrequency(newFreq)
-  timeInputs.value = Array(timesCount).fill('')
+  if (oldFreq && oldFreq !== newFreq) {
+    const timesCount = getTimesCountFromFrequency(newFreq)
+    timeInputs.value = Array(timesCount).fill('')
+  }
 })
 
 /*
   5) TIME & DOSAGE MODAL
 */
+
+/**
+ * Attempt to open the "Select Time and Dosage" popup:
+ * 1) If tabsAvailable == 0 => show error popup.
+ * 2) Else => load existing times & show the popup.
+ */
 function toggleSelectDropdown(medication: Medication) {
+  if (medication.tabsAvailable <= 0) {
+    errorMessage.value = "Please add tabs available"
+    showErrorModal.value = true
+    return
+  }
   selectedMedicationForTime.value = medication
+  selectedFrequency.value = medication.frequency || ''
+  selectedDosage.value = medication.dosage || '1'
+  if (
+    medication.administrationTimes &&
+    medication.administrationTimes !== 'As needed'
+  ) {
+    const splitted = medication.administrationTimes.split(',')
+    timeInputs.value = splitted.map(t => t.trim())
+  } else {
+    timeInputs.value = []
+  }
   showTimeModal.value = true
 }
+
+/**
+ * Validate time inputs. If user selected "3 times daily" => we expect 3 times. If any are empty => show error popup
+ */
 function handleSave() {
   if (!selectedMedicationForTime.value) {
     showTimeModal.value = false
     return
   }
+
+  // If not PRN, ensure all time inputs are filled
+  if (!selectedMedicationForTime.value.prn && timeInputs.value.length > 0) {
+    // If any are empty => show error
+    if (timeInputs.value.some(t => !t)) {
+      errorMessage.value = "Please select all required times."
+      showErrorModal.value = true
+      return
+    }
+  }
+
+  // Proceed to save frequency/dosage/times
   selectedMedicationForTime.value.frequency = selectedFrequency.value
   selectedMedicationForTime.value.dosage = selectedDosage.value
+
   if (selectedMedicationForTime.value.prn) {
     selectedMedicationForTime.value.dates = {}
     selectedMedicationForTime.value.administrationTimes = 'As needed'
   } else {
     if (!selectedMedicationForTime.value.dates) {
-      // @ts-ignore
       selectedMedicationForTime.value.dates = {}
     }
     const newTimeArray = timeInputs.value
@@ -404,15 +442,15 @@ function handleSave() {
 
     allColumns.value.forEach(dateObj => {
       const dateStr = formatDateToYYYYMMDD(dateObj)
-      if (!selectedMedicationForTime.value.dates![dateStr]) {
-        selectedMedicationForTime.value.dates![dateStr] = newTimeArray.map(x => ({ ...x }))
-      }
+      selectedMedicationForTime.value.dates![dateStr] = newTimeArray.map(x => ({ ...x }))
     })
   }
+  // Close the modal
   showTimeModal.value = false
   selectedMedicationForTime.value = null
   timeInputs.value = []
 }
+
 function handleCancel() {
   showTimeModal.value = false
   selectedMedicationForTime.value = null
@@ -420,19 +458,21 @@ function handleCancel() {
 }
 
 /*
-  6) "Taken/Later/Refused" Popup and Time Stamp Handling
+  6) "Taken/Later/Refused" Popup
 */
 function openActionPopup(dateObj: Date, timeObj: any) {
-  // Get the scheduled DateTime from the date and time string.
-  const scheduledDateTime = getScheduledDateTime(dateObj, timeObj.time)
+  const scheduledTimeStr = timeObj.time.includes("(")
+    ? timeObj.time.split("(")[0].trim()
+    : timeObj.time
+  const [hours, mins] = scheduledTimeStr.split(":").map(Number)
+  const scheduledDateTime = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), hours, mins)
   const currentTime = new Date()
   const diffMinutes = (currentTime.getTime() - scheduledDateTime.getTime()) / 60000
-  // If current time is within ±60 minutes of scheduled time, proceed normally.
+
   if (diffMinutes >= -60 && diffMinutes <= 60) {
     selectedDateAndTime.value = { dateObj, timeObj }
     showTimeActionPopup.value = true
   } else {
-    // Outside the one-hour window.
     pendingDateAndTime.value = { dateObj, timeObj }
     if (diffMinutes < -60) {
       isEarly.value = true
@@ -449,13 +489,11 @@ function closeTimeActionPopup() {
 }
 function handleTimeActionSelected({ action }: { action: string }) {
   if (selectedDateAndTime.value) {
-    // If the action is 'taken', automatically set the timestamp.
     if (action === 'taken') {
       const originalTime = selectedDateAndTime.value.timeObj.time
-      const currentTime = new Date()
-      const formattedTime = formatTime12Hour(currentTime)
-      // Replace the original time with a string that appends the timestamp.
-      selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formattedTime + ")"
+      const now = new Date()
+      const formatted = formatTime12Hour(now)
+      selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formatted + ")"
     }
     selectedDateAndTime.value.timeObj.status = action
   }
@@ -463,11 +501,9 @@ function handleTimeActionSelected({ action }: { action: string }) {
 }
 
 /*
-  Functions for the Early/Late Confirmation Popup
+  Early/Late Confirmation
 */
-// For late scenario, behavior remains as before.
 function confirmTimeAction() {
-  // For late scenario only.
   showTimeConfirmationPopup.value = false
   if (!isEarly.value && pendingDateAndTime.value) {
     selectedDateAndTime.value = pendingDateAndTime.value
@@ -475,23 +511,18 @@ function confirmTimeAction() {
     pendingDateAndTime.value = null
   }
 }
-// For early scenario: when user clicks "Yes" in the initial confirmation.
 function triggerEarlyYes() {
   showEarlyReasonInput.value = true
 }
-// When user clicks the green "Select" button after entering a reason.
 function confirmEarlyWithReason() {
   if (pendingDateAndTime.value && earlyReason.value.trim() !== "") {
     selectedDateAndTime.value = pendingDateAndTime.value
-    // Save the early reason to the time object.
     selectedDateAndTime.value.timeObj.earlyReason = earlyReason.value.trim()
-    // For early, we mark it as taken and timestamp it.
     const originalTime = selectedDateAndTime.value.timeObj.time
-    const currentTime = new Date()
-    const formattedTime = formatTime12Hour(currentTime)
-    selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formattedTime + ")"
+    const now = new Date()
+    const formatted = formatTime12Hour(now)
+    selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formatted + ")"
     selectedDateAndTime.value.timeObj.status = "taken"
-    // Reset early confirmation variables.
     showTimeConfirmationPopup.value = false
     showEarlyReasonInput.value = false
     earlyReason.value = ""
@@ -537,14 +568,12 @@ function handleNewMedication(medication: Partial<Medication>) {
   }
   medications.value.push(newMedication)
   showAddForm.value = false
-
   if (!newMedication.prn) {
     selectedMedicationForTime.value = newMedication
     selectedFrequency.value = newMedication.frequency
     selectedDosage.value = '1'
     showTimeModal.value = true
   }
-
   populateMedicationTable()
 }
 function handleMedicationUpdate(updatedMedication: Medication) {
@@ -617,24 +646,15 @@ function populateMedicationTable() {
 /*
   10) STATUS CHANGES (Dropdown)
 */
-
-/**
- * handleStatusChange:
- * If user picks "hold," "new," "discontinue," or "change," 
- * we open the same popup but pass a different statusOption.
- */
 function handleStatusChange(event: Event, medIndex: number) {
   const select = event.target as HTMLSelectElement
   const status = select.value
-
   if (status === 'hold' || status === 'new' || status === 'discontinue' || status === 'change') {
     selectedMedicationForHold.value = medications.value[medIndex]
     selectedStatusOption.value = status as 'hold' | 'new' | 'discontinue' | 'change'
     showHoldSelector.value = true
     return
   }
-
-  // For other statuses, color the row, etc.
   const row = select.closest('tr')
   if (row) {
     row.classList.remove(
@@ -664,11 +684,6 @@ const holdTimes = computed(() => {
   return Array.from(timesSet)
 })
 
-/**
- * handleHoldSubmit:
- * If data.statusOption === 'discontinue' (or 'change'), we do timeObj.status='discontinue'
- * If 'new', timeObj.status='new', else 'hold'
- */
 function handleHoldSubmit(data: {
   dateRange: [Date, Date];
   times: string[] | null;
@@ -677,11 +692,8 @@ function handleHoldSubmit(data: {
   statusOption?: 'hold' | 'new' | 'discontinue' | 'change';
 }) {
   if (!selectedMedicationForHold.value) return
-
   const medication = selectedMedicationForHold.value
-  const dateStr = formatDateToYYYYMMDD(data.dateRange[0]) // single date
-
-  // If "all," mark every time on that single date
+  const dateStr = formatDateToYYYYMMDD(data.dateRange[0])
   if (data.holdType === 'all') {
     if (medication.dates && medication.dates[dateStr]) {
       medication.dates[dateStr].forEach((timeObj: any) => {
@@ -694,9 +706,7 @@ function handleHoldSubmit(data: {
         }
       })
     }
-  }
-  // If "specific," mark only those times
-  else if (data.holdType === 'specific' && data.times && medication.dates && medication.dates[dateStr]) {
+  } else if (data.holdType === 'specific' && data.times && medication.dates && medication.dates[dateStr]) {
     data.times.forEach(tStr => {
       const timeObj = medication.dates[dateStr].find((obj: any) => obj.time === tStr)
       if (timeObj) {
@@ -710,49 +720,50 @@ function handleHoldSubmit(data: {
       }
     })
   }
-
-  // Optionally store info
   medication.holdInfo = {
     dateRange: data.dateRange,
     times: data.times,
     reason: data.reason,
     type: data.holdType
   }
-
-  // Close popup
   showHoldSelector.value = false
   selectedMedicationForHold.value = null
 }
+
+/**
+ * Closes the error modal
+ */
+function closeErrorModal() {
+  showErrorModal.value = false
+}
  
-/*
-  If user changes "Tabs Available"
-*/
+/**
+ * If user changes "Tabs Available"
+ */
 function handleTabsChange(medication: Medication, newValue: number) {
   medication.tabsAvailable = newValue
   emit('tabsChange', medication, newValue)
 }
 
-/*
-  Row styling
-*/
+/**
+ * Row styling
+ */
 function getRowStatusClass(medication: Medication) {
-  // We do NOT color entire row for hold/new/discontinue 
-  // so only the chosen date/time is changed in the table.
   return 'active-row'
 }
 
-/*
-  onMounted
-*/
+/**
+ * onMounted
+ */
 onMounted(() => {
   loadMedications()
   initializeDateRangePicker()
   populateMedicationTable()
 })
 
-/*
-  Return times for a specific date
-*/
+/**
+ * Return times for a specific date
+ */
 function getTimesForDate(med: Medication, dateObj: Date) {
   const dateStr = formatDateToYYYYMMDD(dateObj)
   if (!med.dates || !med.dates[dateStr]) {
@@ -972,6 +983,8 @@ function getTimesForDate(med: Medication, dateObj: Date) {
     <div v-if="showTimeModal" class="modal-overlay">
       <div class="modal-content">
         <h3>Select Time and Dosage</h3>
+        <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
+
         <div class="form-group">
           <label>Frequency:</label>
           <select v-model="selectedFrequency" class="form-select">
@@ -985,10 +998,17 @@ function getTimesForDate(med: Medication, dateObj: Date) {
             </option>
           </select>
         </div>
+
         <div class="form-group">
           <label>Dosage:</label>
-          <input type="number" v-model="selectedDosage" min="1" step="1" />
+          <input
+            type="number"
+            v-model="selectedDosage"
+            min="1"
+            step="1"
+          />
         </div>
+
         <div v-if="timeInputs.length > 0" class="form-group">
           <label>Administration Times:</label>
           <div
@@ -1004,6 +1024,7 @@ function getTimesForDate(med: Medication, dateObj: Date) {
             />
           </div>
         </div>
+
         <div class="form-actions">
           <button @click="handleSave" class="btn-save">Save</button>
           <button @click="handleCancel" class="btn-cancel">Cancel</button>
@@ -1024,22 +1045,34 @@ function getTimesForDate(med: Medication, dateObj: Date) {
       <div class="modal-content">
         <h3>{{ confirmationMessage }}</h3>
         <div v-if="isEarly">
-          <!-- For early scenario -->
           <div v-if="!showEarlyReasonInput" class="button-row">
             <button @click="triggerEarlyYes">Yes</button>
             <button @click="cancelTimeActionConfirmation">No</button>
           </div>
           <div v-else>
-            <input type="text" v-model="earlyReason" placeholder="Enter reason" />
+            <input
+              type="text"
+              v-model="earlyReason"
+              placeholder="Enter reason"
+            />
             <button class="btn-green" @click="confirmEarlyWithReason">Select</button>
           </div>
         </div>
         <div v-else>
-          <!-- For late scenario -->
           <div class="button-row">
             <button @click="confirmTimeAction">Yes</button>
             <button @click="cancelTimeActionConfirmation">No</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Modal for validations -->
+    <div v-if="showErrorModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>{{ errorMessage }}</h3>
+        <div class="button-row">
+          <button @click="closeErrorModal">OK</button>
         </div>
       </div>
     </div>
@@ -1048,26 +1081,24 @@ function getTimesForDate(med: Medication, dateObj: Date) {
 
 <style scoped>
 /*
-  Everything from the previous checkpoint, with row coloring for 
-  hold/new/discontinue removed so only the chosen date/time is changed.
+  Minimal changes from the previous code. We added a second check in handleSave() 
+  to ensure all required times are selected, plus an error modal for it.
 */
 
+/* Status Filter & Buttons */
 .status-filter {
   margin-bottom: 1.5rem;
 }
-
 .status-filter h3 {
   margin-bottom: 0.5rem;
   color: #333;
   font-size: 1rem;
 }
-
 .status-buttons {
   display: flex;
   flex-wrap: wrap;
   gap: 0.5rem;
 }
-
 .status-button {
   padding: 0.5rem 1rem;
   border: 1px solid #dee2e6;
@@ -1077,22 +1108,20 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   transition: all 0.2s ease;
   color: #333;
 }
-
 .status-button:hover {
   filter: brightness(0.95);
 }
-
 .status-button.active {
   border-color: #0c8687;
   box-shadow: 0 0 0 2px rgba(12, 134, 135, 0.2);
 }
 
+/* Table Container */
 .table-container {
   margin: 20px auto;
   width: 90%;
   overflow-x: auto;
 }
-
 .date-range-selector {
   display: flex;
   align-items: center;
@@ -1100,6 +1129,7 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   margin-bottom: 1rem;
 }
 
+/* Sorting Controls */
 .sort-controls {
   display: flex;
   gap: 1rem;
@@ -1108,7 +1138,6 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   background-color: #f8f9fa;
   border-radius: 8px;
 }
-
 .sort-button {
   padding: 0.5rem 1rem;
   border: 1px solid #dee2e6;
@@ -1119,42 +1148,37 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   font-size: 0.9rem;
   transition: all 0.2s ease;
 }
-
 .sort-button:hover {
   background-color: #e9ecef;
 }
-
 .sort-button.active {
   background-color: #0c8687;
   color: white;
   border-color: #0c8687;
 }
 
+/* Schedule Table */
 .schedule-table {
   width: 100%;
   border-collapse: collapse;
   background-color: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-
 .schedule-table th,
 .schedule-table td {
   border: 1px solid #ddd;
   padding: 12px;
   text-align: center;
 }
-
 .tabs-available {
   background-color: #d4edda;
   padding: 8px;
 }
-
 .tabs-counter {
   display: flex;
   justify-content: center;
   align-items: center;
 }
-
 .tabs-input {
   width: 60px;
   padding: 4px;
@@ -1163,11 +1187,11 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   border-radius: 4px;
 }
 
+/* Select Time and Dosage Button */
 .select-time-dosage {
   background-color: #d4edda;
   padding: 8px;
 }
-
 .select-button {
   background-color: white;
   border: 1px solid #ddd;
@@ -1177,11 +1201,11 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   cursor: pointer;
   transition: background-color 0.2s;
 }
-
 .select-button:hover {
   background-color: #f8f9fa;
 }
 
+/* Modal Overlays */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -1194,7 +1218,6 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   align-items: center;
   z-index: 1000;
 }
-
 .modal-content {
   background: white;
   border-radius: 8px;
@@ -1204,12 +1227,12 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   padding: 2rem;
 }
 
+/* Button Rows */
 .button-row {
   display: flex;
   justify-content: space-around;
   margin-top: 1rem;
 }
-
 .button-row button {
   padding: 0.5rem 1rem;
   border: none;
@@ -1217,6 +1240,7 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   cursor: pointer;
 }
 
+/* Input Styles */
 .modal-content input[type="text"] {
   width: 100%;
   padding: 0.5rem;
@@ -1225,25 +1249,24 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   border-radius: 4px;
   font-size: 1rem;
 }
-
 .btn-green {
   background-color: #28a745;
   color: #fff;
   border: none;
   padding: 0.5rem 1rem;
   border-radius: 4px;
+  cursor: pointer;
 }
 
+/* Form Groups */
 .form-group {
   margin-bottom: 1rem;
 }
-
 .form-group label {
   display: block;
   margin-bottom: 0.5rem;
   font-weight: 500;
 }
-
 .form-group select,
 .form-group input {
   width: 100%;
@@ -1252,11 +1275,9 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   border-radius: 4px;
   font-size: 1rem;
 }
-
 .time-input-row {
   margin-bottom: 0.5rem;
 }
-
 .time-input {
   width: 100%;
   padding: 0.5rem;
@@ -1264,14 +1285,12 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   border-radius: 4px;
   font-size: 1rem;
 }
-
 .form-actions {
   display: flex;
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 1.5rem;
 }
-
 .btn-save,
 .btn-cancel {
   padding: 0.5rem 1rem;
@@ -1281,79 +1300,66 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   font-size: 0.9rem;
   transition: all 0.2s ease;
 }
-
 .btn-save {
   background-color: #0c8687;
   color: white;
 }
-
 .btn-save:hover {
   background-color: #0a7273;
 }
-
 .btn-cancel {
   background-color: #6c757d;
   color: white;
 }
-
 .btn-cancel:hover {
   background-color: #5a6268;
 }
-
 .save-button {
   background-color: #28a745;
   color: white;
 }
-
 .save-button:disabled {
   background-color: #cccccc;
   cursor: not-allowed;
 }
-
 .cancel-button {
   background-color: #6c757d;
   color: white;
 }
 
-/* We do not color entire row for hold/new/discontinue 
-   so only chosen date/time is updated in the table.
-*/
+/* Row / Time Entry Statuses */
 .medication-row.active-row {
   background-color: #d4edda;
 }
-
-/* Single-cell statuses for hold/new/discontinue */
 .time-entry.hold {
-  background-color: #fff3cd; /* pale yellow */
+  background-color: #fff3cd;
   color: #000;
 }
 .time-entry.new {
-  background-color: #c7d0f9; /* light periwinkle */
+  background-color: #c7d0f9;
   color: #000;
 }
 .time-entry.discontinue {
-  background-color: #f8d7da; /* pale pink/red */
+  background-color: #f8d7da;
   color: #000;
 }
-
-/* Updated colors for "taken" and "later" only */
 .time-entry.taken {
-  background-color: #00ff1e; /* bright green for taken early */
+  background-color: #00ff1e;
   color: #fff;
 }
 .time-entry.later {
-  background-color: #ff9907; /* orange for take later */
+  background-color: #ff9907;
   color: #000;
 }
 .time-entry.refused {
-  background-color: #dc3545; /* red */
+  background-color: #dc3545;
   color: #fff;
 }
 
+/* Category Section */
 .category-section {
   margin-bottom: 2rem;
 }
-
 .category-header {
   background-color: #0c8687;
   color: white;
@@ -1362,17 +1368,16 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   font-size: 1.2rem;
   border-radius: 4px 4px 0 0;
 }
-
 .schedule-table {
   margin-top: 0;
   border-radius: 0 0 4px 4px;
 }
-
 .prn-indicator {
   font-style: italic;
   color: #666;
 }
 
+/* Select & Focus */
 .form-select {
   width: 100%;
   padding: 0.5rem;
@@ -1381,7 +1386,6 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   font-size: 1rem;
   background-color: white;
 }
-
 .form-select:focus {
   border-color: #0c8687;
   outline: none;
