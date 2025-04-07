@@ -1,3 +1,344 @@
+<template>
+  <div id="app">
+    <h2>Administration</h2>
+
+    <div class="table-container">
+      <!-- Status Filter -->
+      <div class="status-filter">
+        <h3>Filter by Status:</h3>
+        <div class="status-buttons">
+          <button
+            class="status-button"
+            :class="{ active: selectedStatus === null }"
+            @click="handleStatusFilter(null)"
+          >
+            Show All
+          </button>
+          <button
+            v-for="option in statusOptions"
+            :key="option.value"
+            class="status-button"
+            :class="{ active: selectedStatus === option.value }"
+            :style="{ backgroundColor: option.color }"
+            @click="handleStatusFilter(option.value)"
+          >
+            {{ option.label }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Date Range and Add Form -->
+      <div class="date-range-selector">
+        <label for="date-range-picker">Select Date Range:</label>
+        <input type="text" id="date-range-picker" placeholder="Select date range" />
+        <button class="add-manually-btn" @click="showAddForm = true">
+          Add Manually
+        </button>
+      </div>
+
+      <!-- Sorting Controls -->
+      <div class="sort-controls">
+        <button
+          class="sort-button"
+          :class="{ active: sortBy === 'medication' }"
+          @click="handleSort('medication')"
+        >
+          Sort by Medication
+        </button>
+        <button
+          class="sort-button"
+          :class="{ active: sortBy === 'time' }"
+          @click="handleSort('time')"
+        >
+          Sort by Time
+        </button>
+        <button
+          class="sort-button"
+          :class="{ active: sortBy === 'diagnosis' }"
+          @click="handleSort('diagnosis')"
+        >
+          Sort by Diagnosis
+        </button>
+        <button
+          class="sort-button"
+          :class="{ active: sortBy === 'route' }"
+          @click="handleSort('route')"
+        >
+          Sort by Route
+        </button>
+        <button
+          class="sort-button"
+          :class="{ active: sortBy === 'prn' }"
+          @click="handleSort('prn')"
+        >
+          Sort by PRN
+        </button>
+      </div>
+
+      <!-- Grouped Medications -->
+      <template v-for="(medsInGroup, category) in groupedMedications" :key="category">
+        <div v-if="medsInGroup.length > 0" class="category-section">
+          <h3 class="category-header">{{ category }}</h3>
+          <table class="schedule-table">
+            <thead>
+              <tr>
+                <th>Medication Details</th>
+                <th>Status</th>
+                <th>Tabs Available</th>
+                <th>Frequency</th>
+                <th>Dosage</th>
+                <th>Select Time and Dosage</th>
+                <!-- Columns for each date in allColumns -->
+                <th
+                  v-for="dateObj in allColumns"
+                  :key="dateObj.getTime()"
+                >
+                  Administration Times ({{ formatDate(dateObj) }})
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr
+                v-for="(med, medIndex) in medsInGroup"
+                :key="medIndex"
+                class="medication-row"
+                :class="getRowStatusClass(med)"
+                :data-med-index="medIndex"
+              >
+                <!-- Basic medication info -->
+                <td>
+                  <ExpandableDetails
+                    :medication="med"
+                    @update="handleMedicationUpdate"
+                  >
+                    <template #preview>
+                      {{ med.name }}
+                    </template>
+                  </ExpandableDetails>
+                </td>
+
+                <!-- Status dropdown -->
+                <td>
+                  <select
+                    class="status-dropdown"
+                    @change="(e) => handleStatusChange(e, medIndex)"
+                  >
+                    <option
+                      v-for="option in statusOptions"
+                      :key="option.value"
+                      :value="option.value"
+                      :style="{ backgroundColor: option.color }"
+                    >
+                      {{ option.label }}
+                    </option>
+                  </select>
+                </td>
+
+                <!-- Tabs Available -->
+                <td class="tabs-available">
+                  <div class="tabs-counter">
+                    <input
+                      type="number"
+                      v-model="med.tabsAvailable"
+                      @change="handleTabsChange(med, $event.target.value)"
+                      class="tabs-input"
+                    />
+                  </div>
+                </td>
+
+                <!-- Frequency, Dosage -->
+                <td>{{ med.frequency || 'Not set' }}</td>
+                <td>{{ med.dosage || 'Not set' }}</td>
+
+                <!-- "Select Time and Dosage" button -->
+                <td class="select-time-dosage">
+                  <button class="select-button" @click="toggleSelectDropdown(med)">
+                    Select
+                  </button>
+                </td>
+
+                <!-- Show each date's times -->
+                <td
+                  v-for="dateObj in allColumns"
+                  :key="dateObj.getTime()"
+                >
+                  <div class="administration-times">
+                    <!-- 
+                      "As needed" is clickable. We also display 
+                      any PRN timestamps for THIS date (if any).
+                    -->
+                    <template v-if="med.prn">
+                      <div
+                        class="prn-indicator"
+                        @click="stampPRNTime(med)"
+                      >
+                        As needed
+                      </div>
+                      <!-- Show only times for the current date column -->
+                      <div
+                        v-if="med.times && med.times.length"
+                        class="prn-times-list"
+                      >
+                        <div
+                          v-for="timeObj in med.times.filter(entry => entry.date === formatDateToYYYYMMDD(dateObj))"
+                          :key="timeObj.time + timeObj.status"
+                          class="time-entry"
+                          :class="timeObj.status"
+                        >
+                          {{ timeObj.time }}
+                        </div>
+                      </div>
+                    </template>
+                    <template v-else>
+                      <div
+                        v-for="timeObj in getTimesForDate(med, dateObj)"
+                        :key="timeObj.time"
+                        class="time-entry"
+                        :class="timeObj.status"
+                        @click="openActionPopup(dateObj, timeObj)"
+                      >
+                        {{ timeObj.time }}
+                      </div>
+                    </template>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </template>
+    </div>
+
+    <!-- Add Medication Form -->
+    <AddMedicationForm
+      :show="showAddForm"
+      @close="showAddForm = false"
+      @save="handleNewMedication"
+    />
+
+    <!-- Hold/New/Discontinue Time Selector Modal -->
+    <div v-if="showHoldSelector" class="modal-overlay">
+      <div class="modal-content">
+        <HoldTimeSelector
+          v-if="selectedMedicationForHold"
+          :status-option="selectedStatusOption"
+          :medication-times="holdTimes"
+          @submit="handleHoldSubmit"
+          @cancel="showHoldSelector = false"
+        />
+      </div>
+    </div>
+
+    <!-- Time and Dosage Modal -->
+    <div v-if="showTimeModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>Select Time and Dosage</h3>
+        <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
+
+        <div class="form-group">
+          <label>Frequency:</label>
+          <select v-model="selectedFrequency" class="form-select">
+            <option value="">Select frequency</option>
+            <option
+              v-for="option in frequencyOptions"
+              :key="option"
+              :value="option"
+            >
+              {{ option }}
+            </option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>Dosage (tabs per admin time):</label>
+          <input
+            type="number"
+            v-model="selectedDosage"
+            min="1"
+            step="1"
+          />
+        </div>
+
+        <div v-if="timeInputs.length > 0" class="form-group">
+          <label>Administration Times:</label>
+          <div
+            v-for="(_, index) in timeInputs"
+            :key="index"
+            class="time-input-row"
+          >
+            <input
+              type="time"
+              v-model="timeInputs[index]"
+              class="time-input"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button @click="handleSave" class="btn-save">Save</button>
+          <button @click="handleCancel" class="btn-cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- "Taken / Later / Refused" Popup -->
+    <MedicationActionPopup
+      v-if="showTimeActionPopup"
+      :timeObj="selectedDateAndTime?.timeObj"
+      @close="closeTimeActionPopup"
+      @action-selected="handleTimeActionSelected"
+    />
+
+    <!-- Early/Late Confirmation Popup -->
+    <div v-if="showTimeConfirmationPopup" class="modal-overlay">
+      <div class="modal-content">
+        <h3>{{ confirmationMessage }}</h3>
+        <div v-if="isEarly">
+          <div v-if="!showEarlyReasonInput" class="button-row">
+            <button @click="triggerEarlyYes">Yes</button>
+            <button @click="cancelTimeActionConfirmation">No</button>
+          </div>
+          <div v-else>
+            <input
+              type="text"
+              v-model="earlyReason"
+              placeholder="Enter reason"
+            />
+            <button class="btn-green" @click="confirmEarlyWithReason">Select</button>
+          </div>
+        </div>
+        <div v-else>
+          <div class="button-row">
+            <button @click="confirmTimeAction">Yes</button>
+            <button @click="cancelTimeActionConfirmation">No</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Error Modal for validations -->
+    <div v-if="showErrorModal" class="modal-overlay">
+      <div class="modal-content">
+        <h3>{{ errorMessage }}</h3>
+        <div class="button-row">
+          <button @click="closeErrorModal">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sign-Off Popup (for final signature after all meds are "taken"/"refused") -->
+    <SignOffPopup
+      v-if="showSignOffPopup"
+      :medItems="signOffMedications"
+      :timeString="signOffTimeStr"
+      :dateObj="signOffDate"
+      @close="closeSignOffPopup"
+      @sign-off="handleSignOff"
+    />
+  </div>
+</template>
+
 <script setup lang="ts">
 import MedicationActionPopup from './MedicationActionPopup.vue'
 import { ref, computed, watch, onMounted, defineProps, withDefaults, defineEmits } from 'vue'
@@ -7,13 +348,13 @@ import flatpickr from 'flatpickr'
 import ExpandableDetails from './ExpandableDetails.vue'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
+import SignOffPopup from './SignOffPopup.vue'
 import type { Medication } from '../types'
 
 /*
   --- REACTIVE DATA, PROPS, AND EMITS ---
 */
 
-// Core router
 const router = useRouter()
 const medications = ref<Medication[]>([])
 
@@ -45,10 +386,6 @@ const selectedStatus = ref<string | null>(null)
 // “Hold/New/Discontinue” popup
 const showHoldSelector = ref(false)
 const selectedMedicationForHold = ref<Medication | null>(null)
-/**
- * This can be 'hold', 'new', 'discontinue', or 'change'
- * so we can reuse the same popup for these statuses.
- */
 const selectedStatusOption = ref<'hold' | 'new' | 'discontinue' | 'change'>('hold')
 
 // Time & Dosage modal
@@ -73,6 +410,14 @@ const showErrorModal = ref(false)
 const errorMessage = ref("")
 
 /*
+  NEW: Sign-Off Popup
+*/
+const showSignOffPopup = ref(false)
+const signOffMedications = ref<{ medication: Medication; timeObj: any }[]>([])
+const signOffTimeStr = ref('')
+const signOffDate = ref<Date | null>(null)
+
+/*
   FREQUENCY OPTIONS
 */
 const frequencyOptions = [
@@ -94,16 +439,9 @@ const frequencyOptions = [
   'tuesday, thursday, saturday'
 ]
 
-/*
-  Helper: normalize date => midnight
-*/
 function normalizeToMidnight(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
-
-/*
-  Format date => "Thu, Mar 27, 2025"
-*/
 function formatDate(date: Date) {
   return date.toLocaleDateString('en-US', {
     weekday: 'short',
@@ -112,10 +450,6 @@ function formatDate(date: Date) {
     year: 'numeric'
   })
 }
-
-/*
-  Format time => 12-hour format (e.g., "9:27 AM")
-*/
 function formatTime12Hour(date: Date): string {
   let hours = date.getHours()
   const minutes = date.getMinutes()
@@ -125,10 +459,6 @@ function formatTime12Hour(date: Date): string {
   const minutesStr = minutes < 10 ? '0' + minutes : minutes
   return hours + ":" + minutesStr + " " + ampm
 }
-
-/*
-  Return scheduled DateTime by combining date + time string
-*/
 function getScheduledDateTime(dateObj: Date, timeString: string): Date {
   let scheduledTime = timeString
   if (scheduledTime.includes("(")) {
@@ -140,9 +470,6 @@ function getScheduledDateTime(dateObj: Date, timeString: string): Date {
   return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), hours, mins)
 }
 
-/*
-  Status filter options
-*/
 const statusOptions = [
   { value: 'active', label: 'Active', color: '#d4edda' },
   { value: 'discontinue', label: 'Discontinue', color: '#f8d7da' },
@@ -157,14 +484,10 @@ const statusOptions = [
 function handleSort(type: string) {
   sortBy.value = type
 }
-
 function handleStatusFilter(status: string | null) {
   selectedStatus.value = selectedStatus.value === status ? null : status
 }
 
-/*
-  Route categories
-*/
 const routeCategories = [
   'PRN',
   'Neb/INH',
@@ -179,10 +502,6 @@ const routeCategories = [
   'Optic',
   'Otic'
 ]
-
-/*
-  groupMedicationsByDiagnosis
-*/
 function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medication[]> {
   const grouped: Record<string, Medication[]> = {}
   meds.forEach(med => {
@@ -315,7 +634,6 @@ watch(medications, (newVal) => {
   localStorage.setItem('medications', JSON.stringify(newVal))
 }, { deep: true })
 
-// defineProps & watch
 const props = withDefaults(defineProps<{
   medications?: Medication[];
 }>(), {
@@ -327,7 +645,6 @@ watch(() => props.medications, (newMeds) => {
   }
 }, { immediate: true })
 
-// defineEmits
 const emit = defineEmits<{
   (e: 'statusChange', medication: Medication, status: string): void
   (e: 'medicationTaken', medication: Medication, time: string, action: string): void
@@ -378,12 +695,6 @@ watch(selectedFrequency, (newFreq, oldFreq) => {
 /*
   5) TIME & DOSAGE MODAL
 */
-
-/**
- * Attempt to open the "Select Time and Dosage" popup:
- * 1) If tabsAvailable == 0 => show error popup.
- * 2) Else => load existing times & show the popup.
- */
 function toggleSelectDropdown(medication: Medication) {
   if (medication.tabsAvailable <= 0) {
     errorMessage.value = "Please add tabs available"
@@ -405,9 +716,6 @@ function toggleSelectDropdown(medication: Medication) {
   showTimeModal.value = true
 }
 
-/**
- * Validate time inputs. If user selected "3 times daily" => we expect 3 times. If any are empty => show error popup
- */
 function handleSave() {
   if (!selectedMedicationForTime.value) {
     showTimeModal.value = false
@@ -416,7 +724,6 @@ function handleSave() {
 
   // If not PRN, ensure all time inputs are filled
   if (!selectedMedicationForTime.value.prn && timeInputs.value.length > 0) {
-    // If any are empty => show error
     if (timeInputs.value.some(t => !t)) {
       errorMessage.value = "Please select all required times."
       showErrorModal.value = true
@@ -435,9 +742,15 @@ function handleSave() {
     if (!selectedMedicationForTime.value.dates) {
       selectedMedicationForTime.value.dates = {}
     }
+    // For each time, attach dosage
+    const dosageNum = parseInt(selectedDosage.value, 10) || 1
     const newTimeArray = timeInputs.value
       .filter(t => t)
-      .map(t => ({ time: t, status: 'pending' }))
+      .map(t => ({
+        time: t,
+        status: 'pending',
+        dosage: dosageNum
+      }))
     selectedMedicationForTime.value.administrationTimes = timeInputs.value.join(', ')
 
     allColumns.value.forEach(dateObj => {
@@ -445,7 +758,6 @@ function handleSave() {
       selectedMedicationForTime.value.dates![dateStr] = newTimeArray.map(x => ({ ...x }))
     })
   }
-  // Close the modal
   showTimeModal.value = false
   selectedMedicationForTime.value = null
   timeInputs.value = []
@@ -459,7 +771,38 @@ function handleCancel() {
 
 /*
   6) "Taken/Later/Refused" Popup
+     Once updated, check if all meds for that date/time
+     are "taken" or "refused" => open Sign-Off Popup
 */
+
+function gatherAllMedsForTime(dateObj: Date, timeStr: string) {
+  const dateKey = formatDateToYYYYMMDD(dateObj)
+  const results: { medication: Medication; timeObj: any }[] = []
+  medications.value.forEach(med => {
+    if (med.dates && med.dates[dateKey]) {
+      const found = med.dates[dateKey].find((t: any) => {
+        let base = t.time
+        if (base.includes("(")) {
+          base = base.split("(")[0].trim()
+        }
+        return base === timeStr
+      })
+      if (found) {
+        results.push({ medication: med, timeObj: found })
+      }
+    }
+  })
+  return results
+}
+
+function checkAllMedsForTime(dateObj: Date, timeStr: string) {
+  const medsForTime = gatherAllMedsForTime(dateObj, timeStr)
+  if (medsForTime.length === 0) return false
+  return medsForTime.every(mt =>
+    mt.timeObj.status === 'taken' || mt.timeObj.status === 'refused'
+  )
+}
+
 function openActionPopup(dateObj: Date, timeObj: any) {
   const scheduledTimeStr = timeObj.time.includes("(")
     ? timeObj.time.split("(")[0].trim()
@@ -496,6 +839,23 @@ function handleTimeActionSelected({ action }: { action: string }) {
       selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formatted + ")"
     }
     selectedDateAndTime.value.timeObj.status = action
+
+    // AFTER we update the status, check if all meds for that date/time are "taken" or "refused"
+    const { dateObj, timeObj } = selectedDateAndTime.value
+    let baseTime = timeObj.time
+    if (baseTime.includes("(")) {
+      baseTime = baseTime.split("(")[0].trim()
+    }
+    if (checkAllMedsForTime(dateObj, baseTime)) {
+      // Gather only those meds that are "taken" or "refused"
+      const all = gatherAllMedsForTime(dateObj, baseTime)
+      signOffMedications.value = all.filter(mt =>
+        mt.timeObj.status === 'taken' || mt.timeObj.status === 'refused'
+      )
+      signOffTimeStr.value = baseTime
+      signOffDate.value = dateObj
+      showSignOffPopup.value = true
+    }
   }
   showTimeActionPopup.value = false
 }
@@ -527,6 +887,22 @@ function confirmEarlyWithReason() {
     showEarlyReasonInput.value = false
     earlyReason.value = ""
     pendingDateAndTime.value = null
+
+    // Check if we need sign-off now
+    const { dateObj, timeObj } = selectedDateAndTime.value
+    let baseTime = timeObj.time
+    if (baseTime.includes("(")) {
+      baseTime = baseTime.split("(")[0].trim()
+    }
+    if (checkAllMedsForTime(dateObj, baseTime)) {
+      const all = gatherAllMedsForTime(dateObj, baseTime)
+      signOffMedications.value = all.filter(mt =>
+        mt.timeObj.status === 'taken' || mt.timeObj.status === 'refused'
+      )
+      signOffTimeStr.value = baseTime
+      signOffDate.value = dateObj
+      showSignOffPopup.value = true
+    }
   }
 }
 function cancelTimeActionConfirmation() {
@@ -771,319 +1147,66 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   }
   return med.dates[dateStr]
 }
+
+/*
+  SIGN-OFF POPUP: handle final sign-off
+  => subtract dosage from tabsAvailable for "taken" meds
+*/
+function closeSignOffPopup() {
+  showSignOffPopup.value = false
+  signOffMedications.value = []
+  signOffTimeStr.value = ''
+  signOffDate.value = null
+}
+
+function handleSignOff(signature: string) {
+  const now = new Date()
+  signOffMedications.value.forEach(item => {
+    // Only subtract if taken
+    if (item.timeObj.status === 'taken') {
+      // If the time slot stored a 'dosage', use that
+      const dose = (typeof item.timeObj.dosage === 'number')
+        ? item.timeObj.dosage
+        : parseInt(item.medication.dosage || '1', 10)
+      item.medication.tabsAvailable = Math.max(0, item.medication.tabsAvailable - dose)
+    }
+    // Mark who signed off and when
+    item.timeObj.signedOff = {
+      nurse: signature,
+      date: now
+    }
+  })
+  closeSignOffPopup()
+}
+
+/*
+  ADDED THIS NEW FUNCTION EARLIER:
+  1) checks how many PRN timestamps exist for today
+  2) compares to the daily limit (from med.frequency)
+  3) shows an alert if limit is reached
+  4) otherwise stamps current time
+*/
+function stampPRNTime(med: Medication) {
+  // frequency => daily limit
+  const limit = getTimesCountFromFrequency(med.frequency || '')
+  if (!med.times) {
+    med.times = []
+  }
+  const todayStr = formatDateToYYYYMMDD(new Date())
+  const todaysPRNs = med.times.filter(entry => entry.date === todayStr)
+  if (todaysPRNs.length >= limit) {
+    alert(`You can only add up to ${limit} PRN timestamp(s) per day.`)
+    return
+  }
+  // Stamp current time
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  med.times.push({ time: timeStr, status: 'PRN', date: todayStr })
+}
 </script>
 
-<template>
-  <div id="app">
-    <h2>Administration</h2>
-
-    <div class="table-container">
-      <!-- Status Filter -->
-      <div class="status-filter">
-        <h3>Filter by Status:</h3>
-        <div class="status-buttons">
-          <button
-            class="status-button"
-            :class="{ active: selectedStatus === null }"
-            @click="handleStatusFilter(null)"
-          >
-            Show All
-          </button>
-          <button
-            v-for="option in statusOptions"
-            :key="option.value"
-            class="status-button"
-            :class="{ active: selectedStatus === option.value }"
-            :style="{ backgroundColor: option.color }"
-            @click="handleStatusFilter(option.value)"
-          >
-            {{ option.label }}
-          </button>
-        </div>
-      </div>
-
-      <!-- Date Range and Add Form -->
-      <div class="date-range-selector">
-        <label for="date-range-picker">Select Date Range:</label>
-        <input type="text" id="date-range-picker" placeholder="Select date range" />
-        <button class="add-manually-btn" @click="showAddForm = true">
-          Add Manually
-        </button>
-      </div>
-
-      <!-- Sorting Controls -->
-      <div class="sort-controls">
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'medication' }"
-          @click="handleSort('medication')"
-        >
-          Sort by Medication
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'time' }"
-          @click="handleSort('time')"
-        >
-          Sort by Time
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'diagnosis' }"
-          @click="handleSort('diagnosis')"
-        >
-          Sort by Diagnosis
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'route' }"
-          @click="handleSort('route')"
-        >
-          Sort by Route
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'prn' }"
-          @click="handleSort('prn')"
-        >
-          Sort by PRN
-        </button>
-      </div>
-
-      <!-- Grouped Medications -->
-      <template v-for="(medsInGroup, category) in groupedMedications" :key="category">
-        <div v-if="medsInGroup.length > 0" class="category-section">
-          <h3 class="category-header">{{ category }}</h3>
-          <table class="schedule-table">
-            <thead>
-              <tr>
-                <th>Medication Details</th>
-                <th>Status</th>
-                <th>Tabs Available</th>
-                <th>Frequency</th>
-                <th>Dosage</th>
-                <th>Select Time and Dosage</th>
-                <!-- Columns for each date in allColumns -->
-                <th
-                  v-for="dateObj in allColumns"
-                  :key="dateObj.getTime()"
-                >
-                  Administration Times ({{ formatDate(dateObj) }})
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(med, medIndex) in medsInGroup"
-                :key="medIndex"
-                class="medication-row"
-                :class="getRowStatusClass(med)"
-                :data-med-index="medIndex"
-              >
-                <!-- Basic medication info -->
-                <td>
-                  <ExpandableDetails
-                    :medication="med"
-                    @update="handleMedicationUpdate"
-                  >
-                    <template #preview>
-                      {{ med.name }}
-                    </template>
-                  </ExpandableDetails>
-                </td>
-
-                <!-- Status dropdown -->
-                <td>
-                  <select
-                    class="status-dropdown"
-                    @change="(e) => handleStatusChange(e, medIndex)"
-                  >
-                    <option
-                      v-for="option in statusOptions"
-                      :key="option.value"
-                      :value="option.value"
-                      :style="{ backgroundColor: option.color }"
-                    >
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </td>
-
-                <!-- Tabs Available -->
-                <td class="tabs-available">
-                  <div class="tabs-counter">
-                    <input
-                      type="number"
-                      v-model="med.tabsAvailable"
-                      @change="handleTabsChange(med, $event.target.value)"
-                      class="tabs-input"
-                    />
-                  </div>
-                </td>
-
-                <!-- Frequency, Dosage -->
-                <td>{{ med.frequency || 'Not set' }}</td>
-                <td>{{ med.dosage || 'Not set' }}</td>
-
-                <!-- "Select Time and Dosage" button -->
-                <td class="select-time-dosage">
-                  <button class="select-button" @click="toggleSelectDropdown(med)">
-                    Select
-                  </button>
-                </td>
-
-                <!-- Show each date's times -->
-                <td
-                  v-for="dateObj in allColumns"
-                  :key="dateObj.getTime()"
-                >
-                  <div class="administration-times">
-                    <div v-if="med.prn" class="prn-indicator">As needed</div>
-                    <template v-else>
-                      <div
-                        v-for="timeObj in getTimesForDate(med, dateObj)"
-                        :key="timeObj.time"
-                        class="time-entry"
-                        :class="timeObj.status"
-                        @click="openActionPopup(dateObj, timeObj)"
-                      >
-                        {{ timeObj.time }}
-                      </div>
-                    </template>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </template>
-    </div>
-
-    <!-- Add Medication Form -->
-    <AddMedicationForm
-      :show="showAddForm"
-      @close="showAddForm = false"
-      @save="handleNewMedication"
-    />
-
-    <!-- Hold/New/Discontinue Time Selector Modal -->
-    <div v-if="showHoldSelector" class="modal-overlay">
-      <div class="modal-content">
-        <HoldTimeSelector
-          v-if="selectedMedicationForHold"
-          :status-option="selectedStatusOption"
-          :medication-times="holdTimes"
-          @submit="handleHoldSubmit"
-          @cancel="showHoldSelector = false"
-        />
-      </div>
-    </div>
-
-    <!-- Time and Dosage Modal -->
-    <div v-if="showTimeModal" class="modal-overlay">
-      <div class="modal-content">
-        <h3>Select Time and Dosage</h3>
-        <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
-
-        <div class="form-group">
-          <label>Frequency:</label>
-          <select v-model="selectedFrequency" class="form-select">
-            <option value="">Select frequency</option>
-            <option
-              v-for="option in frequencyOptions"
-              :key="option"
-              :value="option"
-            >
-              {{ option }}
-            </option>
-          </select>
-        </div>
-
-        <div class="form-group">
-          <label>Dosage:</label>
-          <input
-            type="number"
-            v-model="selectedDosage"
-            min="1"
-            step="1"
-          />
-        </div>
-
-        <div v-if="timeInputs.length > 0" class="form-group">
-          <label>Administration Times:</label>
-          <div
-            v-for="(_, index) in timeInputs"
-            :key="index"
-            class="time-input-row"
-          >
-            <input
-              type="time"
-              v-model="timeInputs[index]"
-              class="time-input"
-              required
-            />
-          </div>
-        </div>
-
-        <div class="form-actions">
-          <button @click="handleSave" class="btn-save">Save</button>
-          <button @click="handleCancel" class="btn-cancel">Cancel</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- "Taken / Later / Refused" Popup -->
-    <MedicationActionPopup
-      v-if="showTimeActionPopup"
-      :timeObj="selectedDateAndTime?.timeObj"
-      @close="closeTimeActionPopup"
-      @action-selected="handleTimeActionSelected"
-    />
-
-    <!-- Early/Late Confirmation Popup -->
-    <div v-if="showTimeConfirmationPopup" class="modal-overlay">
-      <div class="modal-content">
-        <h3>{{ confirmationMessage }}</h3>
-        <div v-if="isEarly">
-          <div v-if="!showEarlyReasonInput" class="button-row">
-            <button @click="triggerEarlyYes">Yes</button>
-            <button @click="cancelTimeActionConfirmation">No</button>
-          </div>
-          <div v-else>
-            <input
-              type="text"
-              v-model="earlyReason"
-              placeholder="Enter reason"
-            />
-            <button class="btn-green" @click="confirmEarlyWithReason">Select</button>
-          </div>
-        </div>
-        <div v-else>
-          <div class="button-row">
-            <button @click="confirmTimeAction">Yes</button>
-            <button @click="cancelTimeActionConfirmation">No</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Error Modal for validations -->
-    <div v-if="showErrorModal" class="modal-overlay">
-      <div class="modal-content">
-        <h3>{{ errorMessage }}</h3>
-        <div class="button-row">
-          <button @click="closeErrorModal">OK</button>
-        </div>
-      </div>
-    </div>
-  </div>
-</template>
-
 <style scoped>
-/*
-  Minimal changes from the previous code. We added a second check in handleSave() 
-  to ensure all required times are selected, plus an error modal for it.
-*/
+/* -- STYLES (with no placeholders) -- */
 
 /* Status Filter & Buttons */
 .status-filter {
@@ -1375,6 +1498,15 @@ function getTimesForDate(med: Medication, dateObj: Date) {
 .prn-indicator {
   font-style: italic;
   color: #666;
+  cursor: pointer; /* make the mouse pointer show a hand */
+}
+
+/* Additional styling for the newly displayed times (if needed) */
+.prn-times-list {
+  margin-top: 0.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 /* Select & Focus */
