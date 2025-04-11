@@ -163,10 +163,7 @@
                   :key="dateObj.getTime()"
                 >
                   <div class="administration-times">
-                    <!-- 
-                      "As needed" is clickable. We also display 
-                      any PRN timestamps for THIS date (if any).
-                    -->
+                    <!-- PRN logic -->
                     <template v-if="med.prn">
                       <div
                         class="prn-indicator"
@@ -174,6 +171,7 @@
                       >
                         As needed
                       </div>
+
                       <!-- Show only times for the current date column -->
                       <div
                         v-if="med.times && med.times.length"
@@ -184,11 +182,21 @@
                           :key="timeObj.time + timeObj.status"
                           class="time-entry"
                           :class="timeObj.status"
+                          @mouseover="showTooltip(timeObj)"
+                          @mouseout="hideTooltip"
+                          @touchstart="showTooltip(timeObj)"
+                          @touchend="hideTooltip"
+                          :title="getTooltipText(timeObj)"
                         >
                           {{ timeObj.time }}
+                          <span v-if="timeObj.earlyReason">
+                            ({{ timeObj.earlyReason }})
+                          </span>
                         </div>
                       </div>
                     </template>
+
+                    <!-- Scheduled meds -->
                     <template v-else>
                       <div
                         v-for="timeObj in getTimesForDate(med, dateObj)"
@@ -196,6 +204,7 @@
                         class="time-entry"
                         :class="timeObj.status"
                         @click="openActionPopup(dateObj, timeObj)"
+                        :title="getTooltipText(timeObj)"
                       >
                         {{ timeObj.time }}
                       </div>
@@ -336,6 +345,71 @@
       @close="closeSignOffPopup"
       @sign-off="handleSignOff"
     />
+
+    <!-- PRN Sign-Off Popup -->
+    <div v-if="showPrnSignOffPopup" class="modal-overlay">
+      <div class="modal-content">
+        <h3>PRN Sign-Off</h3>
+        <p>
+          <strong>Medication:</strong>
+          {{ prnSignOffMedication?.name }}
+        </p>
+        <p>
+          <strong>Time:</strong>
+          <span v-if="prnSignOffTimeObj?.time">
+            {{ prnSignOffTimeObj.time }}
+          </span>
+        </p>
+
+        <!-- Editable Dosage -->
+        <div class="form-group">
+          <label>Dosage (tabs):</label>
+          <input
+            type="number"
+            v-model.number="prnSignOffTimeObj.dosage"
+            min="1"
+            step="1"
+          />
+        </div>
+
+        <!-- Editable Reason -->
+        <div class="form-group">
+          <label>Reason for PRN:</label>
+          <input
+            type="text"
+            v-model="prnSignOffTimeObj.reason"
+            placeholder="Enter PRN reason"
+          />
+        </div>
+
+        <!-- Nurse Signature -->
+        <div class="form-group">
+          <label for="prn-nurse-signature">Nurse Signature:</label>
+          <input
+            type="text"
+            id="prn-nurse-signature"
+            v-model="prnNurseSignature"
+            placeholder="Enter your name or initials"
+          />
+        </div>
+
+        <div class="button-row">
+          <button
+            class="save-button"
+            :disabled="!prnNurseSignature"
+            @click="handlePrnSignOff"
+          >
+            Sign Off
+          </button>
+          <button
+            class="cancel-button"
+            @click="closePrnSignOffPopup"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -354,7 +428,6 @@ import type { Medication } from '../types'
 /*
   --- REACTIVE DATA, PROPS, AND EMITS ---
 */
-
 const router = useRouter()
 const medications = ref<Medication[]>([])
 
@@ -405,12 +478,12 @@ const isEarly = ref(false)
 const showEarlyReasonInput = ref(false)
 const earlyReason = ref("")
 
-// Error Modal for validations
+// Error Modal
 const showErrorModal = ref(false)
 const errorMessage = ref("")
 
 /*
-  NEW: Sign-Off Popup
+  Sign-Off Popup
 */
 const showSignOffPopup = ref(false)
 const signOffMedications = ref<{ medication: Medication; timeObj: any }[]>([])
@@ -646,10 +719,10 @@ watch(() => props.medications, (newMeds) => {
 }, { immediate: true })
 
 const emit = defineEmits<{
-  (e: 'statusChange', medication: Medication, status: string): void
-  (e: 'medicationTaken', medication: Medication, time: string, action: string): void
-  (e: 'signatureSubmit', signature: string, medications: Medication[], time: string): void
-  (e: 'tabsChange', medication: Medication, tabs: number): void
+  (e: 'statusChange', medication: Medication, status: string): void;
+  (e: 'medicationTaken', medication: Medication, time: string, action: string): void;
+  (e: 'signatureSubmit', signature: string, medications: Medication[], time: string): void;
+  (e: 'tabsChange', medication: Medication, tabs: number): void;
 }>()
 
 /*
@@ -721,8 +794,6 @@ function handleSave() {
     showTimeModal.value = false
     return
   }
-
-  // If not PRN, ensure all time inputs are filled
   if (!selectedMedicationForTime.value.prn && timeInputs.value.length > 0) {
     if (timeInputs.value.some(t => !t)) {
       errorMessage.value = "Please select all required times."
@@ -730,8 +801,6 @@ function handleSave() {
       return
     }
   }
-
-  // Proceed to save frequency/dosage/times
   selectedMedicationForTime.value.frequency = selectedFrequency.value
   selectedMedicationForTime.value.dosage = selectedDosage.value
 
@@ -742,7 +811,6 @@ function handleSave() {
     if (!selectedMedicationForTime.value.dates) {
       selectedMedicationForTime.value.dates = {}
     }
-    // For each time, attach dosage
     const dosageNum = parseInt(selectedDosage.value, 10) || 1
     const newTimeArray = timeInputs.value
       .filter(t => t)
@@ -771,10 +839,7 @@ function handleCancel() {
 
 /*
   6) "Taken/Later/Refused" Popup
-     Once updated, check if all meds for that date/time
-     are "taken" or "refused" => open Sign-Off Popup
 */
-
 function gatherAllMedsForTime(dateObj: Date, timeStr: string) {
   const dateKey = formatDateToYYYYMMDD(dateObj)
   const results: { medication: Medication; timeObj: any }[] = []
@@ -827,9 +892,11 @@ function openActionPopup(dateObj: Date, timeObj: any) {
     showTimeConfirmationPopup.value = true
   }
 }
+
 function closeTimeActionPopup() {
   showTimeActionPopup.value = false
 }
+
 function handleTimeActionSelected({ action }: { action: string }) {
   if (selectedDateAndTime.value) {
     if (action === 'taken') {
@@ -840,14 +907,12 @@ function handleTimeActionSelected({ action }: { action: string }) {
     }
     selectedDateAndTime.value.timeObj.status = action
 
-    // AFTER we update the status, check if all meds for that date/time are "taken" or "refused"
     const { dateObj, timeObj } = selectedDateAndTime.value
     let baseTime = timeObj.time
     if (baseTime.includes("(")) {
       baseTime = baseTime.split("(")[0].trim()
     }
     if (checkAllMedsForTime(dateObj, baseTime)) {
-      // Gather only those meds that are "taken" or "refused"
       const all = gatherAllMedsForTime(dateObj, baseTime)
       signOffMedications.value = all.filter(mt =>
         mt.timeObj.status === 'taken' || mt.timeObj.status === 'refused'
@@ -877,31 +942,55 @@ function triggerEarlyYes() {
 function confirmEarlyWithReason() {
   if (pendingDateAndTime.value && earlyReason.value.trim() !== "") {
     selectedDateAndTime.value = pendingDateAndTime.value
-    selectedDateAndTime.value.timeObj.earlyReason = earlyReason.value.trim()
-    const originalTime = selectedDateAndTime.value.timeObj.time
-    const now = new Date()
-    const formatted = formatTime12Hour(now)
-    selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formatted + ")"
-    selectedDateAndTime.value.timeObj.status = "taken"
+
+    if (selectedDateAndTime.value.timeObj.med?.prn) {
+      const med = selectedDateAndTime.value.timeObj.med
+      const now = new Date()
+      const todayStr = formatDateToYYYYMMDD(now)
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+      if (!med.times) {
+        med.times = []
+      }
+      const newTimeObj = {
+        time: timeStr,
+        status: 'PRN',
+        date: todayStr,
+        earlyReason: earlyReason.value.trim(),
+        dosage: med.dosage || '1',
+        reason: ''
+      }
+      med.times.push(newTimeObj)
+      openPrnSignOffPopup(med, newTimeObj)
+    } else {
+      selectedDateAndTime.value.timeObj.earlyReason = earlyReason.value.trim()
+      const originalTime = selectedDateAndTime.value.timeObj.time
+      const now = new Date()
+      const formatted = formatTime12Hour(now)
+      selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formatted + ")"
+      selectedDateAndTime.value.timeObj.status = "taken"
+    }
+
     showTimeConfirmationPopup.value = false
     showEarlyReasonInput.value = false
     earlyReason.value = ""
     pendingDateAndTime.value = null
 
-    // Check if we need sign-off now
-    const { dateObj, timeObj } = selectedDateAndTime.value
-    let baseTime = timeObj.time
-    if (baseTime.includes("(")) {
-      baseTime = baseTime.split("(")[0].trim()
-    }
-    if (checkAllMedsForTime(dateObj, baseTime)) {
-      const all = gatherAllMedsForTime(dateObj, baseTime)
-      signOffMedications.value = all.filter(mt =>
-        mt.timeObj.status === 'taken' || mt.timeObj.status === 'refused'
-      )
-      signOffTimeStr.value = baseTime
-      signOffDate.value = dateObj
-      showSignOffPopup.value = true
+    if (selectedDateAndTime.value) {
+      const { dateObj, timeObj } = selectedDateAndTime.value
+      let baseTime = timeObj.time
+      if (baseTime.includes("(")) {
+        baseTime = baseTime.split("(")[0].trim()
+      }
+      if (checkAllMedsForTime(dateObj, baseTime)) {
+        const all = gatherAllMedsForTime(dateObj, baseTime)
+        signOffMedications.value = all.filter(mt =>
+          mt.timeObj.status === "taken" || mt.timeObj.status === "refused"
+        )
+        signOffTimeStr.value = baseTime
+        signOffDate.value = dateObj
+        showSignOffPopup.value = true
+      }
     }
   }
 }
@@ -1112,7 +1201,7 @@ function handleHoldSubmit(data: {
 function closeErrorModal() {
   showErrorModal.value = false
 }
- 
+
 /**
  * If user changes "Tabs Available"
  */
@@ -1149,8 +1238,7 @@ function getTimesForDate(med: Medication, dateObj: Date) {
 }
 
 /*
-  SIGN-OFF POPUP: handle final sign-off
-  => subtract dosage from tabsAvailable for "taken" meds
+  SIGN-OFF => subtract dosage for "taken" meds
 */
 function closeSignOffPopup() {
   showSignOffPopup.value = false
@@ -1162,15 +1250,12 @@ function closeSignOffPopup() {
 function handleSignOff(signature: string) {
   const now = new Date()
   signOffMedications.value.forEach(item => {
-    // Only subtract if taken
     if (item.timeObj.status === 'taken') {
-      // If the time slot stored a 'dosage', use that
       const dose = (typeof item.timeObj.dosage === 'number')
         ? item.timeObj.dosage
         : parseInt(item.medication.dosage || '1', 10)
       item.medication.tabsAvailable = Math.max(0, item.medication.tabsAvailable - dose)
     }
-    // Mark who signed off and when
     item.timeObj.signedOff = {
       nurse: signature,
       date: now
@@ -1180,14 +1265,51 @@ function handleSignOff(signature: string) {
 }
 
 /*
-  ADDED THIS NEW FUNCTION EARLIER:
-  1) checks how many PRN timestamps exist for today
-  2) compares to the daily limit (from med.frequency)
-  3) shows an alert if limit is reached
-  4) otherwise stamps current time
+  PRN SIGN-OFF POPUP
+*/
+const showPrnSignOffPopup = ref(false)
+const prnSignOffMedication = ref<Medication | null>(null)
+const prnSignOffTimeObj = ref<any>(null)
+const prnNurseSignature = ref('')
+
+function openPrnSignOffPopup(med: Medication, timeObj: any) {
+  // If no dosage is set, default to med.dosage or '1'
+  if (timeObj.dosage == null || timeObj.dosage === '') {
+    timeObj.dosage = med.dosage || '1'
+  }
+  // Also add a 'reason' field if it's not there
+  if (!timeObj.reason) {
+    timeObj.reason = ''
+  }
+  prnSignOffMedication.value = med
+  prnSignOffTimeObj.value = timeObj
+  prnNurseSignature.value = ''
+  showPrnSignOffPopup.value = true
+}
+
+function closePrnSignOffPopup() {
+  showPrnSignOffPopup.value = false
+  prnSignOffMedication.value = null
+  prnSignOffTimeObj.value = null
+  prnNurseSignature.value = ''
+}
+
+function handlePrnSignOff() {
+  if (!prnSignOffMedication.value || !prnSignOffTimeObj.value) {
+    showPrnSignOffPopup.value = false
+    return
+  }
+  prnSignOffTimeObj.value.signedOff = {
+    nurse: prnNurseSignature.value,
+    date: new Date()
+  }
+  closePrnSignOffPopup()
+}
+
+/*
+  11) STAMP PRN TIME => immediately open PRN Sign-Off
 */
 function stampPRNTime(med: Medication) {
-  // frequency => daily limit
   const limit = getTimesCountFromFrequency(med.frequency || '')
   if (!med.times) {
     med.times = []
@@ -1198,16 +1320,56 @@ function stampPRNTime(med: Medication) {
     alert(`You can only add up to ${limit} PRN timestamp(s) per day.`)
     return
   }
-  // Stamp current time
+  if (med.frequency === '2 times daily' && med.times.length > 0) {
+    const lastDose = med.times[med.times.length - 1]
+    const lastDoseDateTime = new Date(lastDose.date + ' ' + lastDose.time)
+    const now = new Date()
+    const diffHours = (now.getTime() - lastDoseDateTime.getTime()) / (1000 * 60 * 60)
+    if (diffHours < 11) {
+      confirmationMessage.value = "This medication is early (less than 11 hours from the initial dose). Do you still want to give it?"
+      isEarly.value = true
+      showTimeConfirmationPopup.value = true
+      pendingDateAndTime.value = { dateObj: new Date(), timeObj: { med: med } }
+      return
+    }
+  }
   const now = new Date()
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-  med.times.push({ time: timeStr, status: 'PRN', date: todayStr })
+  const newTimeObj = {
+    time: timeStr,
+    status: 'PRN',
+    date: todayStr,
+    dosage: med.dosage || '1',
+    reason: ''
+  }
+  med.times.push(newTimeObj)
+  openPrnSignOffPopup(med, newTimeObj)
+}
+
+/*
+  12) TOOLTIP SUPPORT
+  Applied to all time entries (both PRN and scheduled)
+*/
+function getTooltipText(timeObj: any) {
+  if (!timeObj.signedOff) {
+    return ''
+  }
+  const nurseStr = timeObj.signedOff.nurse || 'Unknown Nurse'
+  const reasonStr = timeObj.reason || '(none)'
+  const doseStr = timeObj.dosage || '(not specified)'
+  const signoffTime = timeObj.signedOff.date ? new Date(timeObj.signedOff.date).toLocaleString() : ''
+  return `Nurse: ${nurseStr}\nReason: ${reasonStr}\nDosage: ${doseStr}\nSigned Off: ${signoffTime}`
+}
+
+function showTooltip(_timeObj: any) {
+  // Using native title tooltips via :title attribute, so no extra code needed
+}
+function hideTooltip() {
+  // No-op
 }
 </script>
 
 <style scoped>
-/* -- STYLES (with no placeholders) -- */
-
 /* Status Filter & Buttons */
 .status-filter {
   margin-bottom: 1.5rem;
@@ -1349,7 +1511,7 @@ function stampPRNTime(med: Medication) {
   max-width: 500px;
   padding: 2rem;
 }
-
+  
 /* Button Rows */
 .button-row {
   display: flex;
@@ -1495,13 +1657,26 @@ function stampPRNTime(med: Medication) {
   margin-top: 0;
   border-radius: 0 0 4px 4px;
 }
+
+/* PRN button styling */
 .prn-indicator {
   font-style: italic;
   color: #666;
-  cursor: pointer; /* make the mouse pointer show a hand */
+  cursor: pointer;
+  background-color: white;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 8px 24px;
+  font-size: 14px;
+  text-decoration: none;
+  transition: background-color 0.2s;
+}
+.prn-indicator:hover {
+  background-color: #f8f9fa;
+  color: #007bff;
 }
 
-/* Additional styling for the newly displayed times (if needed) */
+/* Additional styling for PRN times */
 .prn-times-list {
   margin-top: 0.5rem;
   display: flex;
