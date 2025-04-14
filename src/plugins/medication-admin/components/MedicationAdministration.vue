@@ -117,7 +117,7 @@
                   </ExpandableDetails>
                 </td>
 
-                <!-- Status dropdown -->
+                <!-- Status Dropdown -->
                 <td>
                   <select
                     class="status-dropdown"
@@ -150,20 +150,20 @@
                 <td>{{ med.frequency || 'Not set' }}</td>
                 <td>{{ med.dosage || 'Not set' }}</td>
 
-                <!-- "Select Time and Dosage" button -->
+                <!-- "Select Time and Dosage" Button -->
                 <td class="select-time-dosage">
                   <button class="select-button" @click="toggleSelectDropdown(med)">
                     Select
                   </button>
                 </td>
 
-                <!-- Show each date's times -->
+                <!-- Administration Times by Date -->
                 <td
                   v-for="dateObj in allColumns"
                   :key="dateObj.getTime()"
                 >
                   <div class="administration-times">
-                    <!-- PRN logic -->
+                    <!-- PRN Medication -->
                     <template v-if="med.prn">
                       <div
                         class="prn-indicator"
@@ -172,7 +172,7 @@
                         As needed
                       </div>
 
-                      <!-- Show only times for the current date column -->
+                      <!-- List PRN Times with Tooltip Icon -->
                       <div
                         v-if="med.times && med.times.length"
                         class="prn-times-list"
@@ -186,17 +186,22 @@
                           @mouseout="hideTooltip"
                           @touchstart="showTooltip(timeObj)"
                           @touchend="hideTooltip"
-                          :title="getTooltipText(timeObj)"
                         >
                           {{ timeObj.time }}
                           <span v-if="timeObj.earlyReason">
                             ({{ timeObj.earlyReason }})
                           </span>
+                          <!-- Tooltip Icon; only displayed if getTooltipText returns a nonempty string -->
+                          <span
+                            v-if="getTooltipText(timeObj)"
+                            class="tooltip-icon"
+                            :title="getTooltipText(timeObj)"
+                          >ℹ️</span>
                         </div>
                       </div>
                     </template>
 
-                    <!-- Scheduled meds -->
+                    <!-- Scheduled Medications -->
                     <template v-else>
                       <div
                         v-for="timeObj in getTimesForDate(med, dateObj)"
@@ -204,9 +209,14 @@
                         class="time-entry"
                         :class="timeObj.status"
                         @click="openActionPopup(dateObj, timeObj)"
-                        :title="getTooltipText(timeObj)"
                       >
                         {{ timeObj.time }}
+                        <!-- Tooltip Icon for scheduled meds -->
+                        <span
+                          v-if="getTooltipText(timeObj)"
+                          class="tooltip-icon"
+                          :title="getTooltipText(timeObj)"
+                        >ℹ️</span>
                       </div>
                     </template>
                   </div>
@@ -243,7 +253,6 @@
       <div class="modal-content">
         <h3>Select Time and Dosage</h3>
         <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
-
         <div class="form-group">
           <label>Frequency:</label>
           <select v-model="selectedFrequency" class="form-select">
@@ -257,7 +266,6 @@
             </option>
           </select>
         </div>
-
         <div class="form-group">
           <label>Dosage (tabs per admin time):</label>
           <input
@@ -267,7 +275,6 @@
             step="1"
           />
         </div>
-
         <div v-if="timeInputs.length > 0" class="form-group">
           <label>Administration Times:</label>
           <div
@@ -283,7 +290,6 @@
             />
           </div>
         </div>
-
         <div class="form-actions">
           <button @click="handleSave" class="btn-save">Save</button>
           <button @click="handleCancel" class="btn-cancel">Cancel</button>
@@ -326,7 +332,7 @@
       </div>
     </div>
 
-    <!-- Error Modal for validations -->
+    <!-- Error Modal for Validations -->
     <div v-if="showErrorModal" class="modal-overlay">
       <div class="modal-content">
         <h3>{{ errorMessage }}</h3>
@@ -360,7 +366,6 @@
             {{ prnSignOffTimeObj.time }}
           </span>
         </p>
-
         <!-- Editable Dosage -->
         <div class="form-group">
           <label>Dosage (tabs):</label>
@@ -371,7 +376,6 @@
             step="1"
           />
         </div>
-
         <!-- Editable Reason -->
         <div class="form-group">
           <label>Reason for PRN:</label>
@@ -381,7 +385,6 @@
             placeholder="Enter PRN reason"
           />
         </div>
-
         <!-- Nurse Signature -->
         <div class="form-group">
           <label for="prn-nurse-signature">Nurse Signature:</label>
@@ -392,7 +395,6 @@
             placeholder="Enter your name or initials"
           />
         </div>
-
         <div class="button-row">
           <button
             class="save-button"
@@ -425,19 +427,17 @@ import HoldTimeSelector from './HoldTimeSelector.vue'
 import SignOffPopup from './SignOffPopup.vue'
 import type { Medication } from '../types'
 
-/*
-  --- REACTIVE DATA, PROPS, AND EMITS ---
-*/
+/* --- REACTIVE DATA, PROPS, AND EMITS --- */
 const router = useRouter()
 const medications = ref<Medication[]>([])
 
 // Sorting
 const sortBy = ref<string>('')
 
-// The default pinned date
+// Default pinned date
 const currentDate = ref(new Date())
 
-// UI toggles
+// UI Toggles
 const showSelectDropdown = ref(false)
 const showAddForm = ref(false)
 const selectedMedication = ref<Medication | null>(null)
@@ -453,7 +453,7 @@ const selectedAction = ref<string>('')
 // For storing statuses keyed by date/time
 const medicationStatus = ref<Record<string, any>>({})
 
-// Status filter
+// Status Filter
 const selectedStatus = ref<string | null>(null)
 
 // “Hold/New/Discontinue” popup
@@ -482,17 +482,13 @@ const earlyReason = ref("")
 const showErrorModal = ref(false)
 const errorMessage = ref("")
 
-/*
-  Sign-Off Popup
-*/
+// Sign-Off Popup
 const showSignOffPopup = ref(false)
 const signOffMedications = ref<{ medication: Medication; timeObj: any }[]>([])
 const signOffTimeStr = ref('')
 const signOffDate = ref<Date | null>(null)
 
-/*
-  FREQUENCY OPTIONS
-*/
+// FREQUENCY OPTIONS
 const frequencyOptions = [
   '1 times daily',
   '2 times daily',
@@ -593,7 +589,6 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
 const groupedMedications = computed(() => {
   let sortedMeds = [...medications.value]
 
-  // Filter by selected status
   if (selectedStatus.value) {
     sortedMeds = sortedMeds.filter(med => med.status === selectedStatus.value)
   }
@@ -652,7 +647,6 @@ const groupedMedications = computed(() => {
     }
   }
   else {
-    // Default sorts: medication or diagnosis
     if (sortBy.value === 'diagnosis') {
       const groupedByDiagnosis = groupMedicationsByDiagnosis(sortedMeds)
       Object.assign(groups, groupedByDiagnosis)
@@ -664,7 +658,6 @@ const groupedMedications = computed(() => {
     }
   }
 
-  // Remove empty groups
   Object.keys(groups).forEach(key => {
     if (groups[key].length === 0) {
       delete groups[key]
@@ -707,9 +700,7 @@ watch(medications, (newVal) => {
   localStorage.setItem('medications', JSON.stringify(newVal))
 }, { deep: true })
 
-const props = withDefaults(defineProps<{
-  medications?: Medication[];
-}>(), {
+const props = withDefaults(defineProps<{ medications?: Medication[] }>(), {
   medications: () => []
 })
 watch(() => props.medications, (newMeds) => {
@@ -777,10 +768,7 @@ function toggleSelectDropdown(medication: Medication) {
   selectedMedicationForTime.value = medication
   selectedFrequency.value = medication.frequency || ''
   selectedDosage.value = medication.dosage || '1'
-  if (
-    medication.administrationTimes &&
-    medication.administrationTimes !== 'As needed'
-  ) {
+  if (medication.administrationTimes && medication.administrationTimes !== 'As needed') {
     const splitted = medication.administrationTimes.split(',')
     timeInputs.value = splitted.map(t => t.trim())
   } else {
@@ -812,15 +800,12 @@ function handleSave() {
       selectedMedicationForTime.value.dates = {}
     }
     const dosageNum = parseInt(selectedDosage.value, 10) || 1
-    const newTimeArray = timeInputs.value
-      .filter(t => t)
-      .map(t => ({
-        time: t,
-        status: 'pending',
-        dosage: dosageNum
-      }))
+    const newTimeArray = timeInputs.value.filter(t => t).map(t => ({
+      time: t,
+      status: 'pending',
+      dosage: dosageNum
+    }))
     selectedMedicationForTime.value.administrationTimes = timeInputs.value.join(', ')
-
     allColumns.value.forEach(dateObj => {
       const dateStr = formatDateToYYYYMMDD(dateObj)
       selectedMedicationForTime.value.dates![dateStr] = newTimeArray.map(x => ({ ...x }))
@@ -869,6 +854,20 @@ function checkAllMedsForTime(dateObj: Date, timeStr: string) {
 }
 
 function openActionPopup(dateObj: Date, timeObj: any) {
+  // >>> NEW LINES: ensure user only clicks on "today"
+  const now = new Date()
+  const isToday = (
+    dateObj.getFullYear() === now.getFullYear() &&
+    dateObj.getMonth() === now.getMonth() &&
+    dateObj.getDate() === now.getDate()
+  )
+  if (!isToday) {
+    errorMessage.value = "Medications can only be given on the current date."
+    showErrorModal.value = true
+    return
+  }
+  // <<< END NEW LINES
+
   const scheduledTimeStr = timeObj.time.includes("(")
     ? timeObj.time.split("(")[0].trim()
     : timeObj.time
@@ -906,7 +905,6 @@ function handleTimeActionSelected({ action }: { action: string }) {
       selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formatted + ")"
     }
     selectedDateAndTime.value.timeObj.status = action
-
     const { dateObj, timeObj } = selectedDateAndTime.value
     let baseTime = timeObj.time
     if (baseTime.includes("(")) {
@@ -942,13 +940,11 @@ function triggerEarlyYes() {
 function confirmEarlyWithReason() {
   if (pendingDateAndTime.value && earlyReason.value.trim() !== "") {
     selectedDateAndTime.value = pendingDateAndTime.value
-
     if (selectedDateAndTime.value.timeObj.med?.prn) {
       const med = selectedDateAndTime.value.timeObj.med
       const now = new Date()
       const todayStr = formatDateToYYYYMMDD(now)
       const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-
       if (!med.times) {
         med.times = []
       }
@@ -970,7 +966,6 @@ function confirmEarlyWithReason() {
       selectedDateAndTime.value.timeObj.time = originalTime + " (taken at " + formatted + ")"
       selectedDateAndTime.value.timeObj.status = "taken"
     }
-
     showTimeConfirmationPopup.value = false
     showEarlyReasonInput.value = false
     earlyReason.value = ""
@@ -1273,11 +1268,9 @@ const prnSignOffTimeObj = ref<any>(null)
 const prnNurseSignature = ref('')
 
 function openPrnSignOffPopup(med: Medication, timeObj: any) {
-  // If no dosage is set, default to med.dosage or '1'
   if (timeObj.dosage == null || timeObj.dosage === '') {
     timeObj.dosage = med.dosage || '1'
   }
-  // Also add a 'reason' field if it's not there
   if (!timeObj.reason) {
     timeObj.reason = ''
   }
@@ -1348,7 +1341,6 @@ function stampPRNTime(med: Medication) {
 
 /*
   12) TOOLTIP SUPPORT
-  Applied to all time entries (both PRN and scheduled)
 */
 function getTooltipText(timeObj: any) {
   if (!timeObj.signedOff) {
@@ -1362,10 +1354,10 @@ function getTooltipText(timeObj: any) {
 }
 
 function showTooltip(_timeObj: any) {
-  // Using native title tooltips via :title attribute, so no extra code needed
+  // Native browser tooltip via :title attribute.
 }
 function hideTooltip() {
-  // No-op
+  // No extra code required.
 }
 </script>
 
@@ -1447,7 +1439,7 @@ function hideTooltip() {
   width: 100%;
   border-collapse: collapse;
   background-color: white;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 .schedule-table th,
 .schedule-table td {
@@ -1490,6 +1482,14 @@ function hideTooltip() {
   background-color: #f8f9fa;
 }
 
+/* Tooltip Icon */
+.tooltip-icon {
+  margin-left: 4px;
+  cursor: help;
+  font-size: 0.9rem;
+  vertical-align: middle;
+}
+
 /* Modal Overlays */
 .modal-overlay {
   position: fixed;
@@ -1508,10 +1508,10 @@ function hideTooltip() {
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
   width: 90%;
-  max-width: 500px;
+  max-width: 375px;
   padding: 2rem;
 }
-  
+
 /* Button Rows */
 .button-row {
   display: flex;
