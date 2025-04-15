@@ -171,35 +171,37 @@
 
                     <!-- Scheduled Meds -->
                     <template v-else>
-                      <div
-                        v-for="timeObj in getTimesForDate(med, dateObj)"
-                        :key="timeObj.time"
-                        class="time-entry"
-                        :class="[timeObj.status, timeObj.temporaryStatus]"
-                        @click="!timeObj.locked && openActionPopup(dateObj, timeObj)"
-                      >
-                        <!-- Display the time -->
-                        {{ timeObj.time }}
-                        <span v-if="timeObj.earlyReason"> ({{ timeObj.earlyReason }})</span>
+                      <template v-for="timeObj in getTimesForDate(med, dateObj)">
+                        <div
+                          v-if="sortBy != 'time' || timeObj.time == category"
+                          :key="timeObj.time"
+                          class="time-entry"
+                          :class="[timeObj.status, timeObj.temporaryStatus]"
+                          @click="!timeObj.locked && openActionPopup(dateObj, timeObj)"
+                        >
+                          <!-- Display the time -->
+                          {{ timeObj.time }}
+                          <span v-if="timeObj.earlyReason"> ({{ timeObj.earlyReason }})</span>
 
-                        <!-- IMMEDIATE ICONS: show if user has chosen but not signed off -->
-                        <template v-if="timeObj.temporaryStatus === 'taken'">
-                          <span class="icon-immediate" style="color: #28a745; margin-left: 0.3rem;" title="Taken">✔</span>
-                        </template>
-                        <template v-else-if="timeObj.temporaryStatus === 'refused'">
-                          <span class="icon-immediate" style="color: #dc3545; margin-left: 0.3rem;" title="Refused">✘</span>
-                        </template>
-                        <template v-else-if="timeObj.temporaryStatus === 'later'">
-                          <span class="icon-immediate" style="color: #ffe600; margin-left: 0.3rem;" title="Take Later">⏳</span>
-                        </template>
+                          <!-- IMMEDIATE ICONS: show if user has chosen but not signed off -->
+                          <template v-if="timeObj.temporaryStatus === 'taken'">
+                            <span class="icon-immediate" style="color: #28a745; margin-left: 0.3rem;" title="Taken">✔</span>
+                          </template>
+                          <template v-else-if="timeObj.temporaryStatus === 'refused'">
+                            <span class="icon-immediate" style="color: #dc3545; margin-left: 0.3rem;" title="Refused">✘</span>
+                          </template>
+                          <template v-else-if="timeObj.temporaryStatus === 'later'">
+                            <span class="icon-immediate" style="color: #ffe600; margin-left: 0.3rem;" title="Take Later">⏳</span>
+                          </template>
 
-                        <!-- Show sign-off info if available -->
-                        <span
-                          v-if="getTooltipText(timeObj)"
-                          class="tooltip-icon"
-                          :title="getTooltipText(timeObj)"
-                        >ℹ️</span>
-                      </div>
+                          <!-- Show sign-off info if available -->
+                          <span
+                            v-if="getTooltipText(timeObj)"
+                            class="tooltip-icon"
+                            :title="getTooltipText(timeObj)"
+                          >ℹ️</span>
+                        </div>
+                      </template>
                     </template>
                   </div>
                 </td>
