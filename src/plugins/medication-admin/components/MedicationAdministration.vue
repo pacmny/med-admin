@@ -69,7 +69,10 @@
                 <th>Dosage</th>
                 <th>Select Time and Dosage</th>
                 <!-- Columns for each date in allColumns -->
-                <th v-for="dateObj in allColumns" :key="dateObj.getTime()">
+                <th
+                  v-for="dateObj in allColumns"
+                  :key="dateObj.getTime()"
+                >
                   Administration Times ({{ formatDate(dateObj) }})
                 </th>
               </tr>
@@ -84,10 +87,7 @@
               >
                 <!-- Basic medication info -->
                 <td>
-                  <ExpandableDetails
-                    :medication="med"
-                    @update="handleMedicationUpdate"
-                  >
+                  <ExpandableDetails :medication="med" @update="handleMedicationUpdate">
                     <template #preview>
                       {{ med.name }}
                     </template>
@@ -129,24 +129,20 @@
 
                 <!-- "Select Time and Dosage" Button -->
                 <td class="select-time-dosage">
-                  <button class="select-button" @click="toggleSelectDropdown(med)">
-                    Select
-                  </button>
+                  <button class="select-button" @click="toggleSelectDropdown(med)">Select</button>
                 </td>
 
                 <!-- Administration Times by Date -->
-                <td v-for="dateObj in allColumns" :key="dateObj.getTime()">
+                <td
+                  v-for="dateObj in allColumns"
+                  :key="dateObj.getTime()"
+                >
                   <div class="administration-times">
-                    <!-- PRN Medication -->
+                    <!-- PRN Meds -->
                     <template v-if="med.prn">
-                      <div
-                        class="prn-indicator"
-                        @click="stampPRNTime(med)"
-                      >
+                      <div class="prn-indicator" @click="stampPRNTime(med)">
                         As needed
                       </div>
-
-                      <!-- List PRN Times with Tooltip Icon -->
                       <div
                         v-if="med.times && med.times.length"
                         class="prn-times-list"
@@ -158,14 +154,12 @@
                           :class="timeObj.status"
                           @mouseover="showTooltip(timeObj)"
                           @mouseout="hideTooltip"
-                          @touchstart="showTooltip(timeObj)"
-                          @touchend="hideTooltip"
                         >
                           {{ timeObj.time }}
                           <span v-if="timeObj.earlyReason">
                             ({{ timeObj.earlyReason }})
                           </span>
-                          <!-- Tooltip Icon -->
+                          <!-- Show sign-off info if available -->
                           <span
                             v-if="getTooltipText(timeObj)"
                             class="tooltip-icon"
@@ -175,16 +169,31 @@
                       </div>
                     </template>
 
-                    <!-- Scheduled Medications -->
+                    <!-- Scheduled Meds -->
                     <template v-else>
                       <div
                         v-for="timeObj in getTimesForDate(med, dateObj)"
                         :key="timeObj.time"
                         class="time-entry"
-                        :class="timeObj.status"
-                        @click="openActionPopup(dateObj, timeObj)"
+                        :class="[timeObj.status, timeObj.temporaryStatus]"
+                        @click="!timeObj.locked && openActionPopup(dateObj, timeObj)"
                       >
+                        <!-- Display the time -->
                         {{ timeObj.time }}
+                        <span v-if="timeObj.earlyReason"> ({{ timeObj.earlyReason }})</span>
+
+                        <!-- IMMEDIATE ICONS: show if user has chosen but not signed off -->
+                        <template v-if="timeObj.temporaryStatus === 'taken'">
+                          <span class="icon-immediate" style="color: #28a745; margin-left: 0.3rem;" title="Taken">✔</span>
+                        </template>
+                        <template v-else-if="timeObj.temporaryStatus === 'refused'">
+                          <span class="icon-immediate" style="color: #dc3545; margin-left: 0.3rem;" title="Refused">✘</span>
+                        </template>
+                        <template v-else-if="timeObj.temporaryStatus === 'later'">
+                          <span class="icon-immediate" style="color: #ffe600; margin-left: 0.3rem;" title="Take Later">⏳</span>
+                        </template>
+
+                        <!-- Show sign-off info if available -->
                         <span
                           v-if="getTooltipText(timeObj)"
                           class="tooltip-icon"
@@ -252,7 +261,7 @@
       </div>
     </div>
 
-    <!-- "Taken / Later / Refused" Popup -->
+    <!-- "Taken / Refused / Take Later" Popup -->
     <MedicationActionPopup
       v-if="showTimeActionPopup"
       :timeObj="selectedDateAndTime?.timeObj"
@@ -270,7 +279,11 @@
             <button @click="cancelTimeActionConfirmation">No</button>
           </div>
           <div v-else>
-            <input type="text" v-model="earlyReason" placeholder="Enter reason" />
+            <input
+              type="text"
+              v-model="earlyReason"
+              placeholder="Enter reason"
+            />
             <button class="btn-green" @click="confirmEarlyWithReason">Select</button>
           </div>
         </div>
@@ -320,23 +333,44 @@
         <!-- Editable Dosage -->
         <div class="form-group">
           <label>Dosage (tabs):</label>
-          <input type="number" v-model.number="prnSignOffTimeObj.dosage" min="1" step="1" />
+          <input
+            type="number"
+            v-model.number="prnSignOffTimeObj.dosage"
+            min="1"
+            step="1"
+          />
         </div>
         <!-- Editable Reason -->
         <div class="form-group">
           <label>Reason for PRN:</label>
-          <input type="text" v-model="prnSignOffTimeObj.reason" placeholder="Enter PRN reason" />
+          <input
+            type="text"
+            v-model="prnSignOffTimeObj.reason"
+            placeholder="Enter PRN reason"
+          />
         </div>
         <!-- Nurse Signature -->
         <div class="form-group">
           <label for="prn-nurse-signature">Nurse Signature:</label>
-          <input type="text" id="prn-nurse-signature" v-model="prnNurseSignature" placeholder="Enter your name or initials" />
+          <input
+            type="text"
+            id="prn-nurse-signature"
+            v-model="prnNurseSignature"
+            placeholder="Enter your name or initials"
+          />
         </div>
         <div class="button-row">
-          <button class="save-button" :disabled="!prnNurseSignature" @click="handlePrnSignOff">
+          <button
+            class="save-button"
+            :disabled="!prnNurseSignature"
+            @click="handlePrnSignOff"
+          >
             Sign Off
           </button>
-          <button class="cancel-button" @click="closePrnSignOffPopup">
+          <button
+            class="cancel-button"
+            @click="closePrnSignOffPopup"
+          >
             Cancel
           </button>
         </div>
@@ -357,7 +391,7 @@ import HoldTimeSelector from './HoldTimeSelector.vue'
 import SignOffPopup from './SignOffPopup.vue'
 import type { Medication } from '../types'
 
-/* --- REACTIVE DATA, PROPS, AND EMITS --- */
+// REACTIVE DATA
 const router = useRouter()
 const medications = ref<Medication[]>([])
 
@@ -396,11 +430,11 @@ const showTimeModal = ref(false)
 const selectedMedicationForTime = ref<Medication | null>(null)
 const timeInputs = ref<string[]>([])
 
-// “Taken/Later/Refused” popup
+// “Taken/Refused/Later” popup
 const showTimeActionPopup = ref(false)
 const selectedDateAndTime = ref<{ dateObj: Date; timeObj: any } | null>(null)
 
-// Early/Late Confirmation Popup
+// Early/Late Confirmation
 const showTimeConfirmationPopup = ref(false)
 const confirmationMessage = ref("")
 const pendingDateAndTime = ref<{ dateObj: Date; timeObj: any } | null>(null)
@@ -438,6 +472,7 @@ const frequencyOptions = [
   'tuesday, thursday, saturday'
 ]
 
+// Helpers
 function normalizeToMidnight(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
@@ -469,6 +504,7 @@ function getScheduledDateTime(dateObj: Date, timeString: string): Date {
   return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), hours, mins)
 }
 
+// Status Options
 const statusOptions = [
   { value: 'active', label: 'Active', color: '#d4edda' },
   { value: 'discontinue', label: 'Discontinue', color: '#f8d7da' },
@@ -487,6 +523,7 @@ function handleStatusFilter(status: string | null) {
   selectedStatus.value = selectedStatus.value === status ? null : status
 }
 
+// Route categories
 const routeCategories = [
   'PRN',
   'Neb/INH',
@@ -513,18 +550,13 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
   return grouped
 }
 
-/*
-  1) GROUPED MEDICATIONS
-*/
+// GROUPED MEDICATIONS
 const groupedMedications = computed(() => {
   let sortedMeds = [...medications.value]
-
   if (selectedStatus.value) {
     sortedMeds = sortedMeds.filter(med => med.status === selectedStatus.value)
   }
-
   const groups: Record<string, Medication[]> = {}
-
   if (sortBy.value === 'time') {
     const allTimes = new Set<string>()
     sortedMeds.forEach(med => {
@@ -536,13 +568,11 @@ const groupedMedications = computed(() => {
         })
       }
     })
-
     const sortedTimes = Array.from(allTimes).sort((a, b) => {
       const timeA = new Date('1970/01/01 ' + a)
       const timeB = new Date('1970/01/01 ' + b)
       return timeA.getTime() - timeB.getTime()
     })
-
     sortedTimes.forEach(time => {
       groups[time] = []
       sortedMeds.forEach(med => {
@@ -557,14 +587,12 @@ const groupedMedications = computed(() => {
         }
       })
     })
-  }
-  else if (sortBy.value === 'prn') {
+  } else if (sortBy.value === 'prn') {
     const prnMeds = sortedMeds.filter(med => med.prn)
     if (prnMeds.length > 0) {
       groups['PRN Medications'] = prnMeds
     }
-  }
-  else if (sortBy.value === 'route') {
+  } else if (sortBy.value === 'route') {
     routeCategories.forEach(route => {
       const medsForRoute = sortedMeds.filter(med => med.route === route)
       if (medsForRoute.length > 0) {
@@ -575,8 +603,8 @@ const groupedMedications = computed(() => {
     if (uncategorizedMeds.length > 0) {
       groups['Uncategorized'] = uncategorizedMeds
     }
-  }
-  else {
+  } else {
+    // sortBy: medication, diagnosis, etc.
     if (sortBy.value === 'diagnosis') {
       const groupedByDiagnosis = groupMedicationsByDiagnosis(sortedMeds)
       Object.assign(groups, groupedByDiagnosis)
@@ -587,23 +615,18 @@ const groupedMedications = computed(() => {
       groups['All Medications'] = sortedMeds
     }
   }
-
   Object.keys(groups).forEach(key => {
     if (groups[key].length === 0) {
       delete groups[key]
     }
   })
-
   return groups
 })
 
-/*
-  2) allColumns merges default date + dateList
-     - If a date range is selected, it replaces the default date.
-*/
+// allColumns merges default date + dateList
 const allColumns = computed(() => {
   if (dateList.value.length > 0) {
-    let columnsArray = dateList.value.map(d => normalizeToMidnight(d))
+    const columnsArray = dateList.value.map(d => normalizeToMidnight(d))
     columnsArray.sort((a, b) => a.getTime() - b.getTime())
     return columnsArray
   } else {
@@ -611,9 +634,7 @@ const allColumns = computed(() => {
   }
 })
 
-/*
-  3) LOCAL STORAGE LOAD/SAVE
-*/
+// LOAD/SAVE
 function loadMedications() {
   const savedMedications = localStorage.getItem('medications')
   if (savedMedications) {
@@ -640,10 +661,7 @@ const emit = defineEmits<{
   (e: 'tabsChange', medication: Medication, tabs: number): void;
 }>()
 
-/*
-  4) FREQUENCY & watchers
-  - Updated so that administration time inputs appear immediately on first selection.
-*/
+// FREQUENCY watchers
 watch(selectedFrequency, (newFreq) => {
   if (!newFreq || (selectedMedicationForTime.value && selectedMedicationForTime.value.prn)) {
     timeInputs.value = []
@@ -653,6 +671,7 @@ watch(selectedFrequency, (newFreq) => {
   timeInputs.value = Array(timesCount).fill('')
 })
 
+// getTimesCountFromFrequency
 function getTimesCountFromFrequency(frequency: string): number {
   if (!frequency) return 0
   const dailyMatch = frequency.match(/(\d+)\s*times?\s*daily/)
@@ -676,9 +695,7 @@ function getTimesCountFromFrequency(frequency: string): number {
   }
 }
 
-/*
-  5) TIME & DOSAGE MODAL
-*/
+// TIME & DOSAGE MODAL
 function toggleSelectDropdown(medication: Medication) {
   if (medication.tabsAvailable <= 0) {
     errorMessage.value = "Please add tabs available"
@@ -696,7 +713,6 @@ function toggleSelectDropdown(medication: Medication) {
   }
   showTimeModal.value = true
 }
-
 function handleSave() {
   if (!selectedMedicationForTime.value) {
     showTimeModal.value = false
@@ -711,7 +727,6 @@ function handleSave() {
   }
   selectedMedicationForTime.value.frequency = selectedFrequency.value
   selectedMedicationForTime.value.dosage = selectedDosage.value
-
   if (selectedMedicationForTime.value.prn) {
     selectedMedicationForTime.value.dates = {}
     selectedMedicationForTime.value.administrationTimes = 'As needed'
@@ -735,16 +750,13 @@ function handleSave() {
   selectedMedicationForTime.value = null
   timeInputs.value = []
 }
-
 function handleCancel() {
   showTimeModal.value = false
   selectedMedicationForTime.value = null
   timeInputs.value = []
 }
 
-/*
-  6) "Taken/Later/Refused" Popup
-*/
+// GATHER / CHECK
 function gatherAllMedsForTime(dateObj: Date, timeStr: string) {
   const dateKey = formatDateToYYYYMMDD(dateObj)
   const results: { medication: Medication; timeObj: any }[] = []
@@ -764,29 +776,31 @@ function gatherAllMedsForTime(dateObj: Date, timeStr: string) {
   })
   return results
 }
-
+/**
+ * If all meds for time are "taken"/"refused"/"later" or have a pending action = these statuses.
+ */
 function checkAllMedsForTime(dateObj: Date, timeStr: string) {
   const medsForTime = gatherAllMedsForTime(dateObj, timeStr)
   if (medsForTime.length === 0) return false
   return medsForTime.every(mt =>
-    mt.timeObj.status === 'taken' || mt.timeObj.status === 'refused'
+    (mt.timeObj.pendingAction === 'taken' || mt.timeObj.pendingAction === 'refused' || mt.timeObj.pendingAction === 'later') ||
+    (mt.timeObj.status === 'taken' || mt.timeObj.status === 'refused' || mt.timeObj.status === 'later')
   )
 }
 
+// OPEN ACTION POPUP
 function openActionPopup(dateObj: Date, timeObj: any) {
-  // Ensure the action is only available for today.
+  if (timeObj.locked) return // already locked => do nothing
   const now = new Date()
-  const isToday = (
+  const isToday =
     dateObj.getFullYear() === now.getFullYear() &&
     dateObj.getMonth() === now.getMonth() &&
     dateObj.getDate() === now.getDate()
-  )
   if (!isToday) {
     errorMessage.value = "Medications can only be given on the current date."
     showErrorModal.value = true
     return
   }
-
   const scheduledTimeStr = timeObj.time.includes("(")
     ? timeObj.time.split("(")[0].trim()
     : timeObj.time
@@ -794,7 +808,6 @@ function openActionPopup(dateObj: Date, timeObj: any) {
   const scheduledDateTime = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(), hours, mins)
   const currentTime = new Date()
   const diffMinutes = (currentTime.getTime() - scheduledDateTime.getTime()) / 60000
-
   if (diffMinutes >= -60 && diffMinutes <= 60) {
     selectedDateAndTime.value = { dateObj, timeObj }
     showTimeActionPopup.value = true
@@ -810,53 +823,52 @@ function openActionPopup(dateObj: Date, timeObj: any) {
     showTimeConfirmationPopup.value = true
   }
 }
-
 function closeTimeActionPopup() {
   showTimeActionPopup.value = false
 }
 
-// FIXED: Always open sign-off popup after an action is selected.
+// HANDLE TIME ACTION SELECTED => add immediate icons
 function handleTimeActionSelected({ action }: { action: string }) {
   if (selectedDateAndTime.value) {
-    selectedDateAndTime.value.timeObj.pendingAction = action;
-    const { dateObj, timeObj } = selectedDateAndTime.value;
-    let baseTime = timeObj.time;
+    selectedDateAndTime.value.timeObj.temporaryStatus = action // "taken", "refused", or "later"
+    const { dateObj, timeObj } = selectedDateAndTime.value
+    let baseTime = timeObj.time
     if (baseTime.includes("(")) {
-      baseTime = baseTime.split("(")[0].trim();
+      baseTime = baseTime.split("(")[0].trim()
     }
-    const all = gatherAllMedsForTime(dateObj, baseTime);
-    signOffMedications.value = all;
-    signOffTimeStr.value = baseTime;
-    signOffDate.value = dateObj;
-    showSignOffPopup.value = true;
+    if (checkAllMedsForTime(dateObj, baseTime)) {
+      const all = gatherAllMedsForTime(dateObj, baseTime)
+      signOffMedications.value = all
+      signOffTimeStr.value = baseTime
+      signOffDate.value = dateObj
+      showSignOffPopup.value = true
+    }
   }
-  showTimeActionPopup.value = false;
+  showTimeActionPopup.value = false
 }
 
-/*
-  Early/Late Confirmation
-*/
+// EARLY/LATE
 function confirmTimeAction() {
-  showTimeConfirmationPopup.value = false;
+  showTimeConfirmationPopup.value = false
   if (!isEarly.value && pendingDateAndTime.value) {
-    selectedDateAndTime.value = pendingDateAndTime.value;
-    showTimeActionPopup.value = true;
-    pendingDateAndTime.value = null;
+    selectedDateAndTime.value = pendingDateAndTime.value
+    showTimeActionPopup.value = true
+    pendingDateAndTime.value = null
   }
 }
 function triggerEarlyYes() {
-  showEarlyReasonInput.value = true;
+  showEarlyReasonInput.value = true
 }
 function confirmEarlyWithReason() {
   if (pendingDateAndTime.value && earlyReason.value.trim() !== "") {
-    selectedDateAndTime.value = pendingDateAndTime.value;
+    selectedDateAndTime.value = pendingDateAndTime.value
     if (selectedDateAndTime.value.timeObj.med?.prn) {
-      const med = selectedDateAndTime.value.timeObj.med;
-      const now = new Date();
-      const todayStr = formatDateToYYYYMMDD(now);
-      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const med = selectedDateAndTime.value.timeObj.med
+      const now = new Date()
+      const todayStr = formatDateToYYYYMMDD(now)
+      const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       if (!med.times) {
-        med.times = [];
+        med.times = []
       }
       const newTimeObj = {
         time: timeStr,
@@ -865,40 +877,38 @@ function confirmEarlyWithReason() {
         earlyReason: earlyReason.value.trim(),
         dosage: med.dosage || '1',
         reason: ''
-      };
-      med.times.push(newTimeObj);
-      openPrnSignOffPopup(med, newTimeObj);
+      }
+      med.times.push(newTimeObj)
+      openPrnSignOffPopup(med, newTimeObj)
     } else {
-      selectedDateAndTime.value.timeObj.earlyReason = earlyReason.value.trim();
-      selectedDateAndTime.value.timeObj.pendingAction = "taken";
+      selectedDateAndTime.value.timeObj.earlyReason = earlyReason.value.trim()
+      selectedDateAndTime.value.timeObj.temporaryStatus = "taken"
     }
-    showTimeConfirmationPopup.value = false;
-    showEarlyReasonInput.value = false;
-    earlyReason.value = "";
-    pendingDateAndTime.value = null;
+    showTimeConfirmationPopup.value = false
+    showEarlyReasonInput.value = false
+    earlyReason.value = ""
+    pendingDateAndTime.value = null
 
-    const { dateObj, timeObj } = selectedDateAndTime.value;
-    let baseTime = timeObj.time;
+    const { dateObj, timeObj } = selectedDateAndTime.value
+    let baseTime = timeObj.time
     if (baseTime.includes("(")) {
-      baseTime = baseTime.split("(")[0].trim();
+      baseTime = baseTime.split("(")[0].trim()
     }
-    const all = gatherAllMedsForTime(dateObj, baseTime);
-    signOffMedications.value = all;
-    signOffTimeStr.value = baseTime;
-    signOffDate.value = dateObj;
-    showSignOffPopup.value = true;
+    const all = gatherAllMedsForTime(dateObj, baseTime)
+    signOffMedications.value = all
+    signOffTimeStr.value = baseTime
+    signOffDate.value = dateObj
+    showSignOffPopup.value = true
   }
 }
 function cancelTimeActionConfirmation() {
-  showTimeConfirmationPopup.value = false;
-  pendingDateAndTime.value = null;
-  showEarlyReasonInput.value = false;
-  earlyReason.value = "";
+  showTimeConfirmationPopup.value = false
+  pendingDateAndTime.value = null
+  showEarlyReasonInput.value = false
+  earlyReason.value = ""
 }
 
-/*
-  7) NEW MED
-*/
+// NEW MED
 function handleNewMedication(medication: Partial<Medication>) {
   const newMedication: Medication = {
     name: medication.medicationDetails || '',
@@ -927,32 +937,28 @@ function handleNewMedication(medication: Partial<Medication>) {
     instructions: medication.instructions || ''
   }
   medications.value.push(newMedication)
-  showAddForm.value = false;
+  showAddForm.value = false
   if (!newMedication.prn) {
-    selectedMedicationForTime.value = newMedication;
-    selectedFrequency.value = newMedication.frequency;
-    selectedDosage.value = '1';
-    showTimeModal.value = true;
+    selectedMedicationForTime.value = newMedication
+    selectedFrequency.value = newMedication.frequency
+    selectedDosage.value = '1'
+    showTimeModal.value = true
   }
-  populateMedicationTable();
+  populateMedicationTable()
 }
 function handleMedicationUpdate(updatedMedication: Medication) {
-  const i = medications.value.findIndex(m => m.name === updatedMedication.name);
+  const i = medications.value.findIndex(m => m.name === updatedMedication.name)
   if (i !== -1) {
-    medications.value[i] = updatedMedication;
+    medications.value[i] = updatedMedication
   }
 }
 
-/*
-  8) DATE RANGE
-*/
+// DATE RANGE
 function formatDateToYYYYMMDD(d: Date): string {
-  return d.getFullYear() + '-' +
-    String(d.getMonth() + 1).padStart(2, '0') + '-' +
-    String(d.getDate()).padStart(2, '0');
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0')
 }
 function initializeDateRangePicker() {
-  const dateRangePicker = document.getElementById('date-range-picker');
+  const dateRangePicker = document.getElementById('date-range-picker')
   if (dateRangePicker) {
     flatpickr(dateRangePicker, {
       mode: "range",
@@ -960,90 +966,90 @@ function initializeDateRangePicker() {
       maxDate: new Date().fp_incr(365),
       onChange: (selDates) => {
         if (selDates.length === 2) {
-          updateDateRange(selDates[0], selDates[1]);
+          updateDateRange(selDates[0], selDates[1])
         }
       }
-    });
+    })
   }
 }
 function updateDateRange(startDate: Date, endDate: Date) {
   if (!startDate || !endDate) {
-    alert("Please select both a start and an end date.");
-    return;
+    alert("Please select both a start and an end date.")
+    return
   }
-  dateList.value = [];
-  let cur = new Date(startDate);
+  dateList.value = []
+  let cur = new Date(startDate)
   while (cur <= endDate) {
-    dateList.value.push(normalizeToMidnight(cur));
-    cur.setDate(cur.getDate() + 1);
+    dateList.value.push(normalizeToMidnight(cur))
+    cur.setDate(cur.getDate() + 1)
   }
-  populateMedicationTable();
+  populateMedicationTable()
 }
 
-/*
-  9) MEDICATION STATUS
-*/
+// MEDICATION STATUS
 function populateMedicationTable() {
   dateList.value.forEach(date => {
-    const dateStr = formatDateToYYYYMMDD(date);
+    const dateStr = formatDateToYYYYMMDD(date)
     if (!medicationStatus.value[dateStr]) {
-      medicationStatus.value[dateStr] = {};
+      medicationStatus.value[dateStr] = {}
       medications.value.forEach((med, idx) => {
         if (!med.prn && med.dates) {
-          const dayTimes = med.dates[dateStr] || [];
+          const dayTimes = med.dates[dateStr] || []
           dayTimes.forEach((timeObj: any) => {
             if (!medicationStatus.value[dateStr][timeObj.time]) {
-              medicationStatus.value[dateStr][timeObj.time] = {};
+              medicationStatus.value[dateStr][timeObj.time] = {}
             }
-            medicationStatus.value[dateStr][timeObj.time][idx] = 'pending';
-          });
+            medicationStatus.value[dateStr][timeObj.time][idx] = 'pending'
+          })
         }
-      });
+      })
     }
-  });
+  })
 }
 
-/*
-  10) STATUS CHANGES (Dropdown)
-*/
+// STATUS CHANGE
 function handleStatusChange(event: Event, medIndex: number) {
-  const select = event.target as HTMLSelectElement;
-  const status = select.value;
+  const select = event.target as HTMLSelectElement
+  const status = select.value
   if (status === 'hold' || status === 'new' || status === 'discontinue' || status === 'change') {
-    selectedMedicationForHold.value = medications.value[medIndex];
-    selectedStatusOption.value = status as 'hold' | 'new' | 'discontinue' | 'change';
-    showHoldSelector.value = true;
-    return;
+    selectedMedicationForHold.value = medications.value[medIndex]
+    selectedStatusOption.value = status as 'hold' | 'new' | 'discontinue' | 'change'
+    showHoldSelector.value = true
+    return
   }
-  const row = select.closest('tr');
+  const row = select.closest('tr')
   if (row) {
     row.classList.remove(
-      'active-row', 'discontinued-row', 'hold-row',
-      'new-row', 'pending-row', 'change-row',
-      'completed-row', 'partial-row'
-    );
-    row.classList.add(`${status}-row`);
+      'active-row',
+      'discontinued-row',
+      'hold-row',
+      'new-row',
+      'pending-row',
+      'change-row',
+      'completed-row',
+      'partial-row'
+    )
+    row.classList.add(`${status}-row`)
   }
-  emit('statusChange', medications.value[medIndex], status);
+  emit('statusChange', medications.value[medIndex], status)
 }
 
 /*
   Gather times for selectedMedicationForHold
 */
 const holdTimes = computed(() => {
-  if (!selectedMedicationForHold.value) return [];
-  const timesSet = new Set<string>();
-  const med = selectedMedicationForHold.value;
+  if (!selectedMedicationForHold.value) return []
+  const timesSet = new Set<string>()
+  const med = selectedMedicationForHold.value
   if (med.dates) {
     for (const dateKey in med.dates) {
       med.dates[dateKey].forEach((tObj: any) => {
-        timesSet.add(tObj.time);
-      });
+        timesSet.add(tObj.time)
+      })
     }
   }
-  return Array.from(timesSet);
-});
-
+  return Array.from(timesSet)
+})
 function handleHoldSubmit(data: {
   dateRange: [Date, Date];
   times: string[] | null;
@@ -1051,199 +1057,198 @@ function handleHoldSubmit(data: {
   holdType: 'all' | 'specific';
   statusOption?: 'hold' | 'new' | 'discontinue' | 'change';
 }) {
-  if (!selectedMedicationForHold.value) return;
-  const medication = selectedMedicationForHold.value;
-  const dateStr = formatDateToYYYYMMDD(data.dateRange[0]);
+  if (!selectedMedicationForHold.value) return
+  const medication = selectedMedicationForHold.value
+  const dateStr = formatDateToYYYYMMDD(data.dateRange[0])
   if (data.holdType === 'all') {
     if (medication.dates && medication.dates[dateStr]) {
       medication.dates[dateStr].forEach((timeObj: any) => {
         if (data.statusOption === 'discontinue' || data.statusOption === 'change') {
-          timeObj.status = 'discontinue';
+          timeObj.status = 'discontinue'
         } else if (data.statusOption === 'new') {
-          timeObj.status = 'new';
+          timeObj.status = 'new'
         } else {
-          timeObj.status = 'hold';
+          timeObj.status = 'hold'
         }
-      });
+      })
     }
   } else if (data.holdType === 'specific' && data.times && medication.dates && medication.dates[dateStr]) {
     data.times.forEach(tStr => {
-      const timeObj = medication.dates[dateStr].find((obj: any) => obj.time === tStr);
+      const timeObj = medication.dates[dateStr].find((obj: any) => obj.time === tStr)
       if (timeObj) {
         if (data.statusOption === 'discontinue' || data.statusOption === 'change') {
-          timeObj.status = 'discontinue';
+          timeObj.status = 'discontinue'
         } else if (data.statusOption === 'new') {
-          timeObj.status = 'new';
+          timeObj.status = 'new'
         } else {
-          timeObj.status = 'hold';
+          timeObj.status = 'hold'
         }
       }
-    });
+    })
   }
   medication.holdInfo = {
     dateRange: data.dateRange,
     times: data.times,
     reason: data.reason,
     type: data.holdType
-  };
-  showHoldSelector.value = false;
-  selectedMedicationForHold.value = null;
+  }
+  showHoldSelector.value = false
+  selectedMedicationForHold.value = null
 }
 
 /**
  * Closes the error modal
  */
 function closeErrorModal() {
-  showErrorModal.value = false;
+  showErrorModal.value = false
 }
 
 /**
  * If user changes "Tabs Available"
  */
 function handleTabsChange(medication: Medication, newValue: number) {
-  medication.tabsAvailable = newValue;
-  emit('tabsChange', medication, newValue);
+  medication.tabsAvailable = newValue
+  emit('tabsChange', medication, newValue)
 }
 
 /**
  * Row styling
  */
 function getRowStatusClass(medication: Medication) {
-  return 'active-row';
+  return 'active-row'
 }
 
 /**
  * onMounted
  */
 onMounted(() => {
-  loadMedications();
-  initializeDateRangePicker();
-  populateMedicationTable();
-});
+  loadMedications()
+  initializeDateRangePicker()
+  populateMedicationTable()
+})
 
 /**
  * Return times for a specific date
  */
 function getTimesForDate(med: Medication, dateObj: Date) {
-  const dateStr = formatDateToYYYYMMDD(dateObj);
+  const dateStr = formatDateToYYYYMMDD(dateObj)
   if (!med.dates || !med.dates[dateStr]) {
-    return [];
+    return []
   }
-  return med.dates[dateStr];
+  return med.dates[dateStr]
 }
 
 /*
-  SIGN-OFF => Finalize administration only after nurse sign off.
-  No table updates occur until then.
+  SIGN-OFF => finalize => lock time entries so no further changes
 */
 function closeSignOffPopup() {
-  showSignOffPopup.value = false;
-  signOffMedications.value = [];
-  signOffTimeStr.value = '';
-  signOffDate.value = null;
+  showSignOffPopup.value = false
+  signOffMedications.value = []
+  signOffTimeStr.value = ''
+  signOffDate.value = null
 }
-
 function handleSignOff(signature: string) {
-  const now = new Date();
+  const now = new Date()
   signOffMedications.value.forEach(item => {
-    const pendingAction = item.timeObj.pendingAction;
-    if (!pendingAction) return;
+    const pendingAction = item.timeObj.pendingAction
+    if (!pendingAction) return
+    // Lock the time object => no more changes
+    item.timeObj.locked = true
+
+    // If taken => subtract from tabs & append timestamp
     if (pendingAction === 'taken') {
       const dose = (typeof item.timeObj.dosage === 'number')
         ? item.timeObj.dosage
-        : parseInt(item.medication.dosage || '1', 10);
-      item.medication.tabsAvailable = Math.max(0, item.medication.tabsAvailable - dose);
-      const formatted = formatTime12Hour(now);
-      item.timeObj.time = item.timeObj.time + " (taken at " + formatted + ")";
+        : parseInt(item.medication.dosage || '1', 10)
+      item.medication.tabsAvailable = Math.max(0, item.medication.tabsAvailable - dose)
+      const formatted = formatTime12Hour(now)
+      item.timeObj.time = item.timeObj.time + " (taken at " + formatted + ")"
     }
-    item.timeObj.status = pendingAction;
+    // For "later" or "refused", we do not subtract from tabs
+    item.timeObj.status = pendingAction
     item.timeObj.signedOff = {
       nurse: signature,
       date: now
-    };
-    delete item.timeObj.pendingAction;
-  });
-  closeSignOffPopup();
+    }
+    delete item.timeObj.pendingAction
+  })
+  closeSignOffPopup()
 }
 
-/*
-  PRN SIGN-OFF POPUP
-*/
-const showPrnSignOffPopup = ref(false);
-const prnSignOffMedication = ref<Medication | null>(null);
-const prnSignOffTimeObj = ref<any>(null);
-const prnNurseSignature = ref('');
+// PRN SIGN-OFF POPUP
+const showPrnSignOffPopup = ref(false)
+const prnSignOffMedication = ref<Medication | null>(null)
+const prnSignOffTimeObj = ref<any>(null)
+const prnNurseSignature = ref('')
 
 function openPrnSignOffPopup(med: Medication, timeObj: any) {
   if (timeObj.dosage == null || timeObj.dosage === '') {
-    timeObj.dosage = med.dosage || '1';
+    timeObj.dosage = med.dosage || '1'
   }
   if (!timeObj.reason) {
-    timeObj.reason = '';
+    timeObj.reason = ''
   }
-  prnSignOffMedication.value = med;
-  prnSignOffTimeObj.value = timeObj;
-  prnNurseSignature.value = '';
-  showPrnSignOffPopup.value = true;
+  prnSignOffMedication.value = med
+  prnSignOffTimeObj.value = timeObj
+  prnNurseSignature.value = ''
+  showPrnSignOffPopup.value = true
 }
-
 function closePrnSignOffPopup() {
-  showPrnSignOffPopup.value = false;
-  prnSignOffMedication.value = null;
-  prnSignOffTimeObj.value = null;
-  prnNurseSignature.value = '';
+  showPrnSignOffPopup.value = false
+  prnSignOffMedication.value = null
+  prnSignOffTimeObj.value = null
+  prnNurseSignature.value = ''
 }
-
 function handlePrnSignOff() {
   if (!prnSignOffMedication.value || !prnSignOffTimeObj.value) {
-    showPrnSignOffPopup.value = false;
-    return;
+    showPrnSignOffPopup.value = false
+    return
   }
   prnSignOffTimeObj.value.signedOff = {
     nurse: prnNurseSignature.value,
     date: new Date()
-  };
-  closePrnSignOffPopup();
+  }
+  closePrnSignOffPopup()
 }
 
 /*
   11) STAMP PRN TIME => Immediately open PRN Sign-Off
 */
 function stampPRNTime(med: Medication) {
-  const limit = getTimesCountFromFrequency(med.frequency || '');
+  const limit = getTimesCountFromFrequency(med.frequency || '')
   if (!med.times) {
-    med.times = [];
+    med.times = []
   }
-  const todayStr = formatDateToYYYYMMDD(new Date());
-  const todaysPRNs = med.times.filter(entry => entry.date === todayStr);
+  const todayStr = formatDateToYYYYMMDD(new Date())
+  const todaysPRNs = med.times.filter(entry => entry.date === todayStr)
   if (todaysPRNs.length >= limit) {
-    alert(`You can only add up to ${limit} PRN timestamp(s) per day.`);
-    return;
+    alert(`You can only add up to ${limit} PRN timestamp(s) per day.`)
+    return
   }
   if (med.frequency === '2 times daily' && med.times.length > 0) {
-    const lastDose = med.times[med.times.length - 1];
-    const lastDoseDateTime = new Date(lastDose.date + ' ' + lastDose.time);
-    const now = new Date();
-    const diffHours = (now.getTime() - lastDoseDateTime.getTime()) / (1000 * 60 * 60);
+    const lastDose = med.times[med.times.length - 1]
+    const lastDoseDateTime = new Date(lastDose.date + ' ' + lastDose.time)
+    const now = new Date()
+    const diffHours = (now.getTime() - lastDoseDateTime.getTime()) / (1000 * 60 * 60)
     if (diffHours < 11) {
-      confirmationMessage.value = "This medication is early (less than 11 hours from the initial dose). Do you still want to give it?";
-      isEarly.value = true;
-      showTimeConfirmationPopup.value = true;
-      pendingDateAndTime.value = { dateObj: new Date(), timeObj: { med: med } };
-      return;
+      confirmationMessage.value = "This medication is early (less than 11 hours from the initial dose). Do you still want to give it?"
+      isEarly.value = true
+      showTimeConfirmationPopup.value = true
+      pendingDateAndTime.value = { dateObj: new Date(), timeObj: { med: med } }
+      return
     }
   }
-  const now = new Date();
-  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const newTimeObj = {
     time: timeStr,
     status: 'PRN',
     date: todayStr,
     dosage: med.dosage || '1',
     reason: ''
-  };
-  med.times.push(newTimeObj);
-  openPrnSignOffPopup(med, newTimeObj);
+  }
+  med.times.push(newTimeObj)
+  openPrnSignOffPopup(med, newTimeObj)
 }
 
 /*
@@ -1251,21 +1256,16 @@ function stampPRNTime(med: Medication) {
 */
 function getTooltipText(timeObj: any) {
   if (!timeObj.signedOff) {
-    return '';
+    return ''
   }
-  const nurseStr = timeObj.signedOff.nurse || 'Unknown Nurse';
-  const reasonStr = timeObj.reason || '(none)';
-  const doseStr = timeObj.dosage || '(not specified)';
-  const signoffTime = timeObj.signedOff.date ? new Date(timeObj.signedOff.date).toLocaleString() : '';
-  return `Nurse: ${nurseStr}\nReason: ${reasonStr}\nDosage: ${doseStr}\nSigned Off: ${signoffTime}`;
+  const nurseStr = timeObj.signedOff.nurse || 'Unknown Nurse'
+  const reasonStr = timeObj.reason || '(none)'
+  const doseStr = timeObj.dosage || '(not specified)'
+  const signoffTime = timeObj.signedOff.date ? new Date(timeObj.signedOff.date).toLocaleString() : ''
+  return `Nurse: ${nurseStr}\nReason: ${reasonStr}\nDosage: ${doseStr}\nSigned Off: ${signoffTime}`
 }
-
-function showTooltip(_timeObj: any) {
-  // Native browser tooltip via :title attribute.
-}
-function hideTooltip() {
-  // No extra code required.
-}
+function showTooltip(_timeObj: any) {}
+function hideTooltip() {}
 </script>
 
 <style scoped>
@@ -1404,7 +1404,7 @@ function hideTooltip() {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0,0,0,0.5);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -1539,13 +1539,14 @@ function hideTooltip() {
   background-color: #00ff1e;
   color: #fff;
 }
-.time-entry.later {
-  background-color: #ff9907;
-  color: #000;
-}
 .time-entry.refused {
   background-color: #dc3545;
   color: #fff;
+}
+/* If you like, you can define a style for .time-entry.later for the final sign-off. */
+.time-entry.later {
+  background-color: #ffe600;
+  color: #000;
 }
 
 /* Category Section */
@@ -1589,6 +1590,17 @@ function hideTooltip() {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+/* Icons for immediate statuses */
+.icon-immediate {
+  font-weight: bold;
+}
+.tooltip-icon {
+  margin-left: 4px;
+  cursor: help;
+  font-size: 0.9rem;
+  vertical-align: middle;
 }
 
 /* Select & Focus */
