@@ -705,19 +705,21 @@ const groupedMedications = computed(() => {
     })
     // Group by time
     sortedTimes.forEach(time => {
-      groups[time] = []
-      sortedMeds.forEach(med => {
-        if (!med.prn && med.dates) {
-          Object.values(med.dates).forEach((arr: any) => {
-            arr.forEach((tObj: any) => {
-              if (tObj.time === time) {
-                groups[time].push(med)
-              }
-            })
+    groups[time] = []
+    const uniqueMedSet = new Set()
+    sortedMeds.forEach(med => {
+      if (!med.prn && med.dates) {
+        Object.values(med.dates).forEach((arr: any) => {
+          arr.forEach((tObj: any) => {
+            if (tObj.time === time && !uniqueMedSet.has(med.name)) {
+              groups[time].push(med)
+              uniqueMedSet.add(med.name)
+            }
           })
-        }
-      })
+        })
+      }
     })
+  })
   } else if (sortBy.value === 'prn') {
     const prnMeds = sortedMeds.filter(med => med.prn)
     if (prnMeds.length > 0) {
