@@ -184,7 +184,7 @@
                           v-for="timeObj in med.times.filter(entry => entry.date === formatDateToYYYYMMDD(dateObj))"
                           :key="timeObj.time + timeObj.status"
                           class="time-entry"
-                          :class="timeObj.status"
+                          :class="[timeObj.status, { discontinued: timeObj.status === 'discontinue' }]"
                           @mouseover="showTooltip(timeObj)"
                           @mouseout="hideTooltip"
                           :style="{
@@ -215,11 +215,12 @@
                     <!-- Scheduled Meds -->
                     <template v-else>
                       <template v-for="timeObj in getTimesForDate(med, dateObj)">
+                        <!-- Only show this timeObj if its base time matches the grouping category (when sortBy = 'time'). -->
                         <div
-                          v-if="sortBy !== 'time' || timeObj.time === category"
+                          v-if="sortBy !== 'time' || extractBaseTime(timeObj.time) === category"
                           :key="timeObj.time"
                           class="time-entry"
-                          :class="[timeObj.status, timeObj.temporaryStatus]"
+                          :class="[timeObj.status, timeObj.temporaryStatus, { discontinued: timeObj.status === 'discontinue' }]"
                           @click="!timeObj.locked && openActionPopup(dateObj, timeObj, med)"
                           :style="{
                             backgroundColor:
@@ -595,6 +596,15 @@ const frequencyOptions = [
 /* ----------------------------------------------------------
    HELPER FUNCTIONS
 ---------------------------------------------------------- */
+
+/**
+ * Returns just the “base” time, stripping off any parenthetical text
+ * e.g. "08:00 (taken at 8:01 AM)" => "08:00".
+ */
+function extractBaseTime(rawTime: string): string {
+  return rawTime.split('(')[0].trim()
+}
+
 function normalizeToMidnight(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
@@ -686,13 +696,13 @@ const groupedMedications = computed(() => {
   const groups: Record<string, Medication[]> = {}
 
   if (sortBy.value === 'time') {
-    // Collect all times
+    // Collect all *base* times (strip off parentheticals)
     const allTimes = new Set<string>()
     sortedMeds.forEach(med => {
       if (!med.prn && med.dates) {
         Object.values(med.dates).forEach((timeArray: any) => {
           timeArray.forEach((obj: any) => {
-            allTimes.add(obj.time)
+            allTimes.add(extractBaseTime(obj.time))
           })
         })
       }
@@ -703,23 +713,26 @@ const groupedMedications = computed(() => {
       const timeB = new Date('1970/01/01 ' + b)
       return timeA.getTime() - timeB.getTime()
     })
-    // Group by time
+    // Group by that base time
     sortedTimes.forEach(time => {
-    groups[time] = []
-    const uniqueMedSet = new Set()
-    sortedMeds.forEach(med => {
-      if (!med.prn && med.dates) {
-        Object.values(med.dates).forEach((arr: any) => {
-          arr.forEach((tObj: any) => {
-            if (tObj.time === time && !uniqueMedSet.has(med.name)) {
-              groups[time].push(med)
-              uniqueMedSet.add(med.name)
-            }
+      groups[time] = []
+      const uniqueMedSet = new Set()
+      sortedMeds.forEach(med => {
+        if (!med.prn && med.dates) {
+          Object.values(med.dates).forEach((arr: any) => {
+            arr.forEach((tObj: any) => {
+              if (
+                extractBaseTime(tObj.time) === time &&
+                !uniqueMedSet.has(med.name)
+              ) {
+                groups[time].push(med)
+                uniqueMedSet.add(med.name)
+              }
+            })
           })
-        })
-      }
+        }
+      })
     })
-  })
   } else if (sortBy.value === 'prn') {
     const prnMeds = sortedMeds.filter(med => med.prn)
     if (prnMeds.length > 0) {
@@ -1316,6 +1329,8 @@ function finalSignOff() {
         : parseInt(medication.dosage || '1', 10)
       medication.tabsAvailable = Math.max(0, medication.tabsAvailable - dose)
       const formatted = formatTime12Hour(now)
+      // We preserve the "taken at ..." so you can see it,
+      // but for sorting we now strip it out with extractBaseTime.
       timeObj.time = timeObj.time + " (taken at " + formatted + ")"
     }
   })
@@ -1604,6 +1619,10 @@ function hideTooltip() {}
 }
 .time-entry:hover {
   background-color: #fafafa;
+}
+/* Show discontinued times in red/pink */
+.time-entry.discontinue {
+  background-color: #f8d7da !important;
 }
 
 /* medication-row styling */
