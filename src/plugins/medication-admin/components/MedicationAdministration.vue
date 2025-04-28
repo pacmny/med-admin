@@ -212,10 +212,10 @@
                       </div>
                     </template>
 
-                    <!-- Scheduled Meds -->
+                    <!-- Scheduled Meds (non-PRN) -->
                     <template v-else>
                       <template v-for="timeObj in getTimesForDate(med, dateObj)">
-                        <!-- Only show this timeObj if its base time matches the grouping category (when sortBy = 'time'). -->
+                        <!-- Only show if base time matches category if we're sorting by time -->
                         <div
                           v-if="sortBy !== 'time' || extractBaseTime(timeObj.time) === category"
                           :key="timeObj.time"
@@ -511,11 +511,50 @@ import flatpickr from 'flatpickr'
 import ExpandableDetails from './ExpandableDetails.vue'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
-import type { Medication } from '../types'
 
-/* ----------------------------------------------------------
-   REACTIVE STATE
----------------------------------------------------------- */
+// We keep the same approach as before, but we now ensure that
+// "today" is included when we remove old times in handleSave().
+const FUTURE_DAYS_TO_POPULATE = 365
+
+export interface Medication {
+  name: string
+  dates?: Record<string, {
+    time: string
+    status?: string
+    locked?: boolean
+    signedOff?: any
+    temporaryStatus?: string
+    dosage?: number|string
+    earlyReason?: string
+  }[]>
+  tabsAvailable: number
+  frequency?: string
+  dosage?: string
+  administrationTimes?: string
+  route?: string
+  dosageForm?: string
+  diagnosis?: string
+  prn?: boolean
+  startDate?: Date
+  endDate?: Date
+  pharmacy?: string
+  pharmacyNpi?: string
+  pharmacyAddress?: string
+  pharmacyPhone?: string
+  pharmacyDea?: string
+  prescriberInfo?: string
+  prescriberDeaNpi?: string
+  rxNumber?: string
+  refills?: number
+  refillReminderDate?: Date
+  expirationDate?: string
+  instructions?: string
+  status?: string
+
+  discontinuedDate?: Date
+  discontinuedTimes?: Record<string, string[]>
+}
+
 const router = useRouter()
 const medications = ref<Medication[]>([])
 
@@ -563,7 +602,7 @@ const earlyReason = ref("")
 const showErrorModal = ref(false)
 const errorMessage = ref("")
 
-// Pending transactions (for sign-off)
+// Sign-Off Popup
 const showSignOffPopup = ref(false)
 const pendingTransactions = ref<any[]>([])
 
@@ -593,18 +632,10 @@ const frequencyOptions = [
   'tuesday, thursday, saturday'
 ]
 
-/* ----------------------------------------------------------
-   HELPER FUNCTIONS
----------------------------------------------------------- */
-
-/**
- * Returns just the “base” time, stripping off any parenthetical text
- * e.g. "08:00 (taken at 8:01 AM)" => "08:00".
- */
+// ---------- HELPER FUNCTIONS -----------
 function extractBaseTime(rawTime: string): string {
   return rawTime.split('(')[0].trim()
 }
-
 function normalizeToMidnight(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate())
 }
@@ -635,9 +666,7 @@ function formatDateToYYYYMMDD(d: Date): string {
   )
 }
 
-/* ----------------------------------------------------------
-   STATUS OPTIONS
----------------------------------------------------------- */
+// ---------- STATUS & SORT ----------
 const statusOptions = [
   { value: 'active', label: 'Active', color: '#d4edda' },
   { value: 'discontinue', label: 'Discontinue', color: '#f8d7da' },
@@ -648,7 +677,6 @@ const statusOptions = [
   { value: 'completed', label: 'Completed', color: '#00f445' },
   { value: 'partial', label: 'Partial', color: '#ff69b4' }
 ]
-
 function handleSort(type: string) {
   sortBy.value = type
 }
@@ -656,9 +684,7 @@ function handleStatusFilter(status: string | null) {
   selectedStatus.value = selectedStatus.value === status ? null : status
 }
 
-/* ----------------------------------------------------------
-   ROUTE CATEGORIES & GROUPING
----------------------------------------------------------- */
+// ---------- GROUPING ----------
 const routeCategories = [
   'PRN',
   'Neb/INH',
@@ -684,10 +710,6 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
   })
   return grouped
 }
-
-/* ----------------------------------------------------------
-   GROUPED MEDICATIONS
----------------------------------------------------------- */
 const groupedMedications = computed(() => {
   let sortedMeds = [...medications.value]
   if (selectedStatus.value) {
@@ -696,7 +718,6 @@ const groupedMedications = computed(() => {
   const groups: Record<string, Medication[]> = {}
 
   if (sortBy.value === 'time') {
-    // Collect all *base* times (strip off parentheticals)
     const allTimes = new Set<string>()
     sortedMeds.forEach(med => {
       if (!med.prn && med.dates) {
@@ -707,13 +728,11 @@ const groupedMedications = computed(() => {
         })
       }
     })
-    // Sort times
     const sortedTimes = Array.from(allTimes).sort((a, b) => {
       const timeA = new Date('1970/01/01 ' + a)
       const timeB = new Date('1970/01/01 ' + b)
       return timeA.getTime() - timeB.getTime()
     })
-    // Group by that base time
     sortedTimes.forEach(time => {
       groups[time] = []
       const uniqueMedSet = new Set()
@@ -721,10 +740,7 @@ const groupedMedications = computed(() => {
         if (!med.prn && med.dates) {
           Object.values(med.dates).forEach((arr: any) => {
             arr.forEach((tObj: any) => {
-              if (
-                extractBaseTime(tObj.time) === time &&
-                !uniqueMedSet.has(med.name)
-              ) {
+              if (extractBaseTime(tObj.time) === time && !uniqueMedSet.has(med.name)) {
                 groups[time].push(med)
                 uniqueMedSet.add(med.name)
               }
@@ -745,23 +761,20 @@ const groupedMedications = computed(() => {
         groups[route] = medsForRoute
       }
     })
-    const uncategorizedMeds = sortedMeds.filter(med => !med.route || !routeCategories.includes(med.route))
-    if (uncategorizedMeds.length > 0) {
-      groups['Uncategorized'] = uncategorizedMeds
+    const uncategorized = sortedMeds.filter(med => !med.route || !routeCategories.includes(med.route))
+    if (uncategorized.length > 0) {
+      groups['Uncategorized'] = uncategorized
     }
+  } else if (sortBy.value === 'diagnosis') {
+    const groupedByDiagnosis = groupMedicationsByDiagnosis(sortedMeds)
+    Object.assign(groups, groupedByDiagnosis)
+  } else if (sortBy.value === 'medication') {
+    sortedMeds.sort((a, b) => a.name.localeCompare(b.name))
+    groups['All Medications'] = sortedMeds
   } else {
-    // Sort by medication name or diagnosis, etc.
-    if (sortBy.value === 'diagnosis') {
-      const groupedByDiagnosis = groupMedicationsByDiagnosis(sortedMeds)
-      Object.assign(groups, groupedByDiagnosis)
-    } else {
-      if (sortBy.value === 'medication') {
-        sortedMeds.sort((a, b) => a.name.localeCompare(b.name))
-      }
-      groups['All Medications'] = sortedMeds
-    }
+    groups['All Medications'] = sortedMeds
   }
-  // Remove empty groups
+
   Object.keys(groups).forEach(key => {
     if (groups[key].length === 0) {
       delete groups[key]
@@ -770,22 +783,18 @@ const groupedMedications = computed(() => {
   return groups
 })
 
-/* ----------------------------------------------------------
-   allColumns => merges default date + dateList
----------------------------------------------------------- */
+// ---------- ALL COLUMNS ----------
 const allColumns = computed(() => {
   if (dateList.value.length > 0) {
-    const columnsArray = dateList.value.map(d => normalizeToMidnight(d))
-    columnsArray.sort((a, b) => a.getTime() - b.getTime())
-    return columnsArray
+    const cols = dateList.value.map(d => normalizeToMidnight(d))
+    cols.sort((a, b) => a.getTime() - b.getTime())
+    return cols
   } else {
     return [normalizeToMidnight(currentDate.value)]
   }
 })
 
-/* ----------------------------------------------------------
-   LOCAL STORAGE
----------------------------------------------------------- */
+// ---------- LOAD & WATCH ----------
 function loadMedications() {
   const savedMedications = localStorage.getItem('medications')
   if (savedMedications) {
@@ -812,9 +821,7 @@ const emit = defineEmits<{
   (e: 'tabsChange', medication: Medication, tabs: number): void;
 }>()
 
-/* ----------------------------------------------------------
-   FREQUENCY WATCHER
----------------------------------------------------------- */
+// ---------- FREQUENCY WATCH ----------
 watch(selectedFrequency, (newFreq) => {
   if (!newFreq || (selectedMedicationForTime.value && selectedMedicationForTime.value.prn)) {
     timeInputs.value = []
@@ -846,9 +853,7 @@ function getTimesCountFromFrequency(frequency: string): number {
   }
 }
 
-/* ----------------------------------------------------------
-   TIME & DOSAGE MODAL
----------------------------------------------------------- */
+// ---------- TIME & DOSAGE MODAL ----------
 function toggleSelectDropdown(medication: Medication) {
   if (medication.tabsAvailable <= 0) {
     errorMessage.value = "Please add tabs available"
@@ -866,6 +871,7 @@ function toggleSelectDropdown(medication: Medication) {
   }
   showTimeModal.value = true
 }
+
 function handleSave() {
   if (!selectedMedicationForTime.value) {
     showTimeModal.value = false
@@ -878,51 +884,96 @@ function handleSave() {
       return
     }
   }
-  selectedMedicationForTime.value.frequency = selectedFrequency.value
-  selectedMedicationForTime.value.dosage = selectedDosage.value
 
-  if (selectedMedicationForTime.value.prn) {
-    selectedMedicationForTime.value.dates = {}
-    selectedMedicationForTime.value.administrationTimes = 'As needed'
+  // Update the medication's canonical times
+  const med = selectedMedicationForTime.value
+  med.frequency = selectedFrequency.value
+  med.dosage = selectedDosage.value
+
+  if (med.prn) {
+    med.administrationTimes = 'As needed'
+    med.dates = {}
   } else {
-    if (!selectedMedicationForTime.value.dates) {
-      selectedMedicationForTime.value.dates = {}
-    }
-    const dosageNum = parseInt(selectedDosage.value, 10) || 1
+    // Store the user's chosen times as the "canonical times" for all future & today's date
     const newTimeArray = timeInputs.value.filter(t => t).map(t => ({
       time: t,
       status: 'pending',
-      dosage: dosageNum
+      dosage: parseInt(selectedDosage.value, 10) || 1
     }))
-    selectedMedicationForTime.value.administrationTimes = timeInputs.value.join(', ')
-    // We do not populate only the current day; we fill *all* date columns
-    allColumns.value.forEach(dateObj => {
-      const dateStr = formatDateToYYYYMMDD(dateObj)
-      selectedMedicationForTime.value.dates![dateStr] = newTimeArray.map(x => ({ ...x }))
-    })
+    med.administrationTimes = timeInputs.value.join(', ')
+
+    // If no startDate, set it to "today" if desired
+    if (!med.startDate) {
+      med.startDate = new Date()
+    }
+
+    // Remove old times (not locked/discontinued) from "today or later"
+    const todayMidnight = normalizeToMidnight(new Date())
+    if (med.dates) {
+      for (const dStr of Object.keys(med.dates)) {
+        const d = new Date(dStr)
+        // <= This is the fix => we also remove today's times.
+        if (normalizeToMidnight(d).getTime() >= todayMidnight.getTime()) {
+          // Keep locked/discontinued
+          med.dates[dStr] = med.dates[dStr].filter(slot =>
+            slot.locked === true || slot.status === 'discontinue'
+          )
+        }
+      }
+    }
+
+    // Now re-populate from "today" onward for up to FUTURE_DAYS_TO_POPULATE
+    for (let i = 0; i < FUTURE_DAYS_TO_POPULATE; i++) {
+      const futureDate = new Date(todayMidnight)
+      futureDate.setDate(futureDate.getDate() + i)
+      if (med.discontinuedDate && normalizeToMidnight(futureDate).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
+        break
+      }
+      const ds = formatDateToYYYYMMDD(futureDate)
+      if (!med.dates) {
+        med.dates = {}
+      }
+      if (!med.dates[ds]) {
+        med.dates[ds] = []
+      }
+      newTimeArray.forEach(t => {
+        const existing = med.dates[ds].find(
+          slot => slot.time === t.time && (slot.locked || slot.status === 'discontinue')
+        )
+        if (!existing) {
+          const idx = med.dates[ds].findIndex(slot => slot.time === t.time)
+          if (idx === -1) {
+            med.dates[ds].push({ ...t })
+          } else {
+            // Overwrite if not locked
+            if (!med.dates[ds][idx].locked && med.dates[ds][idx].status !== 'discontinue') {
+              med.dates[ds][idx] = { ...t }
+            }
+          }
+        }
+      })
+    }
   }
+
   showTimeModal.value = false
   selectedMedicationForTime.value = null
   timeInputs.value = []
 }
+
 function handleCancel() {
   showTimeModal.value = false
   selectedMedicationForTime.value = null
   timeInputs.value = []
 }
 
-/* ----------------------------------------------------------
-   INITIALIZE
----------------------------------------------------------- */
+// ---------- ON MOUNT ----------
 onMounted(() => {
   loadMedications()
   initializeDateRangePicker()
   populateMedicationTable()
 })
 
-/* ----------------------------------------------------------
-   DATE RANGE
----------------------------------------------------------- */
+// ---------- DATE RANGE PICKER ----------
 function initializeDateRangePicker() {
   const dateRangePicker = document.getElementById('date-range-picker')
   if (dateRangePicker) {
@@ -952,28 +1003,26 @@ function updateDateRange(startDate: Date, endDate: Date) {
   populateMedicationTable()
 }
 
-/* ----------------------------------------------------------
-   POPULATE & STATUS
----------------------------------------------------------- */
+// ---------- POPULATE & STATUS ----------
 function populateMedicationTable() {
-  // For each medication, ensure we have date entries for every date in dateList
-  // if not PRN
   medications.value.forEach(med => {
     if (med.prn) return
-    if (!med.administrationTimes) return
+    if (!med.administrationTimes || med.administrationTimes === 'As needed') return
+
     if (!med.dates) {
       med.dates = {}
     }
 
-    const splitted = med.administrationTimes.split(',').map(t => t.trim())
-    const dosageNum = parseInt(med.dosage || '1', 10)
-
-    // For each date in range, if there's no entry, create it as "pending"
     dateList.value.forEach(d => {
       const dStr = formatDateToYYYYMMDD(d)
-      if (!med.dates[dStr]) {
-        med.dates[dStr] = splitted.map(time => ({
-          time,
+      if (med.discontinuedDate && normalizeToMidnight(d).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
+        return
+      }
+      if (!med.dates![dStr]) {
+        const splitted = med.administrationTimes.split(',').map(t => t.trim())
+        const dosageNum = parseInt(med.dosage || '1', 10)
+        med.dates![dStr] = splitted.map(t => ({
+          time: t,
           status: 'pending',
           dosage: dosageNum
         }))
@@ -981,7 +1030,6 @@ function populateMedicationTable() {
     })
   })
 
-  // (Optional) medicationStatus is used for tracking, left as-is
   dateList.value.forEach(date => {
     const dateStr = formatDateToYYYYMMDD(date)
     if (!medicationStatus.value[dateStr]) {
@@ -1014,7 +1062,7 @@ function handleStatusChange(event: Event, medIndex: number) {
   emit('statusChange', medications.value[medIndex], status)
 }
 
-/* Gather times for selectedMedicationForHold */
+// ---------- HOLD SUBMIT (Partial/Full Discontinue) ----------
 const holdTimes = computed(() => {
   if (!selectedMedicationForHold.value) return []
   const timesSet = new Set<string>()
@@ -1037,33 +1085,42 @@ function handleHoldSubmit(data: {
 }) {
   if (!selectedMedicationForHold.value) return
   const medication = selectedMedicationForHold.value
-  const dateStr = formatDateToYYYYMMDD(data.dateRange[0])
-  if (data.holdType === 'all') {
-    if (medication.dates && medication.dates[dateStr]) {
-      medication.dates[dateStr].forEach((timeObj: any) => {
-        if (data.statusOption === 'discontinue' || data.statusOption === 'change') {
-          timeObj.status = 'discontinue'
-        } else if (data.statusOption === 'new') {
-          timeObj.status = 'new'
-        } else {
-          timeObj.status = 'hold'
-        }
-      })
-    }
-  } else if (data.holdType === 'specific' && data.times && medication.dates && medication.dates[dateStr]) {
-    data.times.forEach(tStr => {
-      const timeObj = medication.dates[dateStr].find((obj: any) => obj.time === tStr)
-      if (timeObj) {
-        if (data.statusOption === 'discontinue' || data.statusOption === 'change') {
-          timeObj.status = 'discontinue'
-        } else if (data.statusOption === 'new') {
-          timeObj.status = 'new'
-        } else {
-          timeObj.status = 'hold'
-        }
+  const discDate = normalizeToMidnight(data.dateRange[0])
+
+  if (data.statusOption === 'discontinue') {
+    if (data.holdType === 'all') {
+      medication.discontinuedDate = discDate
+      const dateStr = formatDateToYYYYMMDD(discDate)
+      if (!medication.dates) medication.dates = {}
+      if (medication.dates[dateStr]) {
+        medication.dates[dateStr].forEach((slot: any) => {
+          slot.status = 'discontinue'
+          slot.locked = true
+        })
       }
-    })
+    } else if (data.holdType === 'specific' && data.times) {
+      if (!medication.discontinuedTimes) {
+        medication.discontinuedTimes = {}
+      }
+      const dateStr = formatDateToYYYYMMDD(discDate)
+      if (!medication.discontinuedTimes[dateStr]) {
+        medication.discontinuedTimes[dateStr] = []
+      }
+      if (medication.dates && medication.dates[dateStr]) {
+        data.times.forEach(t => {
+          const found = medication.dates[dateStr].find((obj: any) => obj.time === t)
+          if (found) {
+            found.status = 'discontinue'
+            found.locked = true
+          }
+          if (!medication.discontinuedTimes[dateStr].includes(t)) {
+            medication.discontinuedTimes[dateStr].push(t)
+          }
+        })
+      }
+    }
   }
+
   medication.holdInfo = {
     dateRange: data.dateRange,
     times: data.times,
@@ -1074,47 +1131,53 @@ function handleHoldSubmit(data: {
   selectedMedicationForHold.value = null
 }
 
-/* ----------------------------------------------------------
-   CLOSE ERROR MODAL
----------------------------------------------------------- */
+// ---------- CLOSE ERROR MODAL ----------
 function closeErrorModal() {
   showErrorModal.value = false
 }
 
-/* ----------------------------------------------------------
-   TABS CHANGE
----------------------------------------------------------- */
+// ---------- TABS CHANGE ----------
 function handleTabsChange(medication: Medication, newValue: number) {
   medication.tabsAvailable = newValue
   emit('tabsChange', medication, newValue)
 }
 
-/* ----------------------------------------------------------
-   ROW STYLING
----------------------------------------------------------- */
+// ---------- ROW STYLING ----------
 function getRowStatusClass(_medication: Medication) {
-  // If you want row-based coloring, define logic here. 
-  // We’ll just return 'active-row' for demonstration:
   return 'active-row'
 }
 
-/* ----------------------------------------------------------
-   TIME SLOTS
----------------------------------------------------------- */
+// ---------- GET TIMES FOR DATE (Honor partial discs) ----------
 function getTimesForDate(med: Medication, dateObj: Date) {
   const dateStr = formatDateToYYYYMMDD(dateObj)
   if (!med.dates || !med.dates[dateStr]) {
     return []
   }
-  return med.dates[dateStr]
+  let slots = [...med.dates[dateStr]]
+
+  if (med.discontinuedDate) {
+    const discDay = normalizeToMidnight(med.discontinuedDate)
+    const thisDay = normalizeToMidnight(dateObj)
+    if (thisDay.getTime() > discDay.getTime()) {
+      return []
+    }
+  }
+  if (med.discontinuedTimes) {
+    for (const discDateStr of Object.keys(med.discontinuedTimes)) {
+      const discDayParsed = normalizeToMidnight(new Date(discDateStr))
+      const thisDay = normalizeToMidnight(dateObj)
+      if (thisDay.getTime() > discDayParsed.getTime()) {
+        const timesToRemove = med.discontinuedTimes[discDateStr]
+        slots = slots.filter(s => !timesToRemove.includes(s.time))
+      }
+    }
+  }
+  return slots
 }
 
-/* ----------------------------------------------------------
-   ACTION POPUP
----------------------------------------------------------- */
+// ---------- ACTION POPUP ----------
 function openActionPopup(dateObj: Date, timeObj: any, medication: Medication) {
   if (timeObj.locked) return
-
   const now = new Date()
   const isToday =
     dateObj.getFullYear() === now.getFullYear() &&
@@ -1137,15 +1200,12 @@ function openActionPopup(dateObj: Date, timeObj: any, medication: Medication) {
     hours,
     mins
   )
-  const currentTime = new Date()
-  const diffMinutes = (currentTime.getTime() - scheduledDateTime.getTime()) / 60000
+  const diffMinutes = (now.getTime() - scheduledDateTime.getTime()) / 60000
 
-  // Within 1 hour => directly open the action popup
   if (diffMinutes >= -60 && diffMinutes <= 60) {
     selectedDateAndTime.value = { dateObj, timeObj, medication }
     showTimeActionPopup.value = true
   } else {
-    // Early or late => show confirmation
     pendingDateAndTime.value = { dateObj, timeObj, medication }
     if (diffMinutes < -60) {
       isEarly.value = true
@@ -1160,16 +1220,10 @@ function openActionPopup(dateObj: Date, timeObj: any, medication: Medication) {
 function closeTimeActionPopup() {
   showTimeActionPopup.value = false
 }
-
-/* ----------------------------------------------------------
-   HANDLE TIME ACTION SELECTED
----------------------------------------------------------- */
 function handleTimeActionSelected({ action }: { action: string }) {
   if (selectedDateAndTime.value) {
     const { dateObj, timeObj, medication } = selectedDateAndTime.value
     timeObj.temporaryStatus = action
-
-    // If "taken" or "refused," add to pending
     if (action === 'taken' || action === 'refused') {
       const existingIndex = pendingTransactions.value.findIndex(
         item => item.timeObj === timeObj && item.medication === medication
@@ -1177,8 +1231,7 @@ function handleTimeActionSelected({ action }: { action: string }) {
       if (existingIndex === -1) {
         pendingTransactions.value.push({ medication, timeObj, dateObj })
       }
-    } 
-    // If "later," remove from pending if it was there
+    }
     if (action === 'later') {
       const existingIndex = pendingTransactions.value.findIndex(
         item => item.timeObj === timeObj && item.medication === medication
@@ -1191,9 +1244,7 @@ function handleTimeActionSelected({ action }: { action: string }) {
   showTimeActionPopup.value = false
 }
 
-/* ----------------------------------------------------------
-   EARLY/LATE CONFIRMATION
----------------------------------------------------------- */
+// ---------- EARLY / LATE CONFIRMATION ----------
 function confirmTimeAction() {
   showTimeConfirmationPopup.value = false
   if (!isEarly.value && pendingDateAndTime.value) {
@@ -1209,7 +1260,6 @@ function confirmEarlyWithReason() {
   if (pendingDateAndTime.value && earlyReason.value.trim() !== "") {
     selectedDateAndTime.value = pendingDateAndTime.value
     if (selectedDateAndTime.value.timeObj.med?.prn) {
-      // If PRN, handle differently
       const med = selectedDateAndTime.value.timeObj.med
       const now = new Date()
       const todayStr = formatDateToYYYYMMDD(now)
@@ -1228,11 +1278,8 @@ function confirmEarlyWithReason() {
       med.times.push(newTimeObj)
       openPrnSignOffPopup(med, newTimeObj)
     } else {
-      // Normal
       selectedDateAndTime.value.timeObj.earlyReason = earlyReason.value.trim()
       selectedDateAndTime.value.timeObj.temporaryStatus = "taken"
-
-      // Add to pending
       const { timeObj, medication, dateObj } = selectedDateAndTime.value
       const existingIndex = pendingTransactions.value.findIndex(
         item => item.timeObj === timeObj && item.medication === medication
@@ -1254,9 +1301,7 @@ function cancelTimeActionConfirmation() {
   earlyReason.value = ""
 }
 
-/* ----------------------------------------------------------
-   NEW MED
----------------------------------------------------------- */
+// ---------- NEW MED ----------
 function handleNewMedication(medication: Partial<Medication>) {
   const newMedication: Medication = {
     name: medication.medicationDetails || '',
@@ -1282,7 +1327,10 @@ function handleNewMedication(medication: Partial<Medication>) {
     refills: medication.refills || 0,
     refillReminderDate: medication.refillReminderDate,
     expirationDate: medication.expirationDate || '',
-    instructions: medication.instructions || ''
+    instructions: medication.instructions || '',
+    status: 'active',
+    discontinuedDate: undefined,
+    discontinuedTimes: {}
   }
   medications.value.push(newMedication)
   showAddForm.value = false
@@ -1301,47 +1349,32 @@ function handleMedicationUpdate(updatedMedication: Medication) {
   }
 }
 
-/* ----------------------------------------------------------
-   SIGN OFF PENDING
----------------------------------------------------------- */
+// ---------- SIGN OFF PENDING ----------
 function finalSignOff() {
-  // We confirm each item in pendingTransactions
   const now = new Date()
   const nurseSignature = prompt("Please enter your signature/initials:")
-
-  if (!nurseSignature) {
-    return
-  }
-  // Lock each item, update status, subtract tabs if "taken"
+  if (!nurseSignature) return
   pendingTransactions.value.forEach(item => {
     const { medication, timeObj } = item
     const pendingAction = timeObj.temporaryStatus
     if (!pendingAction) return
     timeObj.locked = true
     timeObj.status = pendingAction
-    timeObj.signedOff = {
-      nurse: nurseSignature,
-      date: now
-    }
+    timeObj.signedOff = { nurse: nurseSignature, date: now }
     if (pendingAction === 'taken') {
       const dose = (typeof timeObj.dosage === 'number')
         ? timeObj.dosage
         : parseInt(medication.dosage || '1', 10)
       medication.tabsAvailable = Math.max(0, medication.tabsAvailable - dose)
       const formatted = formatTime12Hour(now)
-      // We preserve the "taken at ..." so you can see it,
-      // but for sorting we now strip it out with extractBaseTime.
       timeObj.time = timeObj.time + " (taken at " + formatted + ")"
     }
   })
-  // Clear pending
   pendingTransactions.value = []
   showSignOffPopup.value = false
 }
 
-/* ----------------------------------------------------------
-   PRN SIGN-OFF
----------------------------------------------------------- */
+// ---------- PRN SIGN-OFF ----------
 function openPrnSignOffPopup(med: Medication, timeObj: any) {
   if (timeObj.dosage == null || timeObj.dosage === '') {
     timeObj.dosage = med.dosage || '1'
@@ -1371,17 +1404,15 @@ function handlePrnSignOff() {
   }
   prnSignOffTimeObj.value.locked = true
   prnSignOffTimeObj.value.status = 'taken'
-  // Subtract tabs from medication
   const dose = (typeof prnSignOffTimeObj.value.dosage === 'number')
     ? prnSignOffTimeObj.value.dosage
     : parseInt(prnSignOffMedication.value.dosage || '1', 10)
-  prnSignOffMedication.value.tabsAvailable = Math.max(0, prnSignOffMedication.value.tabsAvailable - dose)
+  prnSignOffMedication.value.tabsAvailable =
+    Math.max(0, prnSignOffMedication.value.tabsAvailable - dose)
   closePrnSignOffPopup()
 }
 
-/* ----------------------------------------------------------
-   STAMP PRN TIME => open PRN Sign-Off
----------------------------------------------------------- */
+// ---------- STAMP PRN TIME ----------
 function stampPRNTime(med: Medication) {
   const limit = getTimesCountFromFrequency(med.frequency || '')
   if (!med.times) {
@@ -1393,7 +1424,6 @@ function stampPRNTime(med: Medication) {
     alert(`You can only add up to ${limit} PRN timestamp(s) per day.`)
     return
   }
-  // If frequency = 2 times daily, check 11 hours gap, etc. => example only
   if (med.frequency === '2 times daily' && med.times.length > 0) {
     const lastDose = med.times[med.times.length - 1]
     const lastDoseDateTime = new Date(lastDose.date + ' ' + lastDose.time)
@@ -1407,7 +1437,6 @@ function stampPRNTime(med: Medication) {
       return
     }
   }
-  // Normal PRN action
   const now = new Date()
   const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   const newTimeObj = {
@@ -1421,9 +1450,7 @@ function stampPRNTime(med: Medication) {
   openPrnSignOffPopup(med, newTimeObj)
 }
 
-/* ----------------------------------------------------------
-   TOOLTIP SUPPORT
----------------------------------------------------------- */
+// ---------- TOOLTIP SUPPORT ----------
 function getTooltipText(timeObj: any) {
   if (!timeObj.signedOff) {
     return ''
@@ -1431,7 +1458,9 @@ function getTooltipText(timeObj: any) {
   const nurseStr = timeObj.signedOff.nurse || 'Unknown Nurse'
   const reasonStr = timeObj.reason || '(none)'
   const doseStr = timeObj.dosage || '(not specified)'
-  const signoffTime = timeObj.signedOff.date ? new Date(timeObj.signedOff.date).toLocaleString() : ''
+  const signoffTime = timeObj.signedOff.date
+    ? new Date(timeObj.signedOff.date).toLocaleString()
+    : ''
   return `Nurse: ${nurseStr}\nReason: ${reasonStr}\nDosage: ${doseStr}\nSigned Off: ${signoffTime}`
 }
 function showTooltip(_timeObj: any) {}
@@ -1439,6 +1468,8 @@ function hideTooltip() {}
 </script>
 
 <style scoped>
+/* EXACT same styling from your code, plus a few lines for sticky header and first column. */
+
 /* Status Filter & Buttons */
 .status-filter {
   margin-bottom: 1.5rem;
@@ -1474,7 +1505,7 @@ function hideTooltip() {}
 .table-container {
   margin: 20px auto;
   width: 90%;
-  overflow-x: auto;
+  overflow-x: auto; /* needed for horizontal scroll */
 }
 .date-range-selector {
   display: flex;
@@ -1527,6 +1558,24 @@ function hideTooltip() {}
   background-color: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+
+/* STICKY HEADERS: make thead sticky at the top */
+.schedule-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 2;
+}
+
+/* STICKY FIRST COLUMN: “Medication Details” column */
+.schedule-table th:first-child,
+.schedule-table td:first-child {
+  position: sticky;
+  left: 0;
+  background-color: #ffffff; /* match table background */
+  z-index: 3;
+}
+
 .schedule-table th,
 .schedule-table td {
   border: 1px solid #ddd;
@@ -1620,7 +1669,6 @@ function hideTooltip() {}
 .time-entry:hover {
   background-color: #fafafa;
 }
-/* Show discontinued times in red/pink */
 .time-entry.discontinue {
   background-color: #f8d7da !important;
 }
