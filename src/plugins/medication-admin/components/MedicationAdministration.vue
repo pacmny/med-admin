@@ -84,8 +84,10 @@
 
       <!-- Grouped Medications -->
       <template v-for="(medsInGroup, category) in groupedMedications" :key="category">
-        <div v-if="medsInGroup.length > 0" class="category-section">
+        <div v-if="medsInGroup.length > 0">
+          <!-- Sticky category header -->
           <h3 class="category-header">{{ category }}</h3>
+          <div class="category-section">
           <table class="schedule-table">
             <thead>
               <tr>
@@ -280,7 +282,7 @@
                 </td>
               </tr>
             </tbody>
-          </table>
+          </table></div>
         </div>
       </template>
     </div>
@@ -512,8 +514,6 @@ import ExpandableDetails from './ExpandableDetails.vue'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
 
-// We keep the same approach as before, but we now ensure that
-// "today" is included when we remove old times in handleSave().
 const FUTURE_DAYS_TO_POPULATE = 365
 
 export interface Medication {
@@ -632,7 +632,6 @@ const frequencyOptions = [
   'tuesday, thursday, saturday'
 ]
 
-// ---------- HELPER FUNCTIONS -----------
 function extractBaseTime(rawTime: string): string {
   return rawTime.split('(')[0].trim()
 }
@@ -885,7 +884,6 @@ function handleSave() {
     }
   }
 
-  // Update the medication's canonical times
   const med = selectedMedicationForTime.value
   med.frequency = selectedFrequency.value
   med.dosage = selectedDosage.value
@@ -894,7 +892,6 @@ function handleSave() {
     med.administrationTimes = 'As needed'
     med.dates = {}
   } else {
-    // Store the user's chosen times as the "canonical times" for all future & today's date
     const newTimeArray = timeInputs.value.filter(t => t).map(t => ({
       time: t,
       status: 'pending',
@@ -902,19 +899,15 @@ function handleSave() {
     }))
     med.administrationTimes = timeInputs.value.join(', ')
 
-    // If no startDate, set it to "today" if desired
     if (!med.startDate) {
       med.startDate = new Date()
     }
 
-    // Remove old times (not locked/discontinued) from "today or later"
     const todayMidnight = normalizeToMidnight(new Date())
     if (med.dates) {
       for (const dStr of Object.keys(med.dates)) {
         const d = new Date(dStr)
-        // <= This is the fix => we also remove today's times.
         if (normalizeToMidnight(d).getTime() >= todayMidnight.getTime()) {
-          // Keep locked/discontinued
           med.dates[dStr] = med.dates[dStr].filter(slot =>
             slot.locked === true || slot.status === 'discontinue'
           )
@@ -922,7 +915,6 @@ function handleSave() {
       }
     }
 
-    // Now re-populate from "today" onward for up to FUTURE_DAYS_TO_POPULATE
     for (let i = 0; i < FUTURE_DAYS_TO_POPULATE; i++) {
       const futureDate = new Date(todayMidnight)
       futureDate.setDate(futureDate.getDate() + i)
@@ -945,7 +937,6 @@ function handleSave() {
           if (idx === -1) {
             med.dates[ds].push({ ...t })
           } else {
-            // Overwrite if not locked
             if (!med.dates[ds][idx].locked && med.dates[ds][idx].status !== 'discontinue') {
               med.dates[ds][idx] = { ...t }
             }
@@ -1062,7 +1053,7 @@ function handleStatusChange(event: Event, medIndex: number) {
   emit('statusChange', medications.value[medIndex], status)
 }
 
-// ---------- HOLD SUBMIT (Partial/Full Discontinue) ----------
+// ---------- HOLD SUBMIT ----------
 const holdTimes = computed(() => {
   if (!selectedMedicationForHold.value) return []
   const timesSet = new Set<string>()
@@ -1147,7 +1138,7 @@ function getRowStatusClass(_medication: Medication) {
   return 'active-row'
 }
 
-// ---------- GET TIMES FOR DATE (Honor partial discs) ----------
+// ---------- GET TIMES FOR DATE ----------
 function getTimesForDate(med: Medication, dateObj: Date) {
   const dateStr = formatDateToYYYYMMDD(dateObj)
   if (!med.dates || !med.dates[dateStr]) {
@@ -1450,7 +1441,7 @@ function stampPRNTime(med: Medication) {
   openPrnSignOffPopup(med, newTimeObj)
 }
 
-// ---------- TOOLTIP SUPPORT ----------
+// ---------- TOOLTIP ----------
 function getTooltipText(timeObj: any) {
   if (!timeObj.signedOff) {
     return ''
@@ -1468,7 +1459,11 @@ function hideTooltip() {}
 </script>
 
 <style scoped>
-/* EXACT same styling from your code, plus a few lines for sticky header and first column. */
+/* ------------------- */
+/* Your existing styles */
+/* plus sticky columns  */
+/* plus sticky category */
+/* ------------------- */
 
 /* Status Filter & Buttons */
 .status-filter {
@@ -1505,7 +1500,7 @@ function hideTooltip() {}
 .table-container {
   margin: 20px auto;
   width: 90%;
-  overflow-x: auto; /* needed for horizontal scroll */
+  overflow-x: auto; /* horizontal scroll if needed */
 }
 .date-range-selector {
   display: flex;
@@ -1551,6 +1546,25 @@ function hideTooltip() {}
   border-color: #0c8687;
 }
 
+/* Category Section + Sticky Category Header */
+.category-section {overflow-x: scroll ;
+  margin-bottom: 2rem;
+}
+.category-header {
+  background-color: #0c8687;
+  color: white;
+  padding: 0.75rem 1rem;
+  margin: 0;
+  font-size: 1.2rem;
+  border-radius: 4px 4px 0 0;
+  /* Make it sticky */
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  /* Ensures it spans the table width if desired */
+  display: block;
+}
+
 /* Schedule Table */
 .schedule-table {
   width: 100%;
@@ -1559,7 +1573,7 @@ function hideTooltip() {}
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
-/* STICKY HEADERS: make thead sticky at the top */
+/* Sticky table header row */
 .schedule-table thead th {
   position: sticky;
   top: 0;
@@ -1567,14 +1581,59 @@ function hideTooltip() {}
   z-index: 2;
 }
 
-/* STICKY FIRST COLUMN: “Medication Details” column */
+/* 
+   STICKY COLUMNS 
+   (First 6 columns remain frozen as you scroll horizontally)
+*/
 .schedule-table th:first-child,
 .schedule-table td:first-child {
   position: sticky;
   left: 0;
-  background-color: #ffffff; /* match table background */
+  background-color: #ffffff;
   z-index: 3;
+  min-width: 220px; 
 }
+.schedule-table th:nth-child(2),
+.schedule-table td:nth-child(2) {
+  position: sticky;
+  left: 220px;
+  background-color: #ffffff;
+  z-index: 3;
+  min-width: 120px; 
+}
+.schedule-table th:nth-child(3),
+.schedule-table td:nth-child(3) {
+  position: sticky;
+  left: 340px; /* 220 + 120 */
+  background-color: #ffffff;
+  z-index: 3;
+  min-width: 140px; 
+}
+.schedule-table th:nth-child(4),
+.schedule-table td:nth-child(4) {
+  position: sticky;
+  left: 480px; /* 340 + 140 */
+  background-color: #ffffff;
+  z-index: 3;
+  min-width: 100px;
+}
+.schedule-table th:nth-child(5),
+.schedule-table td:nth-child(5) {
+  position: sticky;
+  left: 580px; /* 480 + 100 */
+  background-color: #ffffff;
+  z-index: 3;
+  min-width: 100px;
+}
+.schedule-table th:nth-child(6),
+.schedule-table td:nth-child(6) {
+  position: sticky;
+  left: 680px; /* 580 + 100 */
+  background-color: #ffffff;
+  z-index: 3;
+  min-width: 200px;
+}
+/* (Columns 7+ scroll normally.) */
 
 .schedule-table th,
 .schedule-table td {
@@ -1617,21 +1676,9 @@ function hideTooltip() {}
   background-color: #f8f9fa;
 }
 
-/* Category Section */
-.category-section {
-  margin-bottom: 2rem;
-}
-.category-header {
-  background-color: #0c8687;
-  color: white;
-  padding: 0.75rem 1rem;
-  margin: 0;
-  font-size: 1.2rem;
-  border-radius: 4px 4px 0 0;
-}
-.schedule-table {
-  margin-top: 0;
-  border-radius: 0 0 4px 4px;
+/* Table "Active Row" styling */
+.medication-row.active-row {
+  background-color: #d4edda;
 }
 
 /* PRN indicator */
@@ -1658,7 +1705,7 @@ function hideTooltip() {}
   gap: 4px;
 }
 
-/* time-entry styles */
+/* Time-entry styles */
 .time-entry {
   cursor: pointer;
   margin: 4px 0;
@@ -1671,11 +1718,6 @@ function hideTooltip() {}
 }
 .time-entry.discontinue {
   background-color: #f8d7da !important;
-}
-
-/* medication-row styling */
-.medication-row.active-row {
-  background-color: #d4edda;
 }
 
 /* Icons for immediate statuses */
