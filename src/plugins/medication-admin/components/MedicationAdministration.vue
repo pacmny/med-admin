@@ -84,8 +84,9 @@
 
       <!-- Grouped Medications -->
       <template v-for="(medsInGroup, category) in groupedMedications" :key="category">
-        <div v-if="medsInGroup.length > 0" class="category-section">
+        <div v-if="medsInGroup.length > 0">
           <h3 class="category-header">{{ category }}</h3>
+          <div class="category-section">
           <table class="schedule-table">
             <thead>
               <tr>
@@ -281,6 +282,7 @@
               </tr>
             </tbody>
           </table>
+          </div>
         </div>
       </template>
     </div>
@@ -1505,7 +1507,7 @@ function hideTooltip() {}
 .table-container {
   margin: 20px auto;
   width: 90%;
-  overflow-x: auto; /* needed for horizontal scroll */
+  /* overflow-x: auto; needed for horizontal scroll */
 }
 .date-range-selector {
   display: flex;
@@ -1620,6 +1622,7 @@ function hideTooltip() {}
 /* Category Section */
 .category-section {
   margin-bottom: 2rem;
+  overflow-x: scroll;
 }
 .category-header {
   background-color: #0c8687;
