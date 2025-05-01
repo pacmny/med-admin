@@ -36,7 +36,7 @@
         </button>
       </div>
 
-      <!-- Sorting Controls + Sign Off Button -->
+      <!-- Sorting Controls + Sign Off Button + Expand/Collapse -->
       <div class="sort-controls">
         <button
           class="sort-button"
@@ -73,6 +73,15 @@
         >
           Sort by PRN
         </button>
+
+        <!-- Expand/Collapse Columns -->
+        <button
+          class="sort-button"
+          @click="toggleCollapse"
+        >
+          {{ collapsed ? 'Expand' : 'Collapse' }}
+        </button>
+
         <!-- Sign Off Button -->
         <button
           class="sort-button sign-off-button"
@@ -88,201 +97,203 @@
           <!-- Sticky category header -->
           <h3 class="category-header">{{ category }}</h3>
           <div class="category-section">
-          <table class="schedule-table">
-            <thead>
-              <tr>
-                <th>Medication Details</th>
-                <th>Status</th>
-                <th>Tabs Available</th>
-                <th>Frequency</th>
-                <th>Dosage</th>
-                <th>Select Time and Dosage</th>
-                <!-- Date Columns -->
-                <th
-                  v-for="dateObj in allColumns"
-                  :key="dateObj.getTime()"
+            <table class="schedule-table">
+              <thead>
+                <tr>
+                  <th>Medication Details</th>
+                  <!-- Hide these columns if collapsed -->
+                  <th v-if="!collapsed">Status</th>
+                  <th v-if="!collapsed">Tabs Available</th>
+                  <th v-if="!collapsed">Frequency</th>
+                  <th v-if="!collapsed">Dosage</th>
+                  <th v-if="!collapsed">Select Time and Dosage</th>
+                  <!-- Date Columns -->
+                  <th
+                    v-for="dateObj in allColumns"
+                    :key="dateObj.getTime()"
+                  >
+                    Administration Times ({{ formatDate(dateObj) }})
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="(med, medIndex) in medsInGroup"
+                  :key="medIndex"
+                  class="medication-row"
+                  :class="getRowStatusClass(med)"
+                  :data-med-index="medIndex"
                 >
-                  Administration Times ({{ formatDate(dateObj) }})
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="(med, medIndex) in medsInGroup"
-                :key="medIndex"
-                class="medication-row"
-                :class="getRowStatusClass(med)"
-                :data-med-index="medIndex"
-              >
-                <!-- Medication Info -->
-                <td>
-                  <ExpandableDetails
-                    :medication="med"
-                    @update="handleMedicationUpdate"
-                  >
-                    <template #preview>
-                      {{ med.name }}
-                    </template>
-                  </ExpandableDetails>
-                </td>
-
-                <!-- Status Dropdown -->
-                <td>
-                  <select
-                    class="status-dropdown"
-                    @change="(e) => handleStatusChange(e, medIndex)"
-                  >
-                    <option
-                      v-for="option in statusOptions"
-                      :key="option.value"
-                      :value="option.value"
-                      :style="{ backgroundColor: option.color }"
-                      :selected="med.status === option.value"
+                  <!-- Medication Info -->
+                  <td>
+                    <ExpandableDetails
+                      :medication="med"
+                      @update="handleMedicationUpdate"
                     >
-                      {{ option.label }}
-                    </option>
-                  </select>
-                </td>
+                      <template #preview>
+                        {{ med.name }}
+                      </template>
+                    </ExpandableDetails>
+                  </td>
 
-                <!-- Tabs Available -->
-                <td class="tabs-available">
-                  <div class="tabs-counter">
-                    <input
-                      type="number"
-                      v-model="med.tabsAvailable"
-                      @change="handleTabsChange(med, $event.target.value)"
-                      class="tabs-input"
-                    />
-                  </div>
-                </td>
-
-                <!-- Frequency & Dosage -->
-                <td>{{ med.frequency || 'Not set' }}</td>
-                <td>{{ med.dosage || 'Not set' }}</td>
-
-                <!-- "Select Time and Dosage" Button -->
-                <td class="select-time-dosage">
-                  <button class="select-button" @click="toggleSelectDropdown(med)">
-                    Select
-                  </button>
-                </td>
-
-                <!-- Times by Date -->
-                <td
-                  v-for="dateObj in allColumns"
-                  :key="dateObj.getTime()"
-                >
-                  <div class="administration-times">
-                    <!-- PRN Meds -->
-                    <template v-if="med.prn">
-                      <div class="prn-indicator" @click="stampPRNTime(med)">
-                        As needed
-                      </div>
-                      <div
-                        v-if="med.times && med.times.length"
-                        class="prn-times-list"
+                  <!-- Status (hidden if collapsed) -->
+                  <td v-if="!collapsed">
+                    <select
+                      class="status-dropdown"
+                      @change="(e) => handleStatusChange(e, medIndex)"
+                    >
+                      <option
+                        v-for="option in statusOptions"
+                        :key="option.value"
+                        :value="option.value"
+                        :style="{ backgroundColor: option.color }"
+                        :selected="med.status === option.value"
                       >
-                        <div
-                          v-for="timeObj in med.times.filter(entry => entry.date === formatDateToYYYYMMDD(dateObj))"
-                          :key="timeObj.time + timeObj.status"
-                          class="time-entry"
-                          :class="[timeObj.status, { discontinued: timeObj.status === 'discontinue' }]"
-                          @mouseover="showTooltip(timeObj)"
-                          @mouseout="hideTooltip"
-                          :style="{
-                            backgroundColor:
-                              timeObj.locked && timeObj.status === 'taken'
-                                ? '#b3f0b3'
-                                : timeObj.locked && timeObj.status === 'refused'
-                                ? '#f9b3b3'
-                                : 'transparent'
-                          }"
-                        >
-                          {{ timeObj.time }}
-                          <span v-if="timeObj.earlyReason">
-                            ({{ timeObj.earlyReason }})
-                          </span>
-                          <!-- Tooltip Icon -->
-                          <span
-                            v-if="getTooltipText(timeObj)"
-                            class="tooltip-icon"
-                            :title="getTooltipText(timeObj)"
-                          >
-                            ℹ️
-                          </span>
+                        {{ option.label }}
+                      </option>
+                    </select>
+                  </td>
+
+                  <!-- Tabs Available (hidden if collapsed) -->
+                  <td v-if="!collapsed" class="tabs-available">
+                    <div class="tabs-counter">
+                      <input
+                        type="number"
+                        v-model="med.tabsAvailable"
+                        @change="handleTabsChange(med, $event.target.value)"
+                        class="tabs-input"
+                      />
+                    </div>
+                  </td>
+
+                  <!-- Frequency & Dosage (hidden if collapsed) -->
+                  <td v-if="!collapsed">{{ med.frequency || 'Not set' }}</td>
+                  <td v-if="!collapsed">{{ med.dosage || 'Not set' }}</td>
+
+                  <!-- "Select Time and Dosage" Button (hidden if collapsed) -->
+                  <td v-if="!collapsed" class="select-time-dosage">
+                    <button class="select-button" @click="toggleSelectDropdown(med)">
+                      Select
+                    </button>
+                  </td>
+
+                  <!-- Times by Date -->
+                  <td
+                    v-for="dateObj in allColumns"
+                    :key="dateObj.getTime()"
+                  >
+                    <div class="administration-times">
+                      <!-- PRN Meds -->
+                      <template v-if="med.prn">
+                        <div class="prn-indicator" @click="stampPRNTime(med)">
+                          As needed
                         </div>
-                      </div>
-                    </template>
-
-                    <!-- Scheduled Meds (non-PRN) -->
-                    <template v-else>
-                      <template v-for="timeObj in getTimesForDate(med, dateObj)">
-                        <!-- Only show if base time matches category if we're sorting by time -->
                         <div
-                          v-if="sortBy !== 'time' || extractBaseTime(timeObj.time) === category"
-                          :key="timeObj.time"
-                          class="time-entry"
-                          :class="[timeObj.status, timeObj.temporaryStatus, { discontinued: timeObj.status === 'discontinue' }]"
-                          @click="!timeObj.locked && openActionPopup(dateObj, timeObj, med)"
-                          :style="{
-                            backgroundColor:
-                              timeObj.locked && timeObj.status === 'taken'
-                                ? '#b3f0b3'
-                                : timeObj.locked && timeObj.status === 'refused'
-                                ? '#f9b3b3'
-                                : 'transparent'
-                          }"
+                          v-if="med.times && med.times.length"
+                          class="prn-times-list"
                         >
-                          {{ timeObj.time }}
-                          <span v-if="timeObj.earlyReason">
-                            ({{ timeObj.earlyReason }})
-                          </span>
-
-                          <!-- Immediate Icons -->
-                          <template v-if="timeObj.temporaryStatus === 'taken'">
-                            <span
-                              class="icon-immediate"
-                              style="color: #28a745; margin-left: 0.3rem;"
-                              title="Taken"
-                            >
-                              ✔
-                            </span>
-                          </template>
-                          <template v-else-if="timeObj.temporaryStatus === 'refused'">
-                            <span
-                              class="icon-immediate"
-                              style="color: #dc3545; margin-left: 0.3rem;"
-                              title="Refused"
-                            >
-                              ✘
-                            </span>
-                          </template>
-                          <template v-else-if="timeObj.temporaryStatus === 'later'">
-                            <span
-                              class="icon-immediate"
-                              style="color: #ffe600; margin-left: 0.3rem;"
-                              title="Take Later"
-                            >
-                              ⏳
-                            </span>
-                          </template>
-
-                          <!-- Tooltip if signed off -->
-                          <span
-                            v-if="getTooltipText(timeObj)"
-                            class="tooltip-icon"
-                            :title="getTooltipText(timeObj)"
+                          <div
+                            v-for="timeObj in med.times.filter(entry => entry.date === formatDateToYYYYMMDD(dateObj))"
+                            :key="timeObj.time + timeObj.status"
+                            class="time-entry"
+                            :class="[timeObj.status, { discontinued: timeObj.status === 'discontinue' }]"
+                            @mouseover="showTooltip(timeObj)"
+                            @mouseout="hideTooltip"
+                            :style="{
+                              backgroundColor:
+                                timeObj.locked && timeObj.status === 'taken'
+                                  ? '#b3f0b3'
+                                  : timeObj.locked && timeObj.status === 'refused'
+                                  ? '#f9b3b3'
+                                  : 'transparent'
+                            }"
                           >
-                            ℹ️
-                          </span>
+                            {{ timeObj.time }}
+                            <span v-if="timeObj.earlyReason">
+                              ({{ timeObj.earlyReason }})
+                            </span>
+                            <!-- Tooltip Icon -->
+                            <span
+                              v-if="getTooltipText(timeObj)"
+                              class="tooltip-icon"
+                              :title="getTooltipText(timeObj)"
+                            >
+                              ℹ️
+                            </span>
+                          </div>
                         </div>
                       </template>
-                    </template>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table></div>
+
+                      <!-- Scheduled Meds (non-PRN) -->
+                      <template v-else>
+                        <template v-for="timeObj in getTimesForDate(med, dateObj)">
+                          <!-- Only show if base time matches category if we're sorting by time -->
+                          <div
+                            v-if="sortBy !== 'time' || extractBaseTime(timeObj.time) === category"
+                            :key="timeObj.time"
+                            class="time-entry"
+                            :class="[timeObj.status, timeObj.temporaryStatus, { discontinued: timeObj.status === 'discontinue' }]"
+                            @click="!timeObj.locked && openActionPopup(dateObj, timeObj, med)"
+                            :style="{
+                              backgroundColor:
+                                timeObj.locked && timeObj.status === 'taken'
+                                  ? '#b3f0b3'
+                                  : timeObj.locked && timeObj.status === 'refused'
+                                  ? '#f9b3b3'
+                                  : 'transparent'
+                            }"
+                          >
+                            {{ timeObj.time }}
+                            <span v-if="timeObj.earlyReason">
+                              ({{ timeObj.earlyReason }})
+                            </span>
+
+                            <!-- Immediate Icons -->
+                            <template v-if="timeObj.temporaryStatus === 'taken'">
+                              <span
+                                class="icon-immediate"
+                                style="color: #28a745; margin-left: 0.3rem;"
+                                title="Taken"
+                              >
+                                ✔
+                              </span>
+                            </template>
+                            <template v-else-if="timeObj.temporaryStatus === 'refused'">
+                              <span
+                                class="icon-immediate"
+                                style="color: #dc3545; margin-left: 0.3rem;"
+                                title="Refused"
+                              >
+                                ✘
+                              </span>
+                            </template>
+                            <template v-else-if="timeObj.temporaryStatus === 'later'">
+                              <span
+                                class="icon-immediate"
+                                style="color: #ffe600; margin-left: 0.3rem;"
+                                title="Take Later"
+                              >
+                                ⏳
+                              </span>
+                            </template>
+
+                            <!-- Tooltip if signed off -->
+                            <span
+                              v-if="getTooltipText(timeObj)"
+                              class="tooltip-icon"
+                              :title="getTooltipText(timeObj)"
+                            >
+                              ℹ️
+                            </span>
+                          </div>
+                        </template>
+                      </template>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
       </template>
     </div>
@@ -563,6 +574,12 @@ const sortBy = ref<string>('')
 
 // Default pinned date
 const currentDate = ref(new Date())
+
+// Collapse/Expand columns toggle
+const collapsed = ref(true)
+function toggleCollapse() {
+  collapsed.value = !collapsed.value
+}
 
 // UI Toggles & Selected Data
 const showAddForm = ref(false)
@@ -1459,12 +1476,6 @@ function hideTooltip() {}
 </script>
 
 <style scoped>
-/* ------------------- */
-/* Your existing styles */
-/* plus sticky columns  */
-/* plus sticky category */
-/* ------------------- */
-
 /* Status Filter & Buttons */
 .status-filter {
   margin-bottom: 1.5rem;
@@ -1547,7 +1558,8 @@ function hideTooltip() {}
 }
 
 /* Category Section + Sticky Category Header */
-.category-section {overflow-x: scroll ;
+.category-section {
+  overflow-x: scroll;
   margin-bottom: 2rem;
 }
 .category-header {
@@ -1581,10 +1593,7 @@ function hideTooltip() {}
   z-index: 2;
 }
 
-/* 
-   STICKY COLUMNS 
-   (First 6 columns remain frozen as you scroll horizontally)
-*/
+/* STICKY COLUMNS */
 .schedule-table th:first-child,
 .schedule-table td:first-child {
   position: sticky;
