@@ -100,13 +100,13 @@
             <table class="schedule-table">
               <thead>
                 <tr>
-                  <th>Medication Details</th>
+                  <th class="sticky-header-1">Medication Details</th>
                   <!-- Hide these columns if collapsed -->
-                  <th v-if="!collapsed">Status</th>
-                  <th v-if="!collapsed">Tabs Available</th>
-                  <th v-if="!collapsed">Frequency</th>
-                  <th v-if="!collapsed">Dosage</th>
-                  <th v-if="!collapsed">Select Time and Dosage</th>
+                  <th v-if="!collapsed" class="sticky-header-2">Status</th>
+                  <th v-if="!collapsed" class="sticky-header-3">Tabs Available</th>
+                  <th v-if="!collapsed" class="sticky-header-4">Frequency</th>
+                  <th v-if="!collapsed" class="sticky-header-5">Dosage</th>
+                  <th v-if="!collapsed" class="sticky-header-6">Select Time and Dosage</th>
                   <!-- Date Columns -->
                   <th
                     v-for="dateObj in allColumns"
@@ -125,7 +125,7 @@
                   :data-med-index="medIndex"
                 >
                   <!-- Medication Info -->
-                  <td>
+                  <td class="sticky-column-1">
                     <ExpandableDetails
                       :medication="med"
                       @update="handleMedicationUpdate"
@@ -137,7 +137,7 @@
                   </td>
 
                   <!-- Status (hidden if collapsed) -->
-                  <td v-if="!collapsed">
+                  <td v-if="!collapsed" class="sticky-column-2">
                     <select
                       class="status-dropdown"
                       @change="(e) => handleStatusChange(e, medIndex)"
@@ -155,7 +155,7 @@
                   </td>
 
                   <!-- Tabs Available (hidden if collapsed) -->
-                  <td v-if="!collapsed" class="tabs-available">
+                  <td v-if="!collapsed" class="tabs-available sticky-column-3">
                     <div class="tabs-counter">
                       <input
                         type="number"
@@ -167,11 +167,11 @@
                   </td>
 
                   <!-- Frequency & Dosage (hidden if collapsed) -->
-                  <td v-if="!collapsed">{{ med.frequency || 'Not set' }}</td>
-                  <td v-if="!collapsed">{{ med.dosage || 'Not set' }}</td>
+                  <td v-if="!collapsed" class="sticky-column-4">{{ med.frequency || 'Not set' }}</td>
+                  <td v-if="!collapsed" class="sticky-column-5">{{ med.dosage || 'Not set' }}</td>
 
                   <!-- "Select Time and Dosage" Button (hidden if collapsed) -->
-                  <td v-if="!collapsed" class="select-time-dosage">
+                  <td v-if="!collapsed" class="select-time-dosage sticky-column-6">
                     <button class="select-button" @click="toggleSelectDropdown(med)">
                       Select
                     </button>
@@ -657,7 +657,6 @@ function normalizeToMidnight(d: Date): Date {
 }
 function formatDate(date: Date) {
   return date.toLocaleDateString('en-US', {
-    weekday: 'short',
     month: 'short',
     day: 'numeric',
     year: 'numeric'
@@ -1586,62 +1585,57 @@ function hideTooltip() {}
 }
 
 /* Sticky table header row */
-.schedule-table thead th {
+/* .schedule-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 2;
+} */
+.schedule-table .sticky-header-1,  .sticky-header-2, .sticky-header-3, .sticky-header-4, .sticky-header-5, .sticky-header-6{
   position: sticky;
   top: 0;
   background-color: #f8f9fa;
   z-index: 2;
 }
 
-/* STICKY COLUMNS */
-.schedule-table th:first-child,
-.schedule-table td:first-child {
+.schedule-table .sticky-column-1, .sticky-column-2, .sticky-column-3, .sticky-column-4, .sticky-column-5, .sticky-column-6 {
   position: sticky;
+  background-color: #ffffff;
+  z-index: 3;
+}
+
+.schedule-table .sticky-column-1, .sticky-header-1 {
   left: 0;
-  background-color: #ffffff;
-  z-index: 3;
-  min-width: 220px; 
+  min-width: 220px;
 }
-.schedule-table th:nth-child(2),
-.schedule-table td:nth-child(2) {
-  position: sticky;
+
+.schedule-table .sticky-column-2, .sticky-header-2 {
   left: 220px;
-  background-color: #ffffff;
-  z-index: 3;
-  min-width: 120px; 
+  min-width: 120px;
 }
-.schedule-table th:nth-child(3),
-.schedule-table td:nth-child(3) {
-  position: sticky;
-  left: 340px; /* 220 + 120 */
-  background-color: #ffffff;
-  z-index: 3;
-  min-width: 140px; 
+
+.schedule-table .sticky-column-3, .sticky-header-3 {
+  left: 340px;
+  min-width: 140px;
 }
-.schedule-table th:nth-child(4),
-.schedule-table td:nth-child(4) {
-  position: sticky;
-  left: 480px; /* 340 + 140 */
-  background-color: #ffffff;
-  z-index: 3;
+
+.schedule-table .sticky-column-4, .sticky-header-4 {
+  left: 480px;
   min-width: 100px;
 }
-.schedule-table th:nth-child(5),
-.schedule-table td:nth-child(5) {
-  position: sticky;
-  left: 580px; /* 480 + 100 */
-  background-color: #ffffff;
-  z-index: 3;
+
+.schedule-table .sticky-column-5, .sticky-header-5 {
+  left: 580px;
   min-width: 100px;
 }
-.schedule-table th:nth-child(6),
-.schedule-table td:nth-child(6) {
-  position: sticky;
-  left: 680px; /* 580 + 100 */
-  background-color: #ffffff;
-  z-index: 3;
+
+.schedule-table .sticky-column-6, .sticky-header-6 {
+  left: 680px;
   min-width: 200px;
 }
+
+/* STICKY COLUMNS */
+
 /* (Columns 7+ scroll normally.) */
 
 .schedule-table th,
@@ -1651,7 +1645,7 @@ function hideTooltip() {}
   text-align: center;
 }
 .tabs-available {
-  background-color: #d4edda;
+  /* background-color: #d4edda; */
   padding: 8px;
 }
 .tabs-counter {
@@ -1669,7 +1663,7 @@ function hideTooltip() {}
 
 /* Select Time and Dosage Button */
 .select-time-dosage {
-  background-color: #d4edda;
+  /* background-color: #d4edda; */
   padding: 8px;
 }
 .select-button {
