@@ -2,7 +2,10 @@
   <transition name="fade">
     <div v-if="show" class="modal-overlay">
       <div class="modal-content">
-        <h2 class="modal-title">Add New Medication</h2>
+        <!-- Dynamic heading based on edit vs. add -->
+        <h2 class="modal-title">
+          {{ isEditMode ? 'Edit Medication' : 'Add New Medication' }}
+        </h2>
 
         <!-- Tabs Row -->
         <div class="tabs">
@@ -328,7 +331,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, defineEmits } from 'vue'
+import { ref, computed, watch, defineProps, defineEmits } from 'vue'
 
 /** Define the structure of all form fields. */
 interface MedicationFormData {
@@ -370,23 +373,25 @@ interface MedicationFormData {
 
 /**
  * Props:
- *  show: controls visibility of the modal
+ *  - show: controls visibility of the modal.
+ *  - existingMedication: if provided, indicates we are editing.
  */
 const props = defineProps<{
   show: boolean;
+  existingMedication?: Partial<MedicationFormData> | null;
 }>()
 
 /**
  * Emits:
  *  close  -> for closing/canceling the modal
- *  save   -> sends the entire formData object
+ *  save   -> sends the entire formData object + isEdit info
  */
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'save', payload: MedicationFormData): void;
+  (e: 'save', payload: MedicationFormData & { isEdit: boolean }): void;
 }>()
 
-/** Reactive object storing all form fields. */
+/** The reactive form model. */
 const formData = ref<MedicationFormData>({
   medicationName: '',
   ndcNumber: '',
@@ -424,21 +429,76 @@ const formData = ref<MedicationFormData>({
   pharmacyEmail: ''
 })
 
-/** The four tabs: */
+/** Used to track our 4 different "tabs" of info. */
 const tabs = [
-  { value: 'medInfo',         label: 'Medication Information' },
-  { value: 'prescriptionInfo',label: 'Prescription Information'},
-  { value: 'providerInfo',    label: 'Provider Information'    },
-  { value: 'pharmacyInfo',    label: 'Pharmacy Information'    }
+  { value: 'medInfo',          label: 'Medication Information' },
+  { value: 'prescriptionInfo', label: 'Prescription Information'},
+  { value: 'providerInfo',     label: 'Provider Information'    },
+  { value: 'pharmacyInfo',     label: 'Pharmacy Information'    }
 ]
-
-/** Track which tab is active. */
 const activeTab = ref('medInfo')
+
+/** Whether we are editing an existing medication. */
+const isEditMode = computed(() => {
+  return !!props.existingMedication
+})
+
+/** Watch for changes in existingMedication; populate or reset the form accordingly. */
+watch(() => props.existingMedication, (newVal) => {
+  if (newVal) {
+    // Merge existing medication details into formData.
+    formData.value = { ...formData.value, ...newVal }
+  } else {
+    resetForm()
+  }
+}, { immediate: true })
+
+/** Resets formData to empty defaults. */
+function resetForm() {
+  formData.value = {
+    medicationName: '',
+    ndcNumber: '',
+    rxNorm: '',
+    diagnosis: '',
+    dosage: '',
+    frequency: '',
+    route: 'Oral/Sublingual',
+    prn: false,
+    quantity: 0,
+
+    rxNumber: '',
+    filledDate: '',
+    refills: 0,
+    startDate: '',
+    endDate: '',
+    refillReminderDate: '',
+    expirationDate: '',
+
+    providerName: '',
+    providerDea: '',
+    providerNpi: '',
+    licenseNumber: '',
+    providerAddress: '',
+    providerOffice: '',
+    providerCell: '',
+    providerEmail: '',
+
+    pharmacyName: '',
+    pharmacyDea: '',
+    pharmacyNpi: '',
+    pharmacyAddress: '',
+    pharmacyOffice: '',
+    pharmacyCell: '',
+    pharmacyEmail: ''
+  }
+}
 
 /** Handler for the Save button. */
 function handleSave() {
-  // You can do validation or other logic here
-  emit('save', formData.value)
+  emit('save', {
+    ...formData.value,
+    isEdit: isEditMode.value
+  })
 }
 </script>
 
