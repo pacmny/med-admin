@@ -1085,6 +1085,7 @@ function handleSave() {
     if (med.dates) {
       for (const dStr of Object.keys(med.dates)) {
         const d = new Date(dStr)
+        console.log(normalizeToMidnight(d).getTime(), todayMidnight.getTime())
         if (normalizeToMidnight(d).getTime() >= todayMidnight.getTime()) {
           med.dates[dStr] = med.dates[dStr].filter(slot =>
             slot.locked === true || slot.status === 'discontinue'

@@ -58,12 +58,16 @@
 
           <div class="form-row">
             <div class="form-group">
-              <label>Dosage</label>
-              <input
-                type="text"
-                v-model="formData.dosage"
-                placeholder="Dosage"
-              />
+              <label>Route</label>
+              <select v-model="formData.route">
+                <option value="Oral/Sublingual">Oral/Sublingual</option>
+                <option value="IVI Intravaginal">IVI Intravaginal</option>
+                <option value="SQ">SQ (Subcutaneous)</option>
+                <option value="IM">IM (Intramuscular)</option>
+                <option value="IV">IV (Intravenous)</option>
+                <option value="ID">ID (Intradermal)</option>
+                <option value="TOP Topical">TOP Topical</option>
+              </select>
             </div>
             <div class="form-group">
               <label>Frequency</label>
@@ -73,21 +77,35 @@
                 <option>2 times daily</option>
                 <option>every 4 hours</option>
                 <option>every 6 hours</option>
-                <!-- Add as many as needed -->
+                <!-- Add more as needed -->
               </select>
             </div>
           </div>
 
+          <!-- Dosage Row: text input + dosage-form dropdown -->
           <div class="form-row">
-            <div class="form-group">
-              <label>Route</label>
-              <select v-model="formData.route">
-                <option>Oral/Sublingual</option>
-                <option>IVI Intravaginal</option>
-                <option>SQ/IM/IV/ID</option>
-                <option>TOP Topical</option>
-                <!-- etc. -->
-              </select>
+            <div class="form-group dosage-group">
+              <label>Dosage</label>
+              <div class="dosage-row">
+                <!-- Narrow text box for numeric or textual dosage -->
+                <input
+                  type="text"
+                  v-model="formData.dosage"
+                  placeholder="Dosage"
+                  class="dosage-input"
+                />
+                <!-- Dropdown for dosage form -->
+                <select v-model="formData.dosageForm" class="dosage-select">
+                  <option :value="''">Select Dosage Form</option>
+                  <option
+                    v-for="option in dosageOptions"
+                    :key="option"
+                    :value="option"
+                  >
+                    {{ option }}
+                  </option>
+                </select>
+              </div>
             </div>
             <div class="form-group checkbox-group">
               <input
@@ -99,7 +117,8 @@
             </div>
           </div>
 
-          <div class="form-group">
+          <!-- Show quantity only for Oral/Sublingual -->
+          <div v-if="formData.route === 'Oral/Sublingual'" class="form-group">
             <label>Number of Tablets/Quantity</label>
             <input
               type="number"
@@ -108,6 +127,108 @@
               placeholder="0"
             />
           </div>
+
+          <!-- CONDITIONAL IV FIELDS (Shown only if route === 'IV') -->
+          <div v-if="formData.route === 'IV'">
+            <h4>IV Administration</h4>
+            <div class="form-group">
+              <label>Total Volume</label>
+              <input
+                type="text"
+                v-model="formData.totalVolume"
+                placeholder="e.g. 100 ml"
+              />
+            </div>
+            <div class="form-group">
+              <label>Rate</label>
+              <input
+                type="text"
+                v-model="formData.rate"
+                placeholder="e.g. 50 ml/hr"
+              />
+            </div>
+            <div class="form-group">
+              <label>How Long</label>
+              <input
+                type="text"
+                v-model="formData.howLong"
+                placeholder="e.g. 2 hours"
+              />
+            </div>
+
+            <div class="form-row">
+              <div class="form-group">
+                <label>Start Time</label>
+                <input type="time" v-model="formData.startTime" />
+              </div>
+              <div class="form-group">
+                <label>End Time</label>
+                <input type="time" v-model="formData.endTime" />
+              </div>
+            </div>
+
+            <div class="form-group">
+              <label>VIA</label>
+              <select v-model="formData.via">
+                <option value="">Select an option</option>
+                <option>Peripheral IV - Left Arm</option>
+                <option>Peripheral IV - Right Arm</option>
+                <option>PICC Line - Left</option>
+                <option>PICC Line - Right</option>
+                <option>Mid Line - Left</option>
+                <option>Mid Line - Right</option>
+                <option>Central Line - Left</option>
+                <option>Central Line - Right</option>
+              </select>
+            </div>
+          </div>
+          <!-- END CONDITIONAL IV FIELDS -->
+
+          <!-- CONDITIONAL SQ FIELDS (Shown only if route === 'SQ') -->
+          <div v-if="formData.route === 'SQ'">
+            <h4>Subcutaneous Injection</h4>
+            <div class="form-group">
+              <label>Injection Site</label>
+              <select v-model="formData.sqInjectionSite">
+                <option value="">Select an option</option>
+                <option>Forearm - Left</option>
+                <option>Forearm - Right</option>
+                <option>Abdominal Wall</option>
+              </select>
+            </div>
+          </div>
+          <!-- END CONDITIONAL SQ FIELDS -->
+
+          <!-- CONDITIONAL ID FIELDS (Shown only if route === 'ID') -->
+          <div v-if="formData.route === 'ID'">
+            <h4>Intradermal Injection</h4>
+            <div class="form-group">
+              <label>Injection Site</label>
+              <select v-model="formData.idInjectionSite">
+                <option value="">Select an option</option>
+                <option>Forearm - Left</option>
+                <option>Forearm - Right</option>
+                <option>Abdominal Wall</option>
+              </select>
+            </div>
+          </div>
+          <!-- END CONDITIONAL ID FIELDS -->
+
+          <!-- CONDITIONAL IM FIELDS (Shown only if route === 'IM') -->
+          <div v-if="formData.route === 'IM'">
+            <h4>Intramuscular Injection</h4>
+            <div class="form-group">
+              <label>Injection Site</label>
+              <select v-model="formData.imInjectionSite">
+                <option value="">Select an option</option>
+                <option>Gluteal Muscle - Left</option>
+                <option>Gluteal Muscle - Right</option>
+                <option>Deltoid Muscle - Left</option>
+                <option>Deltoid Muscle - Right</option>
+              </select>
+            </div>
+          </div>
+          <!-- END CONDITIONAL IM FIELDS -->
         </div>
 
         <!-- TAB 2: Prescription Information -->
@@ -123,7 +244,6 @@
           </div>
           <div class="form-group">
             <label>Date the script was filled</label>
-            <!-- If you prefer a date picker, replace with your component -->
             <input
               type="date"
               v-model="formData.filledDate"
@@ -340,11 +460,30 @@ interface MedicationFormData {
   rxNorm: string;
   diagnosis: string;
   dosage: string;
+  dosageForm: string;   // New property for the dosage-form dropdown
   frequency: string;
   route: string;
   prn: boolean;
   quantity: number;
 
+  // IV fields (route === 'IV')
+  totalVolume: string;
+  rate: string;
+  howLong: string;
+  startTime: string;
+  endTime: string;
+  via: string;
+
+  // SQ field (route === 'SQ')
+  sqInjectionSite: string;
+
+  // ID field (route === 'ID')
+  idInjectionSite: string;
+
+  // IM field (route === 'IM')
+  imInjectionSite: string;
+
+  // Remainder of medication info
   rxNumber: string;
   filledDate: string;
   refills: number;
@@ -353,6 +492,7 @@ interface MedicationFormData {
   refillReminderDate: string;
   expirationDate: string;
 
+  // Provider info
   providerName: string;
   providerDea: string;
   providerNpi: string;
@@ -362,6 +502,7 @@ interface MedicationFormData {
   providerCell: string;
   providerEmail: string;
 
+  // Pharmacy info
   pharmacyName: string;
   pharmacyDea: string;
   pharmacyNpi: string;
@@ -383,13 +524,23 @@ const props = defineProps<{
 
 /**
  * Emits:
- *  close  -> for closing/canceling the modal
- *  save   -> sends the entire formData object + isEdit info
+ *  - close: close/cancel the modal
+ *  - save: sends the entire formData + isEdit info
  */
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'save', payload: MedicationFormData & { isEdit: boolean }): void;
 }>()
+
+/** The list of dosage forms to show in the dropdown. */
+const dosageOptions = [
+  "Actuation", "Ampule", "Application", "Applicator", "Auto-Injector", "Bar", "Capful", "Caplet", "Capsule", "Cartridge", 
+  "Centimeter", "Disk", "Dropperful", "Each", "Film", "Fluid Ounce", "Gallon", "Gram", "Gum", "Implant", "Inch", 
+  "Inhalation", "Injection", "Insert", "Liter", "Lollipop", "Lozenge", "Metric Drop", "Microgram", "Milliequivalent", 
+  "Milligram", "Milliliter", "Nebule", "Ounce", "Package", "Packet", "Pad", "Patch", "Pellet", "Pill", "Pint", 
+  "Pre-filled Pen Syringe", "Puff", "Pump", "Ring", "Sachet", "Scoopful", "Sponge", "Spray", "Stick", "Strip", 
+  "Suppository", "Swab", "Syringe", "Tablet", "Troche", "Unit", "Vial", "Wafer"
+]
 
 /** The reactive form model. */
 const formData = ref<MedicationFormData>({
@@ -398,11 +549,30 @@ const formData = ref<MedicationFormData>({
   rxNorm: '',
   diagnosis: '',
   dosage: '',
+  dosageForm: '',
   frequency: '',
   route: 'Oral/Sublingual',
   prn: false,
   quantity: 0,
 
+  // IV fields
+  totalVolume: '',
+  rate: '',
+  howLong: '',
+  startTime: '',
+  endTime: '',
+  via: '',
+
+  // SQ field
+  sqInjectionSite: '',
+
+  // ID field
+  idInjectionSite: '',
+
+  // IM field
+  imInjectionSite: '',
+
+  // Prescription info
   rxNumber: '',
   filledDate: '',
   refills: 0,
@@ -411,6 +581,7 @@ const formData = ref<MedicationFormData>({
   refillReminderDate: '',
   expirationDate: '',
 
+  // Provider info
   providerName: '',
   providerDea: '',
   providerNpi: '',
@@ -420,6 +591,7 @@ const formData = ref<MedicationFormData>({
   providerCell: '',
   providerEmail: '',
 
+  // Pharmacy info
   pharmacyName: '',
   pharmacyDea: '',
   pharmacyNpi: '',
@@ -429,12 +601,12 @@ const formData = ref<MedicationFormData>({
   pharmacyEmail: ''
 })
 
-/** Used to track our 4 different "tabs" of info. */
+/** Tabs across the top. */
 const tabs = [
   { value: 'medInfo',          label: 'Medication Information' },
-  { value: 'prescriptionInfo', label: 'Prescription Information'},
-  { value: 'providerInfo',     label: 'Provider Information'    },
-  { value: 'pharmacyInfo',     label: 'Pharmacy Information'    }
+  { value: 'prescriptionInfo', label: 'Prescription Information' },
+  { value: 'providerInfo',     label: 'Provider Information' },
+  { value: 'pharmacyInfo',     label: 'Pharmacy Information' }
 ]
 const activeTab = ref('medInfo')
 
@@ -443,17 +615,16 @@ const isEditMode = computed(() => {
   return !!props.existingMedication
 })
 
-/** Watch for changes in existingMedication; populate or reset the form accordingly. */
+/** Watch for changes to existingMedication; populate or reset form accordingly. */
 watch(() => props.existingMedication, (newVal) => {
   if (newVal) {
-    // Merge existing medication details into formData.
     formData.value = { ...formData.value, ...newVal }
   } else {
     resetForm()
   }
 }, { immediate: true })
 
-/** Resets formData to empty defaults. */
+/** Reset form to defaults. */
 function resetForm() {
   formData.value = {
     medicationName: '',
@@ -461,10 +632,22 @@ function resetForm() {
     rxNorm: '',
     diagnosis: '',
     dosage: '',
+    dosageForm: '',
     frequency: '',
     route: 'Oral/Sublingual',
     prn: false,
     quantity: 0,
+
+    totalVolume: '',
+    rate: '',
+    howLong: '',
+    startTime: '',
+    endTime: '',
+    via: '',
+
+    sqInjectionSite: '',
+    idInjectionSite: '',
+    imInjectionSite: '',
 
     rxNumber: '',
     filledDate: '',
@@ -493,7 +676,7 @@ function resetForm() {
   }
 }
 
-/** Handler for the Save button. */
+/** Fire the save event with the entire form + isEdit flag. */
 function handleSave() {
   emit('save', {
     ...formData.value,
@@ -595,13 +778,31 @@ function handleSave() {
   align-items: center;
   gap: 0.5rem;
 }
-/* Horizontal row of fields */
 .form-row {
   display: flex;
   gap: 1rem;
 }
 .form-row .form-group {
   flex: 1;
+}
+
+/* Custom row for dosage input + select side by side */
+.dosage-group {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.dosage-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.dosage-input {
+  flex: 0 0 80px; /* narrower text box */
+}
+.dosage-select {
+  flex: 1;       /* dropdown can fill remaining space */
 }
 
 /* Bottom action buttons */
