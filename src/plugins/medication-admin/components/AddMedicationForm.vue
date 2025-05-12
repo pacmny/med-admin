@@ -2,12 +2,12 @@
   <transition name="fade">
     <div v-if="show" class="modal-overlay">
       <div class="modal-content">
-        <!-- Dynamic heading based on edit vs. add -->
+        <!-- Heading -->
         <h2 class="modal-title">
           {{ isEditMode ? 'Edit Medication' : 'Add New Medication' }}
         </h2>
 
-        <!-- Tabs Row -->
+        <!-- Tabs -->
         <div class="tabs">
           <button
             v-for="tab in tabs"
@@ -82,21 +82,19 @@
             </div>
           </div>
 
-          <!-- Dosage Row: text input + dosage-form dropdown -->
+          <!-- Dosage -->
           <div class="form-row">
             <div class="form-group dosage-group">
               <label>Dosage</label>
               <div class="dosage-row">
-                <!-- Narrow text box for numeric or textual dosage -->
                 <input
                   type="text"
                   v-model="formData.dosage"
                   placeholder="Dosage"
                   class="dosage-input"
                 />
-                <!-- Dropdown for dosage form -->
                 <select v-model="formData.dosageForm" class="dosage-select">
-                  <option :value="''">Select Dosage Form</option>
+                  <option value="">Select Dosage Form</option>
                   <option
                     v-for="option in dosageOptions"
                     :key="option"
@@ -128,45 +126,80 @@
             />
           </div>
 
-          <!-- CONDITIONAL IV FIELDS (Shown only if route === 'IV') -->
+          <!-- IV Administration (if route === 'IV') -->
           <div v-if="formData.route === 'IV'">
             <h4>IV Administration</h4>
-            <div class="form-group">
-              <label>Total Volume</label>
-              <input
-                type="text"
-                v-model="formData.totalVolume"
-                placeholder="e.g. 100 ml"
-              />
-            </div>
-            <div class="form-group">
-              <label>Rate</label>
-              <input
-                type="text"
-                v-model="formData.rate"
-                placeholder="e.g. 50 ml/hr"
-              />
-            </div>
-            <div class="form-group">
-              <label>How Long</label>
-              <input
-                type="text"
-                v-model="formData.howLong"
-                placeholder="e.g. 2 hours"
-              />
+            <!-- Single row: Volume, Rate, How Long (computed) -->
+            <div class="form-row volume-rate-row">
+              <!-- Volume -->
+              <div class="form-group volume-group">
+                <label>Total Volume</label>
+                <div class="volume-row">
+                  <input
+                    list="volumeOptions"
+                    v-model="formData.totalVolume"
+                    class="volume-dropdown"
+                    placeholder="e.g. 100"
+                  />
+                  <datalist id="volumeOptions">
+                    <option value="10"></option>
+                    <option value="100"></option>
+                    <option value="250"></option>
+                    <option value="500"></option>
+                    <option value="1000"></option>
+                  </datalist>
+                  <select
+                    class="volume-dropdown"
+                    v-model="formData.totalVolumeUnit"
+                  >
+                    <option value="ml">ml</option>
+                    <option value="liter">liter</option>
+                  </select>
+                </div>
+              </div>
+              <!-- Rate -->
+              <div class="form-group">
+                <label>Rate</label>
+                <input
+                  type="text"
+                  v-model="formData.rate"
+                  placeholder="50 (ml/hr)"
+                />
+              </div>
+              <!-- How Long (READ-ONLY) -->
+              <div class="form-group">
+                <label>How Long (hrs)</label>
+                <input
+                  type="text"
+                  :value="formData.howLong"
+                  disabled
+                  placeholder="Computed"
+                />
+              </div>
             </div>
 
+            <!-- Start Time & End Time (read-only) -->
             <div class="form-row">
               <div class="form-group">
                 <label>Start Time</label>
-                <input type="time" v-model="formData.startTime" />
+                <input
+                  type="time"
+                  v-model="formData.startTime"
+                  placeholder="HH:MM"
+                />
               </div>
               <div class="form-group">
                 <label>End Time</label>
-                <input type="time" v-model="formData.endTime" />
+                <!-- End time is computed, so disable input. -->
+                <input
+                  type="time"
+                  :value="formData.endTime"
+                  disabled
+                />
               </div>
             </div>
 
+            <!-- VIA -->
             <div class="form-group">
               <label>VIA</label>
               <select v-model="formData.via">
@@ -182,56 +215,10 @@
               </select>
             </div>
           </div>
-          <!-- END CONDITIONAL IV FIELDS -->
-
-          <!-- CONDITIONAL SQ FIELDS (Shown only if route === 'SQ') -->
-          <div v-if="formData.route === 'SQ'">
-            <h4>Subcutaneous Injection</h4>
-            <div class="form-group">
-              <label>Injection Site</label>
-              <select v-model="formData.sqInjectionSite">
-                <option value="">Select an option</option>
-                <option>Forearm - Left</option>
-                <option>Forearm - Right</option>
-                <option>Abdominal Wall</option>
-              </select>
-            </div>
-          </div>
-          <!-- END CONDITIONAL SQ FIELDS -->
-
-          <!-- CONDITIONAL ID FIELDS (Shown only if route === 'ID') -->
-          <div v-if="formData.route === 'ID'">
-            <h4>Intradermal Injection</h4>
-            <div class="form-group">
-              <label>Injection Site</label>
-              <select v-model="formData.idInjectionSite">
-                <option value="">Select an option</option>
-                <option>Forearm - Left</option>
-                <option>Forearm - Right</option>
-                <option>Abdominal Wall</option>
-              </select>
-            </div>
-          </div>
-          <!-- END CONDITIONAL ID FIELDS -->
-
-          <!-- CONDITIONAL IM FIELDS (Shown only if route === 'IM') -->
-          <div v-if="formData.route === 'IM'">
-            <h4>Intramuscular Injection</h4>
-            <div class="form-group">
-              <label>Injection Site</label>
-              <select v-model="formData.imInjectionSite">
-                <option value="">Select an option</option>
-                <option>Gluteal Muscle - Left</option>
-                <option>Gluteal Muscle - Right</option>
-                <option>Deltoid Muscle - Left</option>
-                <option>Deltoid Muscle - Right</option>
-              </select>
-            </div>
-          </div>
-          <!-- END CONDITIONAL IM FIELDS -->
+          <!-- END IV -->
         </div>
 
-        <!-- TAB 2: Prescription Information -->
+        <!-- TAB 2: Prescription Info -->
         <div v-if="activeTab === 'prescriptionInfo'" class="tab-panel">
           <h3 class="section-title">Prescription Information</h3>
           <div class="form-group">
@@ -298,9 +285,10 @@
           </div>
         </div>
 
-        <!-- TAB 3: Provider Information -->
+        <!-- TAB 3: Provider Info -->
         <div v-if="activeTab === 'providerInfo'" class="tab-panel">
           <h3 class="section-title">Provider Information</h3>
+          <!-- ... identical to your existing fields ... -->
           <div class="form-group">
             <label>Provider Name</label>
             <input
@@ -371,9 +359,10 @@
           </div>
         </div>
 
-        <!-- TAB 4: Pharmacy Information -->
+        <!-- TAB 4: Pharmacy Info -->
         <div v-if="activeTab === 'pharmacyInfo'" class="tab-panel">
           <h3 class="section-title">Pharmacy Information</h3>
+          <!-- ... unchanged ... -->
           <div class="form-group">
             <label>Pharmacy Name</label>
             <input
@@ -436,7 +425,7 @@
           </div>
         </div>
 
-        <!-- Action Buttons (Bottom) -->
+        <!-- Footer Buttons -->
         <div class="form-actions">
           <button class="btn-cancel" @click="$emit('close')">
             Cancel
@@ -453,37 +442,34 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineProps, defineEmits } from 'vue'
 
-/** Define the structure of all form fields. */
+/** Our form interface. */
 interface MedicationFormData {
   medicationName: string;
   ndcNumber: string;
   rxNorm: string;
   diagnosis: string;
   dosage: string;
-  dosageForm: string;   // New property for the dosage-form dropdown
+  dosageForm: string;
   frequency: string;
   route: string;
   prn: boolean;
   quantity: number;
 
-  // IV fields (route === 'IV')
-  totalVolume: string;
-  rate: string;
-  howLong: string;
+  // IV fields
+  totalVolume: string;       // e.g. "100"
+  totalVolumeUnit: string;   // e.g. "ml" or "liter"
+  rate: string;              // e.g. "50" or "50 ml/hr" (we'll parse the numeric part)
+  howLong: string;           // computed field in hours
   startTime: string;
   endTime: string;
   via: string;
 
-  // SQ field (route === 'SQ')
+  // SQ, ID, IM
   sqInjectionSite: string;
-
-  // ID field (route === 'ID')
   idInjectionSite: string;
-
-  // IM field (route === 'IM')
   imInjectionSite: string;
 
-  // Remainder of medication info
+  // Prescription info
   rxNumber: string;
   filledDate: string;
   refills: number;
@@ -512,37 +498,27 @@ interface MedicationFormData {
   pharmacyEmail: string;
 }
 
-/**
- * Props:
- *  - show: controls visibility of the modal.
- *  - existingMedication: if provided, indicates we are editing.
- */
+/** Props + emits. */
 const props = defineProps<{
   show: boolean;
   existingMedication?: Partial<MedicationFormData> | null;
 }>()
-
-/**
- * Emits:
- *  - close: close/cancel the modal
- *  - save: sends the entire formData + isEdit info
- */
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'save', payload: MedicationFormData & { isEdit: boolean }): void;
 }>()
 
-/** The list of dosage forms to show in the dropdown. */
+/** The list of dosage forms. */
 const dosageOptions = [
-  "Actuation", "Ampule", "Application", "Applicator", "Auto-Injector", "Bar", "Capful", "Caplet", "Capsule", "Cartridge", 
-  "Centimeter", "Disk", "Dropperful", "Each", "Film", "Fluid Ounce", "Gallon", "Gram", "Gum", "Implant", "Inch", 
-  "Inhalation", "Injection", "Insert", "Liter", "Lollipop", "Lozenge", "Metric Drop", "Microgram", "Milliequivalent", 
-  "Milligram", "Milliliter", "Nebule", "Ounce", "Package", "Packet", "Pad", "Patch", "Pellet", "Pill", "Pint", 
-  "Pre-filled Pen Syringe", "Puff", "Pump", "Ring", "Sachet", "Scoopful", "Sponge", "Spray", "Stick", "Strip", 
-  "Suppository", "Swab", "Syringe", "Tablet", "Troche", "Unit", "Vial", "Wafer"
+  "Actuation","Ampule","Application","Applicator","Auto-Injector","Bar","Capful","Caplet","Capsule",
+  "Cartridge","Centimeter","Disk","Dropperful","Each","Film","Fluid Ounce","Gallon","Gram","Gum","Implant",
+  "Inch","Inhalation","Injection","Insert","Liter","Lollipop","Lozenge","Metric Drop","Microgram",
+  "Milliequivalent","Milligram","Milliliter","Nebule","Ounce","Package","Packet","Pad","Patch","Pellet",
+  "Pill","Pint","Pre-filled Pen Syringe","Puff","Pump","Ring","Sachet","Scoopful","Sponge","Spray","Stick",
+  "Strip","Suppository","Swab","Syringe","Tablet","Troche","Unit","Vial","Wafer"
 ]
 
-/** The reactive form model. */
+/** The reactive form. */
 const formData = ref<MedicationFormData>({
   medicationName: '',
   ndcNumber: '',
@@ -555,24 +531,18 @@ const formData = ref<MedicationFormData>({
   prn: false,
   quantity: 0,
 
-  // IV fields
   totalVolume: '',
+  totalVolumeUnit: 'ml',
   rate: '',
   howLong: '',
   startTime: '',
   endTime: '',
   via: '',
 
-  // SQ field
   sqInjectionSite: '',
-
-  // ID field
   idInjectionSite: '',
-
-  // IM field
   imInjectionSite: '',
 
-  // Prescription info
   rxNumber: '',
   filledDate: '',
   refills: 0,
@@ -581,7 +551,6 @@ const formData = ref<MedicationFormData>({
   refillReminderDate: '',
   expirationDate: '',
 
-  // Provider info
   providerName: '',
   providerDea: '',
   providerNpi: '',
@@ -591,7 +560,6 @@ const formData = ref<MedicationFormData>({
   providerCell: '',
   providerEmail: '',
 
-  // Pharmacy info
   pharmacyName: '',
   pharmacyDea: '',
   pharmacyNpi: '',
@@ -601,7 +569,7 @@ const formData = ref<MedicationFormData>({
   pharmacyEmail: ''
 })
 
-/** Tabs across the top. */
+/** Tabs along the top. */
 const tabs = [
   { value: 'medInfo',          label: 'Medication Information' },
   { value: 'prescriptionInfo', label: 'Prescription Information' },
@@ -609,13 +577,9 @@ const tabs = [
   { value: 'pharmacyInfo',     label: 'Pharmacy Information' }
 ]
 const activeTab = ref('medInfo')
+const isEditMode = computed(() => !!props.existingMedication)
 
-/** Whether we are editing an existing medication. */
-const isEditMode = computed(() => {
-  return !!props.existingMedication
-})
-
-/** Watch for changes to existingMedication; populate or reset form accordingly. */
+/** Merge existingMedication or reset. */
 watch(() => props.existingMedication, (newVal) => {
   if (newVal) {
     formData.value = { ...formData.value, ...newVal }
@@ -624,7 +588,6 @@ watch(() => props.existingMedication, (newVal) => {
   }
 }, { immediate: true })
 
-/** Reset form to defaults. */
 function resetForm() {
   formData.value = {
     medicationName: '',
@@ -639,6 +602,7 @@ function resetForm() {
     quantity: 0,
 
     totalVolume: '',
+    totalVolumeUnit: 'ml',
     rate: '',
     howLong: '',
     startTime: '',
@@ -676,16 +640,81 @@ function resetForm() {
   }
 }
 
-/** Fire the save event with the entire form + isEdit flag. */
+/** "Save" event. */
 function handleSave() {
   emit('save', {
     ...formData.value,
     isEdit: isEditMode.value
   })
 }
+
+/** WATCHERS for howLong and endTime logic. */
+
+// 1) Watch volume/rate => compute howLong
+watch(
+  [() => formData.value.totalVolume, () => formData.value.rate, () => formData.value.totalVolumeUnit],
+  () => {
+    const vol = parseFloat(formData.value.totalVolume) || 0
+    let numericRate = parseFloat(formData.value.rate) || 0
+
+    // If user typed "50 ml/hr" we can parse out the first number found:
+    if (!numericRate) {
+      // Attempt a fallback parse:
+      const match = formData.value.rate.match(/(\d+(\.\d+)?)/)
+      if (match) {
+        numericRate = parseFloat(match[1])
+      }
+    }
+
+    // If unit is "liter," convert to ml
+    const finalVolumeInMl =
+      formData.value.totalVolumeUnit === 'liter' ? vol * 1000 : vol
+
+    // howLong (hrs) = volumeInMl / rate
+    let hours = 0
+    if (numericRate > 0) {
+      hours = finalVolumeInMl / numericRate
+    }
+
+    // Round to 2 decimals, or just to a string
+    formData.value.howLong = hours > 0 ? hours.toFixed(2) : ''
+  }
+)
+
+// 2) Watch howLong and startTime => compute endTime
+watch(
+  [() => formData.value.howLong, () => formData.value.startTime],
+  () => {
+    if (!formData.value.howLong || !formData.value.startTime) {
+      formData.value.endTime = ''
+      return
+    }
+    const [startH, startM] = formData.value.startTime.split(':').map(Number)
+    const hoursFloat = parseFloat(formData.value.howLong)
+    if (isNaN(hoursFloat) || isNaN(startH)) {
+      formData.value.endTime = ''
+      return
+    }
+
+    // Convert "howLong" hours to minutes
+    const totalMinutes = Math.round(hoursFloat * 60)
+    let newH = startH
+    let newM = startM + totalMinutes
+    // handle wrap-around
+    newH += Math.floor(newM / 60)
+    newM = newM % 60
+
+    // Format as HH:MM for 24-hour time
+    const hh = String(newH % 24).padStart(2, '0')
+    const mm = String(newM).padStart(2, '0')
+    formData.value.endTime = `${hh}:${mm}`
+  }
+)
 </script>
 
 <style scoped>
+/* Same as your existing styles, with a small row for volume/rate/howLong. */
+
 /* Basic fade for the modal appear/disappear */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.2s;
@@ -745,7 +774,7 @@ function handleSave() {
   border-bottom: 3px solid #0c8687;
 }
 
-/* Tab panel content */
+/* Tab panel */
 .tab-panel {
   margin: 1rem 0;
 }
@@ -786,26 +815,43 @@ function handleSave() {
   flex: 1;
 }
 
-/* Custom row for dosage input + select side by side */
+/* Dosage layout (unchanged) */
 .dosage-group {
   width: 100%;
   display: flex;
   flex-direction: column;
 }
-
 .dosage-row {
   display: flex;
   gap: 0.5rem;
   align-items: center;
 }
 .dosage-input {
-  flex: 0 0 80px; /* narrower text box */
+  flex: 0 0 80px;
 }
 .dosage-select {
-  flex: 1;       /* dropdown can fill remaining space */
+  flex: 1;
 }
 
-/* Bottom action buttons */
+/* Volume/Rate/HowLong row */
+.volume-rate-row {
+  display: flex;
+  gap: 1rem;
+}
+.volume-group {
+  display: flex;
+  flex-direction: column;
+}
+.volume-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+.volume-dropdown {
+  width: 70px;
+}
+
+/* Footer Action Buttons */
 .form-actions {
   display: flex;
   justify-content: flex-end;

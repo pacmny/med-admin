@@ -103,7 +103,7 @@
                   <th class="sticky-header-1">Medication Details</th>
                   <!-- Hide these columns if collapsed -->
                   <th v-if="!collapsed" class="sticky-header-2">Status</th>
-                  <th v-if="!collapsed" class="sticky-header-3">Tabs Available</th>
+                  <th v-if="!collapsed" class="sticky-header-3">Amount Available</th>
                   <th v-if="!collapsed" class="sticky-header-4">Frequency</th>
                   <th v-if="!collapsed" class="sticky-header-5">Dosage</th>
                   <th v-if="!collapsed" class="sticky-header-6">Select Time and Dosage</th>
@@ -464,8 +464,21 @@
             </div>
           </div>
 
+          <!-- Nurse Signature -->
+          <div class="form-group">
+            <label for="signOffNurseSignature">Nurse Signature:</label>
+            <input
+              type="text"
+              id="signOffNurseSignature"
+              v-model="signOffNurseSignature"
+              placeholder="Enter your name or initials"
+            />
+          </div>
+
           <div class="button-row">
-            <button @click="finalSignOff" class="save-button">Sign Off</button>
+            <button @click="finalSignOff" class="save-button" :disabled="!signOffNurseSignature">
+              Sign Off
+            </button>
             <button @click="showSignOffPopup = false" class="cancel-button">Cancel</button>
           </div>
         </div>
@@ -546,7 +559,7 @@ import HoldTimeSelector from './HoldTimeSelector.vue'
 
 const FUTURE_DAYS_TO_POPULATE = 365
 
-/** Medication interface with fields for Rx/Provider/Pharmacy info as well */
+/** Medication interface */
 export interface Medication {
   name: string
   ndcNumber?: string
@@ -626,23 +639,17 @@ function onAddMedication() {
   showAddForm.value = true
 }
 
-/**
- * "Click medication name" => edit
- * Copy both "Medication Information" fields and also the Prescription/Provider/Pharmacy fields
- * so that the child form can prefill them.
- */
+/** "Click medication name" => edit */
 function openMedicationForm(med: Medication) {
   editingMedication.value = {
     ...med,
     originalName: med.name,
 
-    // For the "Medication Information" tab:
     medicationName: med.name,
     quantity: med.tabsAvailable,
     ndcNumber: med.ndcNumber || '',
     rxNorm: med.rxNorm || '',
 
-    // For the other tabs:
     rxNumber: med.rxNumber || '',
     refills: med.refills ?? 0,
     pharmacy: med.pharmacy || '',
@@ -655,8 +662,6 @@ function openMedicationForm(med: Medication) {
   }
   showAddForm.value = true
 }
-
-/** Handle form saving */
 function handleMedicationFormSave(payload: any) {
   const isEdit = payload.isEdit
   const originalName = payload.originalName
@@ -664,7 +669,6 @@ function handleMedicationFormSave(payload: any) {
   if (!isEdit) {
     // Creating new medication
     const newMedication: Medication = {
-      // Medication Info tab
       name: payload.medicationName,
       ndcNumber: payload.ndcNumber || '',
       rxNorm: payload.rxNorm || '',
@@ -675,7 +679,6 @@ function handleMedicationFormSave(payload: any) {
       prn: payload.prn,
       diagnosis: payload.diagnosis || '',
 
-      // Prescription/Provider/Pharmacy tabs
       rxNumber: payload.rxNumber || '',
       refills: payload.refills || 0,
       pharmacy: payload.pharmacy || '',
@@ -695,7 +698,6 @@ function handleMedicationFormSave(payload: any) {
     // Updating existing
     const idx = medications.value.findIndex(m => m.name === originalName)
     if (idx !== -1) {
-      // Medication Info tab
       medications.value[idx].name = payload.medicationName
       medications.value[idx].ndcNumber = payload.ndcNumber
       medications.value[idx].rxNorm = payload.rxNorm
@@ -706,7 +708,6 @@ function handleMedicationFormSave(payload: any) {
       medications.value[idx].prn = payload.prn
       medications.value[idx].diagnosis = payload.diagnosis
 
-      // Prescription/Provider/Pharmacy tabs
       medications.value[idx].rxNumber = payload.rxNumber
       medications.value[idx].refills = payload.refills
       medications.value[idx].pharmacy = payload.pharmacy
@@ -724,7 +725,6 @@ function handleMedicationFormSave(payload: any) {
 }
 
 /** The rest is your existing watchers, date-range, hold logic, time logic, etc. */
-
 const selectedStatus = ref<string | null>(null)
 function handleStatusFilter(status: string | null) {
   selectedStatus.value = selectedStatus.value === status ? null : status
@@ -754,6 +754,8 @@ const showErrorModal = ref(false)
 const errorMessage = ref("")
 
 const showSignOffPopup = ref(false)
+/** Nurse signature for the main sign-off */
+const signOffNurseSignature = ref('')
 const pendingTransactions = ref<any[]>([])
 
 const showPrnSignOffPopup = ref(false)
@@ -792,15 +794,6 @@ function formatDate(date: Date) {
     day: 'numeric',
     year: 'numeric'
   })
-}
-function formatTime12Hour(date: Date): string {
-  let hours = date.getHours()
-  const minutes = date.getMinutes()
-  const ampm = hours >= 12 ? 'PM' : 'AM'
-  hours = hours % 12
-  hours = hours ? hours : 12
-  const minutesStr = minutes < 10 ? '0' + minutes : minutes
-  return hours + ":" + minutesStr + " " + ampm
 }
 function formatDateToYYYYMMDD(d: Date): string {
   return (
@@ -997,9 +990,8 @@ const localEmit = defineEmits<{
 }>()
 
 watch(selectedFrequency, (newFreq, oldFreq) => {
-  if (newFreq === oldFreq) return  // or if (!newFreq || newFreq === oldFreq)...
+  if (newFreq === oldFreq) return
 
-  // Now do the usual reset
   if (!newFreq || selectedMedicationForTime.value?.prn) {
     timeInputs.value = []
     return
@@ -1007,8 +999,6 @@ watch(selectedFrequency, (newFreq, oldFreq) => {
   const timesCount = getTimesCountFromFrequency(newFreq)
   timeInputs.value = Array(timesCount).fill('')
 })
-
-
 
 function getTimesCountFromFrequency(frequency: string): number {
   if (!frequency) return 0
@@ -1032,6 +1022,7 @@ function getTimesCountFromFrequency(frequency: string): number {
     default: return 1
   }
 }
+
 function toggleSelectDropdown(medication: Medication) {
   if (medication.tabsAvailable <= 0) {
     errorMessage.value = "Please add tabs available"
@@ -1085,7 +1076,6 @@ function handleSave() {
     if (med.dates) {
       for (const dStr of Object.keys(med.dates)) {
         const d = new Date(dStr)
-        console.log(normalizeToMidnight(d).getTime(), todayMidnight.getTime())
         if (normalizeToMidnight(d).getTime() >= todayMidnight.getTime()) {
           med.dates[dStr] = med.dates[dStr].filter(slot =>
             slot.locked === true || slot.status === 'discontinue'
@@ -1432,16 +1422,20 @@ const refusedGrouped = computed(() => {
   return groupTransactionsByTime(refusedItems)
 })
 function finalSignOff() {
+  if (!signOffNurseSignature.value) {
+    alert("Please enter your nurse signature before signing off.")
+    return
+  }
   const now = new Date()
-  const nurseSignature = prompt("Please enter your signature/initials:")
-  if (!nurseSignature) return
+
   pendingTransactions.value.forEach(item => {
     const { medication, timeObj } = item
     const pendingAction = timeObj.temporaryStatus
     if (!pendingAction) return
     timeObj.locked = true
     timeObj.status = pendingAction
-    timeObj.signedOff = { nurse: nurseSignature, date: now }
+    timeObj.signedOff = { nurse: signOffNurseSignature.value, date: now }
+
     if (pendingAction === 'taken') {
       const dose = (typeof timeObj.dosage === 'number')
         ? timeObj.dosage
@@ -1451,7 +1445,10 @@ function finalSignOff() {
       timeObj.time = timeObj.time + " (taken at " + formatted + ")"
     }
   })
+
+  // Clear pending items and signature input
   pendingTransactions.value = []
+  signOffNurseSignature.value = ''
   showSignOffPopup.value = false
 }
 
@@ -1479,6 +1476,10 @@ function handlePrnSignOff() {
     showPrnSignOffPopup.value = false
     return
   }
+  if (!prnNurseSignature.value) {
+    alert("Please enter your nurse signature before signing off.")
+    return
+  }
   prnSignOffTimeObj.value.signedOff = {
     nurse: prnNurseSignature.value,
     date: new Date()
@@ -1493,7 +1494,7 @@ function handlePrnSignOff() {
   closePrnSignOffPopup()
 }
 
-// Just a stub so it compiles; in real code you’d implement your “stampPRNTime”.
+// Just a stub for PRN stamping
 function stampPRNTime(_med: Medication) {}
 function getTooltipText(timeObj: any) {
   if (!timeObj.signedOff) {
@@ -1512,7 +1513,7 @@ function hideTooltip() {}
 </script>
 
 <style scoped>
-/* EXACT same styling from your code, nothing removed. */
+/* EXACT same styling from your code (plus a small note for the nurse signature input). */
 
 /* Make the medication name clickable */
 .medication-link {
@@ -1566,6 +1567,17 @@ function hideTooltip() {}
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+.add-manually-btn {
+  background-color: #0c8687;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.add-manually-btn:hover {
+  background-color: #0a7273;
 }
 .sign-off-button {
   margin-left: auto;
@@ -1630,7 +1642,13 @@ function hideTooltip() {}
   background-color: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-/* Sticky table headers */
+.schedule-table th,
+.schedule-table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: center;
+}
+/* Sticky headers/columns */
 .schedule-table .sticky-header-1,
 .schedule-table .sticky-header-2,
 .schedule-table .sticky-header-3,
@@ -1652,36 +1670,31 @@ function hideTooltip() {}
   background-color: #ffffff;
   z-index: 3;
 }
-.schedule-table .sticky-column-1, .sticky-header-1 {
+.schedule-table .sticky-column-1 {
   left: 0;
   min-width: 220px;
 }
-.schedule-table .sticky-column-2, .sticky-header-2 {
+.schedule-table .sticky-column-2 {
   left: 220px;
   min-width: 120px;
 }
-.schedule-table .sticky-column-3, .sticky-header-3 {
+.schedule-table .sticky-column-3 {
   left: 340px;
   min-width: 140px;
 }
-.schedule-table .sticky-column-4, .sticky-header-4 {
+.schedule-table .sticky-column-4 {
   left: 480px;
   min-width: 100px;
 }
-.schedule-table .sticky-column-5, .sticky-header-5 {
+.schedule-table .sticky-column-5 {
   left: 580px;
   min-width: 100px;
 }
-.schedule-table .sticky-column-6, .sticky-header-6 {
+.schedule-table .sticky-column-6 {
   left: 680px;
   min-width: 200px;
 }
-.schedule-table th,
-.schedule-table td {
-  border: 1px solid #ddd;
-  padding: 12px;
-  text-align: center;
-}
+
 /* Tabs Available */
 .tabs-available {
   padding: 8px;
@@ -1699,7 +1712,7 @@ function hideTooltip() {}
   border-radius: 4px;
 }
 
-/* Select Time and Dosage Button */
+/* Select Time and Dosage */
 .select-time-dosage {
   padding: 8px;
 }
@@ -1716,7 +1729,7 @@ function hideTooltip() {}
   background-color: #f8f9fa;
 }
 
-/* Table "Active Row" styling */
+/* Active Row */
 .medication-row.active-row {
   background-color: #d4edda;
 }
@@ -1759,8 +1772,6 @@ function hideTooltip() {}
 .time-entry.discontinue {
   background-color: #f8d7da !important;
 }
-
-/* Icons for immediate statuses */
 .icon-immediate {
   font-weight: bold;
   font-size: 1rem;
