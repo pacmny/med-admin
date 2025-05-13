@@ -152,15 +152,29 @@
                     </select>
                   </td>
 
-                  <!-- Tabs Available (hidden if collapsed) -->
+                  <!-- Amount Available: numeric input + dropdown -->
                   <td v-if="!collapsed" class="tabs-available sticky-column-3">
                     <div class="tabs-counter">
+                      <!-- The numeric input for the quantity -->
                       <input
                         type="number"
                         v-model="med.tabsAvailable"
                         @change="handleTabsChange(med, $event.target.value)"
                         class="tabs-input"
                       />
+                    </div>
+                    <!-- The new dropdown for units -->
+                    <div class="unit-dropdown">
+                      <select v-model="med.unitType" class="unit-select">
+                        <option value="" disabled>Select Unit</option>
+                        <option
+                          v-for="option in unitOptions"
+                          :key="option"
+                          :value="option"
+                        >
+                          {{ option }}
+                        </option>
+                      </select>
                     </div>
                   </td>
 
@@ -557,6 +571,7 @@ import flatpickr from 'flatpickr'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
 
+/** How many future days to populate scheduled times. */
 const FUTURE_DAYS_TO_POPULATE = 365
 
 /** Medication interface */
@@ -613,10 +628,76 @@ export interface Medication {
     reason?: string
     date: string
   }>
+
+  /** NEW: store which unit type the medication uses */
+  unitType?: string
 }
 
 const router = useRouter()
 const medications = ref<Medication[]>([])
+
+// We add the dropdown options here:
+const unitOptions = [
+  "Actuation",
+  "Ampule",
+  "Application",
+  "Applicator",
+  "Auto-Injector",
+  "Bar",
+  "Capful",
+  "Caplet",
+  "Capsule",
+  "Cartridge",
+  "Centimeter",
+  "Disk",
+  "Dropperful",
+  "Each",
+  "Film",
+  "Fluid Ounce",
+  "Gallon",
+  "Gram",
+  "Gum",
+  "Implant",
+  "Inch",
+  "Inhalation",
+  "Injection",
+  "Insert",
+  "Liter",
+  "Lollipop",
+  "Lozenge",
+  "Metric Drop",
+  "Microgram",
+  "Milliequivalent",
+  "Milligram",
+  "Milliliter",
+  "Nebule",
+  "Ounce",
+  "Package",
+  "Packet",
+  "Pad",
+  "Patch",
+  "Pellet",
+  "Pill",
+  "Pint",
+  "Pre-filled Pen Syringe",
+  "Puff",
+  "Pump",
+  "Ring",
+  "Sachet",
+  "Scoopful",
+  "Sponge",
+  "Spray",
+  "Stick",
+  "Strip",
+  "Suppository",
+  "Swab",
+  "Syringe",
+  "Tablet",
+  "Troche",
+  "Unit",
+  "Vial",
+  "Wafer"
+]
 
 // Sort
 const sortBy = ref<string>('')
@@ -724,7 +805,7 @@ function handleMedicationFormSave(payload: any) {
   showAddForm.value = false
 }
 
-/** The rest is your existing watchers, date-range, hold logic, time logic, etc. */
+/** Filter by status */
 const selectedStatus = ref<string | null>(null)
 function handleStatusFilter(status: string | null) {
   selectedStatus.value = selectedStatus.value === status ? null : status
@@ -734,15 +815,18 @@ const showHoldSelector = ref(false)
 const selectedMedicationForHold = ref<Medication | null>(null)
 const selectedStatusOption = ref<'hold' | 'new' | 'discontinue' | 'change'>('hold')
 
+// Time & Dosage Modal
 const showTimeModal = ref(false)
 const selectedMedicationForTime = ref<Medication | null>(null)
 const selectedFrequency = ref('')
 const selectedDosage = ref('1')
 const timeInputs = ref<string[]>([])
 
+// "Taken / Refused / Later" Popup
 const showTimeActionPopup = ref(false)
 const selectedDateAndTime = ref<{ dateObj: Date; timeObj: any; medication: Medication } | null>(null)
 
+// Early/Late check
 const showTimeConfirmationPopup = ref(false)
 const confirmationMessage = ref("")
 const pendingDateAndTime = ref<{ dateObj: Date; timeObj: any; medication: Medication } | null>(null)
@@ -750,14 +834,16 @@ const isEarly = ref(false)
 const showEarlyReasonInput = ref(false)
 const earlyReason = ref("")
 
+// Error modal
 const showErrorModal = ref(false)
 const errorMessage = ref("")
 
+// Sign off popup
 const showSignOffPopup = ref(false)
-/** Nurse signature for the main sign-off */
 const signOffNurseSignature = ref('')
 const pendingTransactions = ref<any[]>([])
 
+// PRN sign off
 const showPrnSignOffPopup = ref(false)
 const prnSignOffMedication = ref<Medication | null>(null)
 const prnSignOffTimeObj = ref<any>(null)
@@ -1342,7 +1428,7 @@ function handleTimeActionSelected({ action }: { action: string }) {
   showTimeActionPopup.value = false
 }
 
-// Early / Late
+// Early / Late confirmation
 function confirmTimeAction() {
   showTimeConfirmationPopup.value = false
   if (!isEarly.value && pendingDateAndTime.value) {
@@ -1680,28 +1766,31 @@ function hideTooltip() {}
 }
 .schedule-table .sticky-column-3 {
   left: 340px;
-  min-width: 140px;
+  min-width: 180px; /* a bit wider to fit the dropdown */
 }
 .schedule-table .sticky-column-4 {
-  left: 480px;
+  left: 520px;
   min-width: 100px;
 }
 .schedule-table .sticky-column-5 {
-  left: 580px;
+  left: 620px;
   min-width: 100px;
 }
 .schedule-table .sticky-column-6 {
-  left: 680px;
+  left: 720px;
   min-width: 200px;
 }
 
-/* Tabs Available */
+/* Tabs Available and Unit Dropdown */
 .tabs-available {
   padding: 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
 }
 .tabs-counter {
   display: flex;
-  justify-content: center;
   align-items: center;
 }
 .tabs-input {
@@ -1710,6 +1799,15 @@ function hideTooltip() {}
   text-align: center;
   border: 1px solid #ddd;
   border-radius: 4px;
+}
+.unit-dropdown {
+  display: inline-block;
+}
+.unit-select {
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
 }
 
 /* Select Time and Dosage */

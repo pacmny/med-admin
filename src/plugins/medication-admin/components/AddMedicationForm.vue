@@ -23,6 +23,7 @@
         <!-- TAB 1: Medication Information -->
         <div v-if="activeTab === 'medInfo'" class="tab-panel">
           <h3 class="section-title">Medication Information</h3>
+
           <div class="form-group">
             <label>Medication Name</label>
             <input
@@ -56,6 +57,7 @@
             />
           </div>
 
+          <!-- Route & Fluid Type row -->
           <div class="form-row">
             <div class="form-group">
               <label>Route</label>
@@ -69,20 +71,20 @@
                 <option value="TOP Topical">TOP Topical</option>
               </select>
             </div>
-            <div class="form-group">
-              <label>Frequency</label>
-              <select v-model="formData.frequency">
-                <option value="">Select frequency</option>
-                <option>1 times daily</option>
-                <option>2 times daily</option>
-                <option>every 4 hours</option>
-                <option>every 6 hours</option>
-                <!-- Add more as needed -->
+            <!-- Show fluidType only if route === IV -->
+            <div class="form-group" v-if="formData.route === 'IV'">
+              <label>Fluid Type</label>
+              <select v-model="formData.fluidType">
+                <option value="">Select fluid type</option>
+                <option>0.9% Normal Saline</option>
+                <option>D5W (5% Dextrose in Water)</option>
+                <option>Lactated Ringers (LR)</option>
+                <option>Half Normal Saline (0.45% NaCl)</option>
               </select>
             </div>
           </div>
 
-          <!-- Dosage -->
+          <!-- Dosage + Frequency row -->
           <div class="form-row">
             <div class="form-group dosage-group">
               <label>Dosage</label>
@@ -94,7 +96,7 @@
                   class="dosage-input"
                 />
                 <select v-model="formData.dosageForm" class="dosage-select">
-                  <option value="">Select Dosage Form</option>
+                  <option :value="''">Select Dosage Form</option>
                   <option
                     v-for="option in dosageOptions"
                     :key="option"
@@ -104,6 +106,42 @@
                   </option>
                 </select>
               </div>
+            </div>
+            <div class="form-group">
+              <label>Frequency</label>
+              <select v-model="formData.frequency">
+                <option value="">Select frequency</option>
+                <option>1 times daily</option>
+<option>2 times daily</option>
+<option>3 times daily</option>
+<option>4 times daily</option>
+<option>every other day</option>
+<option>at bedtime</option>
+<option>every hour</option>
+<option>every 2 hours</option>
+<option>every 3 hours</option>
+<option>every 4 hours</option>
+<option>every 6 hours</option>
+<option>every 8 hours</option>
+<option>every 12 hours</option>
+<option>every 24 hours</option>
+<option>monday, wednesday, friday, sunday</option>
+<option>tuesday, thursday, saturday</option>
+                <!-- etc. -->
+              </select>
+            </div>
+          </div>
+
+          <!-- Oral route only -->
+          <div v-if="formData.route === 'Oral/Sublingual'" class="form-row">
+            <div class="form-group">
+              <label>Number of Tablets/Quantity</label>
+              <input
+                type="number"
+                min="0"
+                v-model.number="formData.quantity"
+                placeholder="0"
+              />
             </div>
             <div class="form-group checkbox-group">
               <input
@@ -115,21 +153,9 @@
             </div>
           </div>
 
-          <!-- Show quantity only for Oral/Sublingual -->
-          <div v-if="formData.route === 'Oral/Sublingual'" class="form-group">
-            <label>Number of Tablets/Quantity</label>
-            <input
-              type="number"
-              min="0"
-              v-model.number="formData.quantity"
-              placeholder="0"
-            />
-          </div>
-
-          <!-- IV Administration (if route === 'IV') -->
+          <!-- IV Administration (if route === IV) -->
           <div v-if="formData.route === 'IV'">
             <h4>IV Administration</h4>
-            <!-- Single row: Volume, Rate, How Long (computed) -->
             <div class="form-row volume-rate-row">
               <!-- Volume -->
               <div class="form-group volume-group">
@@ -166,7 +192,7 @@
                   placeholder="50 (ml/hr)"
                 />
               </div>
-              <!-- How Long (READ-ONLY) -->
+              <!-- How Long (Computed) -->
               <div class="form-group">
                 <label>How Long (hrs)</label>
                 <input
@@ -178,7 +204,6 @@
               </div>
             </div>
 
-            <!-- Start Time & End Time (read-only) -->
             <div class="form-row">
               <div class="form-group">
                 <label>Start Time</label>
@@ -190,7 +215,6 @@
               </div>
               <div class="form-group">
                 <label>End Time</label>
-                <!-- End time is computed, so disable input. -->
                 <input
                   type="time"
                   :value="formData.endTime"
@@ -199,7 +223,6 @@
               </div>
             </div>
 
-            <!-- VIA -->
             <div class="form-group">
               <label>VIA</label>
               <select v-model="formData.via">
@@ -215,12 +238,12 @@
               </select>
             </div>
           </div>
-          <!-- END IV -->
         </div>
 
         <!-- TAB 2: Prescription Info -->
         <div v-if="activeTab === 'prescriptionInfo'" class="tab-panel">
           <h3 class="section-title">Prescription Information</h3>
+          <!-- same as before... -->
           <div class="form-group">
             <label>RX Number</label>
             <input
@@ -264,7 +287,6 @@
               />
             </div>
           </div>
-
           <div class="form-row">
             <div class="form-group">
               <label>Refill Reminder Date</label>
@@ -288,7 +310,6 @@
         <!-- TAB 3: Provider Info -->
         <div v-if="activeTab === 'providerInfo'" class="tab-panel">
           <h3 class="section-title">Provider Information</h3>
-          <!-- ... identical to your existing fields ... -->
           <div class="form-group">
             <label>Provider Name</label>
             <input
@@ -362,7 +383,6 @@
         <!-- TAB 4: Pharmacy Info -->
         <div v-if="activeTab === 'pharmacyInfo'" class="tab-panel">
           <h3 class="section-title">Pharmacy Information</h3>
-          <!-- ... unchanged ... -->
           <div class="form-group">
             <label>Pharmacy Name</label>
             <input
@@ -425,7 +445,7 @@
           </div>
         </div>
 
-        <!-- Footer Buttons -->
+        <!-- Save/Cancel Buttons -->
         <div class="form-actions">
           <button class="btn-cancel" @click="$emit('close')">
             Cancel
@@ -442,7 +462,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineProps, defineEmits } from 'vue'
 
-/** Our form interface. */
+/** The interface for all fields. */
 interface MedicationFormData {
   medicationName: string;
   ndcNumber: string;
@@ -452,24 +472,22 @@ interface MedicationFormData {
   dosageForm: string;
   frequency: string;
   route: string;
+  fluidType: string; // Only used for IV
   prn: boolean;
   quantity: number;
 
-  // IV fields
-  totalVolume: string;       // e.g. "100"
-  totalVolumeUnit: string;   // e.g. "ml" or "liter"
-  rate: string;              // e.g. "50" or "50 ml/hr" (we'll parse the numeric part)
-  howLong: string;           // computed field in hours
+  totalVolume: string;
+  totalVolumeUnit: string;
+  rate: string;
+  howLong: string;
   startTime: string;
   endTime: string;
   via: string;
 
-  // SQ, ID, IM
   sqInjectionSite: string;
   idInjectionSite: string;
   imInjectionSite: string;
 
-  // Prescription info
   rxNumber: string;
   filledDate: string;
   refills: number;
@@ -478,7 +496,6 @@ interface MedicationFormData {
   refillReminderDate: string;
   expirationDate: string;
 
-  // Provider info
   providerName: string;
   providerDea: string;
   providerNpi: string;
@@ -488,7 +505,6 @@ interface MedicationFormData {
   providerCell: string;
   providerEmail: string;
 
-  // Pharmacy info
   pharmacyName: string;
   pharmacyDea: string;
   pharmacyNpi: string;
@@ -498,17 +514,17 @@ interface MedicationFormData {
   pharmacyEmail: string;
 }
 
-/** Props + emits. */
 const props = defineProps<{
   show: boolean;
   existingMedication?: Partial<MedicationFormData> | null;
 }>()
+
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'save', payload: MedicationFormData & { isEdit: boolean }): void;
 }>()
 
-/** The list of dosage forms. */
+/** The dosage form dropdown list. */
 const dosageOptions = [
   "Actuation","Ampule","Application","Applicator","Auto-Injector","Bar","Capful","Caplet","Capsule",
   "Cartridge","Centimeter","Disk","Dropperful","Each","Film","Fluid Ounce","Gallon","Gram","Gum","Implant",
@@ -518,7 +534,7 @@ const dosageOptions = [
   "Strip","Suppository","Swab","Syringe","Tablet","Troche","Unit","Vial","Wafer"
 ]
 
-/** The reactive form. */
+/** The main reactive form data. */
 const formData = ref<MedicationFormData>({
   medicationName: '',
   ndcNumber: '',
@@ -528,6 +544,7 @@ const formData = ref<MedicationFormData>({
   dosageForm: '',
   frequency: '',
   route: 'Oral/Sublingual',
+  fluidType: '',
   prn: false,
   quantity: 0,
 
@@ -569,7 +586,7 @@ const formData = ref<MedicationFormData>({
   pharmacyEmail: ''
 })
 
-/** Tabs along the top. */
+/** The four tab sections. */
 const tabs = [
   { value: 'medInfo',          label: 'Medication Information' },
   { value: 'prescriptionInfo', label: 'Prescription Information' },
@@ -577,9 +594,11 @@ const tabs = [
   { value: 'pharmacyInfo',     label: 'Pharmacy Information' }
 ]
 const activeTab = ref('medInfo')
+
+/** Are we editing an existing medication? */
 const isEditMode = computed(() => !!props.existingMedication)
 
-/** Merge existingMedication or reset. */
+/** If there's an existingMedication, merge it in; else reset. */
 watch(() => props.existingMedication, (newVal) => {
   if (newVal) {
     formData.value = { ...formData.value, ...newVal }
@@ -588,6 +607,7 @@ watch(() => props.existingMedication, (newVal) => {
   }
 }, { immediate: true })
 
+/** Reset form data to defaults. */
 function resetForm() {
   formData.value = {
     medicationName: '',
@@ -598,6 +618,7 @@ function resetForm() {
     dosageForm: '',
     frequency: '',
     route: 'Oral/Sublingual',
+    fluidType: '',
     prn: false,
     quantity: 0,
 
@@ -640,7 +661,7 @@ function resetForm() {
   }
 }
 
-/** "Save" event. */
+/** Save => emit the entire form + isEdit. */
 function handleSave() {
   emit('save', {
     ...formData.value,
@@ -648,40 +669,29 @@ function handleSave() {
   })
 }
 
-/** WATCHERS for howLong and endTime logic. */
-
-// 1) Watch volume/rate => compute howLong
+/** Watchers for howLong & endTime. (Optional, if you want to keep them) */
 watch(
   [() => formData.value.totalVolume, () => formData.value.rate, () => formData.value.totalVolumeUnit],
   () => {
     const vol = parseFloat(formData.value.totalVolume) || 0
     let numericRate = parseFloat(formData.value.rate) || 0
-
-    // If user typed "50 ml/hr" we can parse out the first number found:
+    // parse out "50 ml/hr"
     if (!numericRate) {
-      // Attempt a fallback parse:
       const match = formData.value.rate.match(/(\d+(\.\d+)?)/)
       if (match) {
         numericRate = parseFloat(match[1])
       }
     }
-
-    // If unit is "liter," convert to ml
     const finalVolumeInMl =
       formData.value.totalVolumeUnit === 'liter' ? vol * 1000 : vol
-
-    // howLong (hrs) = volumeInMl / rate
     let hours = 0
     if (numericRate > 0) {
       hours = finalVolumeInMl / numericRate
     }
-
-    // Round to 2 decimals, or just to a string
     formData.value.howLong = hours > 0 ? hours.toFixed(2) : ''
   }
 )
 
-// 2) Watch howLong and startTime => compute endTime
 watch(
   [() => formData.value.howLong, () => formData.value.startTime],
   () => {
@@ -695,16 +705,11 @@ watch(
       formData.value.endTime = ''
       return
     }
-
-    // Convert "howLong" hours to minutes
     const totalMinutes = Math.round(hoursFloat * 60)
     let newH = startH
     let newM = startM + totalMinutes
-    // handle wrap-around
     newH += Math.floor(newM / 60)
     newM = newM % 60
-
-    // Format as HH:MM for 24-hour time
     const hh = String(newH % 24).padStart(2, '0')
     const mm = String(newM).padStart(2, '0')
     formData.value.endTime = `${hh}:${mm}`
@@ -713,8 +718,6 @@ watch(
 </script>
 
 <style scoped>
-/* Same as your existing styles, with a small row for volume/rate/howLong. */
-
 /* Basic fade for the modal appear/disappear */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.2s;
@@ -723,159 +726,91 @@ watch(
   opacity: 0;
 }
 
-/* Modal Overlay & Container */
+/* Modal overlay & container */
 .modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background-color: rgba(0,0,0,0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
+  display: flex; justify-content: center; align-items: center;
   z-index: 1000;
 }
 .modal-content {
   background-color: #fff;
-  width: 80%;
-  max-width: 800px;
+  width: 80%; max-width: 800px;
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
 }
 .modal-title {
-  margin-top: 0;
-  text-align: center;
-  margin-bottom: 1rem;
+  margin-top: 0; text-align: center; margin-bottom: 1rem;
 }
 
-/* Tabs (buttons) */
+/* Tabs */
 .tabs {
-  display: flex;
-  margin-bottom: 1rem;
-  border-bottom: 1px solid #ccc;
+  display: flex; margin-bottom: 1rem; border-bottom: 1px solid #ccc;
 }
 .tab-button {
-  flex: 1;
-  text-align: center;
-  background: none;
-  border: none;
-  padding: 0.75rem;
-  cursor: pointer;
-  font-weight: 500;
-  transition: background-color 0.2s;
+  flex: 1; text-align: center; background: none; border: none;
+  padding: 0.75rem; cursor: pointer; font-weight: 500; transition: background-color 0.2s;
 }
-.tab-button:hover {
-  background-color: #f2f2f2;
-}
+.tab-button:hover { background-color: #f2f2f2; }
 .tab-button.active {
   background-color: #e6f4f4;
   border-bottom: 3px solid #0c8687;
 }
 
-/* Tab panel */
-.tab-panel {
-  margin: 1rem 0;
-}
+/* Tab panel content */
+.tab-panel { margin: 1rem 0; }
 .section-title {
-  margin: 1rem 0 1rem;
-  font-size: 1.1rem;
+  margin: 1rem 0; font-size: 1.1rem;
   border-bottom: 2px solid #0c8687;
-  color: #333;
-  padding-bottom: 0.5rem;
+  color: #333; padding-bottom: 0.5rem;
 }
 
 /* Form layout */
 .form-group {
-  margin-bottom: 1rem;
-  display: flex;
-  flex-direction: column;
+  margin-bottom: 1rem; display: flex; flex-direction: column;
 }
-.form-group label {
-  font-weight: 500;
-  margin-bottom: 0.3rem;
-}
-.form-group input,
-.form-group select {
-  padding: 0.4rem 0.6rem;
-  border: 1px solid #ccc;
-  border-radius: 4px;
+.form-group label { font-weight: 500; margin-bottom: 0.3rem; }
+.form-group input, .form-group select {
+  padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px;
 }
 .checkbox-group {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
+  display: flex; align-items: center; gap: 0.5rem;
 }
-.form-row {
-  display: flex;
-  gap: 1rem;
-}
-.form-row .form-group {
-  flex: 1;
-}
+.form-row { display: flex; gap: 1rem; }
+.form-row .form-group { flex: 1; }
 
-/* Dosage layout (unchanged) */
-.dosage-group {
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-}
+/* Dosage row */
+.dosage-group { width: 100%; display: flex; flex-direction: column; }
 .dosage-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
+  display: flex; gap: 0.5rem; align-items: center;
 }
-.dosage-input {
-  flex: 0 0 80px;
-}
-.dosage-select {
-  flex: 1;
-}
+.dosage-input { flex: 0 0 80px; }
+.dosage-select { flex: 1; }
 
-/* Volume/Rate/HowLong row */
-.volume-rate-row {
-  display: flex;
-  gap: 1rem;
-}
-.volume-group {
-  display: flex;
-  flex-direction: column;
-}
+/* Volume & Rate row */
+.volume-rate-row { display: flex; gap: 1rem; }
+.volume-group { display: flex; flex-direction: column; }
 .volume-row {
-  display: flex;
-  gap: 0.5rem;
-  align-items: center;
+  display: flex; gap: 0.5rem; align-items: center;
 }
-.volume-dropdown {
-  width: 70px;
-}
+.volume-dropdown { width: 70px; }
 
-/* Footer Action Buttons */
+/* Bottom actions */
 .form-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 1rem;
+  display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;
 }
-.btn-cancel,
-.btn-save {
-  padding: 0.6rem 1.2rem;
-  border-radius: 4px;
-  border: none;
-  cursor: pointer;
-  font-weight: 500;
+.btn-cancel, .btn-save {
+  padding: 0.6rem 1.2rem; border-radius: 4px; border: none; cursor: pointer; font-weight: 500;
 }
 .btn-cancel {
-  background-color: #6c757d;
-  color: #fff;
+  background-color: #6c757d; color: #fff;
 }
 .btn-cancel:hover {
   background-color: #5a6268;
 }
 .btn-save {
-  background-color: #0c8687;
-  color: #fff;
+  background-color: #0c8687; color: #fff;
 }
 .btn-save:hover {
   background-color: #0a7273;
