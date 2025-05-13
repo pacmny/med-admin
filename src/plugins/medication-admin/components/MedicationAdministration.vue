@@ -152,10 +152,10 @@
                     </select>
                   </td>
 
-                  <!-- Amount Available: numeric input + dropdown -->
+                  <!-- Amount Available: numeric input + dosage-type dropdown -->
                   <td v-if="!collapsed" class="tabs-available sticky-column-3">
                     <div class="tabs-counter">
-                      <!-- The numeric input for the quantity -->
+                      <!-- Numeric input for quantity -->
                       <input
                         type="number"
                         v-model="med.tabsAvailable"
@@ -163,10 +163,10 @@
                         class="tabs-input"
                       />
                     </div>
-                    <!-- The new dropdown for units -->
+                    <!-- Dosage type dropdown (unitType) -->
                     <div class="unit-dropdown">
                       <select v-model="med.unitType" class="unit-select">
-                        <option value="" disabled>Select Unit</option>
+                        <option value="" disabled>Select Dosage Type</option>
                         <option
                           v-for="option in unitOptions"
                           :key="option"
@@ -354,7 +354,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Dosage (tabs per admin time):</label>
+          <label>Dosage ({{selectedMedicationForTime.unitType || 'unit'}} per admin time):</label>
           <input
             type="number"
             v-model="selectedDosage"
@@ -619,24 +619,14 @@ export interface Medication {
   discontinuedDate?: Date
   discontinuedTimes?: Record<string, string[]>
 
-  times?: Array<{
-    time: string
-    status?: string
-    locked?: boolean
-    dosage?: number|string
-    earlyReason?: string
-    reason?: string
-    date: string
-  }>
-
-  /** NEW: store which unit type the medication uses */
+  /** Link dosage type to the dropdown in "Amount Available" */
   unitType?: string
 }
 
 const router = useRouter()
 const medications = ref<Medication[]>([])
 
-// We add the dropdown options here:
+/** We reuse the same unit options for both the "AddMedicationForm" and the dropdown here. */
 const unitOptions = [
   "Actuation",
   "Ampule",
@@ -739,10 +729,15 @@ function openMedicationForm(med: Medication) {
     pharmacyPhone: med.pharmacyPhone || '',
     pharmacyDea: med.pharmacyDea || '',
     prescriberInfo: med.prescriberInfo || '',
-    prescriberDeaNpi: med.prescriberDeaNpi || ''
+    prescriberDeaNpi: med.prescriberDeaNpi || '',
+
+    /** Add the unitType so it can be edited if needed */
+    unitType: med.unitType || ''
   }
   showAddForm.value = true
 }
+
+/** Called when the user clicks "Save" in AddMedicationForm */
 function handleMedicationFormSave(payload: any) {
   const isEdit = payload.isEdit
   const originalName = payload.originalName
@@ -759,6 +754,7 @@ function handleMedicationFormSave(payload: any) {
       route: payload.route,
       prn: payload.prn,
       diagnosis: payload.diagnosis || '',
+      unitType: payload.unitType || '',
 
       rxNumber: payload.rxNumber || '',
       refills: payload.refills || 0,
@@ -776,7 +772,7 @@ function handleMedicationFormSave(payload: any) {
     medications.value.push(newMedication)
     populateMedicationTable()
   } else {
-    // Updating existing
+    // Editing an existing med
     const idx = medications.value.findIndex(m => m.name === originalName)
     if (idx !== -1) {
       medications.value[idx].name = payload.medicationName
@@ -788,6 +784,7 @@ function handleMedicationFormSave(payload: any) {
       medications.value[idx].tabsAvailable = payload.quantity
       medications.value[idx].prn = payload.prn
       medications.value[idx].diagnosis = payload.diagnosis
+      medications.value[idx].unitType = payload.unitType
 
       medications.value[idx].rxNumber = payload.rxNumber
       medications.value[idx].refills = payload.refills
@@ -901,6 +898,7 @@ const statusOptions = [
   { value: 'completed', label: 'Completed', color: '#00f445' },
   { value: 'partial', label: 'Partial', color: '#ff69b4' }
 ]
+
 function handleSort(type: string) {
   sortBy.value = type
 }
@@ -1599,8 +1597,6 @@ function hideTooltip() {}
 </script>
 
 <style scoped>
-/* EXACT same styling from your code (plus a small note for the nurse signature input). */
-
 /* Make the medication name clickable */
 .medication-link {
   color: #007bff;
@@ -1766,7 +1762,7 @@ function hideTooltip() {}
 }
 .schedule-table .sticky-column-3 {
   left: 340px;
-  min-width: 180px; /* a bit wider to fit the dropdown */
+  min-width: 180px; /* a bit wider to fit both number + dropdown */
 }
 .schedule-table .sticky-column-4 {
   left: 520px;
@@ -1781,7 +1777,7 @@ function hideTooltip() {}
   min-width: 200px;
 }
 
-/* Tabs Available and Unit Dropdown */
+/* Tabs Available + Unit dropdown */
 .tabs-available {
   padding: 8px;
   display: flex;

@@ -95,7 +95,7 @@
                   placeholder="Dosage"
                   class="dosage-input"
                 />
-                <select v-model="formData.dosageForm" class="dosage-select">
+                <select v-model="formData.unitType" class="dosage-select">
                   <option :value="''">Select Dosage Form</option>
                   <option
                     v-for="option in dosageOptions"
@@ -469,7 +469,7 @@ interface MedicationFormData {
   rxNorm: string;
   diagnosis: string;
   dosage: string;
-  dosageForm: string;
+  unitType: string;
   frequency: string;
   route: string;
   fluidType: string; // Only used for IV
@@ -541,7 +541,7 @@ const formData = ref<MedicationFormData>({
   rxNorm: '',
   diagnosis: '',
   dosage: '',
-  dosageForm: '',
+  unitType: '',
   frequency: '',
   route: 'Oral/Sublingual',
   fluidType: '',
@@ -615,7 +615,7 @@ function resetForm() {
     rxNorm: '',
     diagnosis: '',
     dosage: '',
-    dosageForm: '',
+    unitType: '',
     frequency: '',
     route: 'Oral/Sublingual',
     fluidType: '',
@@ -739,6 +739,8 @@ watch(
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  max-height: 80%;
+  overflow: scroll;
 }
 .modal-title {
   margin-top: 0; text-align: center; margin-bottom: 1rem;

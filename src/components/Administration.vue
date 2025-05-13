@@ -369,7 +369,7 @@ const closePopup = () => {
 }
 
 .schedule-table td:nth-child(3) {
-  width: 100px;
+  /* width: 100px; */
 }
 
 .schedule-table td[data-date] {
