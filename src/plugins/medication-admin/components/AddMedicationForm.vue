@@ -24,6 +24,7 @@
         <div v-if="activeTab === 'medInfo'" class="tab-panel">
           <h3 class="section-title">Medication Information</h3>
 
+          <!-- Medication Name -->
           <div class="form-group">
             <label>Medication Name</label>
             <input
@@ -31,57 +32,6 @@
               v-model="formData.medicationName"
               placeholder="Medication Name"
             />
-          </div>
-          <div class="form-group">
-            <label>NDC Number</label>
-            <input
-              type="text"
-              v-model="formData.ndcNumber"
-              placeholder="NDC Number"
-            />
-          </div>
-          <div class="form-group">
-            <label>RX Norm</label>
-            <input
-              type="text"
-              v-model="formData.rxNorm"
-              placeholder="RX Norm"
-            />
-          </div>
-          <div class="form-group">
-            <label>Diagnosis</label>
-            <input
-              type="text"
-              v-model="formData.diagnosis"
-              placeholder="Diagnosis"
-            />
-          </div>
-
-          <!-- Route & Fluid Type row -->
-          <div class="form-row">
-            <div class="form-group">
-              <label>Route</label>
-              <select v-model="formData.route">
-                <option value="Oral/Sublingual">Oral/Sublingual</option>
-                <option value="IVI Intravaginal">IVI Intravaginal</option>
-                <option value="SQ">SQ (Subcutaneous)</option>
-                <option value="IM">IM (Intramuscular)</option>
-                <option value="IV">IV (Intravenous)</option>
-                <option value="ID">ID (Intradermal)</option>
-                <option value="TOP Topical">TOP Topical</option>
-              </select>
-            </div>
-            <!-- Show fluidType only if route === IV -->
-            <div class="form-group" v-if="formData.route === 'IV'">
-              <label>Fluid Type</label>
-              <select v-model="formData.fluidType">
-                <option value="">Select fluid type</option>
-                <option>0.9% Normal Saline</option>
-                <option>D5W (5% Dextrose in Water)</option>
-                <option>Lactated Ringers (LR)</option>
-                <option>Half Normal Saline (0.45% NaCl)</option>
-              </select>
-            </div>
           </div>
 
           <!-- Dosage + Frequency row -->
@@ -112,24 +62,91 @@
               <select v-model="formData.frequency">
                 <option value="">Select frequency</option>
                 <option>1 times daily</option>
-<option>2 times daily</option>
-<option>3 times daily</option>
-<option>4 times daily</option>
-<option>every other day</option>
-<option>at bedtime</option>
-<option>every hour</option>
-<option>every 2 hours</option>
-<option>every 3 hours</option>
-<option>every 4 hours</option>
-<option>every 6 hours</option>
-<option>every 8 hours</option>
-<option>every 12 hours</option>
-<option>every 24 hours</option>
-<option>monday, wednesday, friday, sunday</option>
-<option>tuesday, thursday, saturday</option>
-                <!-- etc. -->
+                <option>2 times daily</option>
+                <option>3 times daily</option>
+                <option>4 times daily</option>
+                <option>every other day</option>
+                <option>at bedtime</option>
+                <option>every hour</option>
+                <option>every 2 hours</option>
+                <option>every 3 hours</option>
+                <option>every 4 hours</option>
+                <option>every 6 hours</option>
+                <option>every 8 hours</option>
+                <option>every 12 hours</option>
+                <option>every 24 hours</option>
+                <option>monday, wednesday, friday, sunday</option>
+                <option>tuesday, thursday, saturday</option>
               </select>
             </div>
+          </div>
+
+          <!-- Route & Duration row -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>Route</label>
+              <select v-model="formData.route">
+                <option value="Oral/Sublingual">Oral/Sublingual</option>
+                <option value="IVI Intravaginal">IVI Intravaginal</option>
+                <option value="SQ">SQ (Subcutaneous)</option>
+                <option value="IM">IM (Intramuscular)</option>
+                <option value="IV">IV (Intravenous)</option>
+                <option value="ID">ID (Intradermal)</option>
+                <option value="TOP Topical">TOP Topical</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Duration</label>
+              <select v-model="formData.duration">
+                <option value="">Select Duration</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- NDC, RX Norm, Diagnosis in one row -->
+          <div class="form-row">
+            <div class="form-group">
+              <label>NDC Number</label>
+              <input
+                type="text"
+                v-model="formData.ndcNumber"
+                placeholder="NDC Number"
+              />
+            </div>
+            <div class="form-group">
+              <label>RX Norm</label>
+              <input
+                type="text"
+                v-model="formData.rxNorm"
+                placeholder="RX Norm"
+              />
+            </div>
+            <div class="form-group">
+              <label>Diagnosis</label>
+              <input
+                type="text"
+                v-model="formData.diagnosis"
+                placeholder="Diagnosis"
+              />
+            </div>
+          </div>
+
+          <!-- PRN if route is in [IVI, SQ, IM, ID, TOP] => place under NDC Number row -->
+          <div
+            v-if="['IVI Intravaginal','SQ','IM','ID','TOP Topical'].includes(formData.route)"
+            class="form-group checkbox-group"
+          >
+            <input
+              type="checkbox"
+              id="prnCheck-otherRoutes"
+              v-model="formData.prn"
+            />
+            <label for="prnCheck-otherRoutes">PRN (As Needed)</label>
           </div>
 
           <!-- Oral route only -->
@@ -146,16 +163,46 @@
             <div class="form-group checkbox-group">
               <input
                 type="checkbox"
-                id="prnCheck"
+                id="prnCheck-oral"
                 v-model="formData.prn"
               />
-              <label for="prnCheck">PRN (As Needed)</label>
+              <label for="prnCheck-oral">PRN (As Needed)</label>
             </div>
           </div>
 
-          <!-- IV Administration (if route === IV) -->
+          <!-- IV Administration -->
           <div v-if="formData.route === 'IV'">
             <h4>IV Administration</h4>
+
+            <!-- Fluid Type & VIA row -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fluid Type</label>
+                <select v-model="formData.fluidType">
+                  <option value="">Select fluid type</option>
+                  <option>0.9% Normal Saline</option>
+                  <option>D5W (5% Dextrose in Water)</option>
+                  <option>Lactated Ringers (LR)</option>
+                  <option>Half Normal Saline (0.45% NaCl)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>VIA</label>
+                <select v-model="formData.via">
+                  <option value="">Select an option</option>
+                  <option>Peripheral IV - Left Arm</option>
+                  <option>Peripheral IV - Right Arm</option>
+                  <option>PICC Line - Left</option>
+                  <option>PICC Line - Right</option>
+                  <option>Mid Line - Left</option>
+                  <option>Mid Line - Right</option>
+                  <option>Central Line - Left</option>
+                  <option>Central Line - Right</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Volume + Rate row -->
             <div class="form-row volume-rate-row">
               <!-- Volume -->
               <div class="form-group volume-group">
@@ -204,6 +251,7 @@
               </div>
             </div>
 
+            <!-- Start/End Time row -->
             <div class="form-row">
               <div class="form-group">
                 <label>Start Time</label>
@@ -223,19 +271,14 @@
               </div>
             </div>
 
-            <div class="form-group">
-              <label>VIA</label>
-              <select v-model="formData.via">
-                <option value="">Select an option</option>
-                <option>Peripheral IV - Left Arm</option>
-                <option>Peripheral IV - Right Arm</option>
-                <option>PICC Line - Left</option>
-                <option>PICC Line - Right</option>
-                <option>Mid Line - Left</option>
-                <option>Mid Line - Right</option>
-                <option>Central Line - Left</option>
-                <option>Central Line - Right</option>
-              </select>
+            <!-- PRN if route === 'IV' => place under Start Time row -->
+            <div class="form-group checkbox-group">
+              <input
+                type="checkbox"
+                id="prnCheck-iv"
+                v-model="formData.prn"
+              />
+              <label for="prnCheck-iv">PRN (As Needed)</label>
             </div>
           </div>
         </div>
@@ -243,7 +286,6 @@
         <!-- TAB 2: Prescription Info -->
         <div v-if="activeTab === 'prescriptionInfo'" class="tab-panel">
           <h3 class="section-title">Prescription Information</h3>
-          <!-- same as before... -->
           <div class="form-group">
             <label>RX Number</label>
             <input
@@ -472,6 +514,7 @@ interface MedicationFormData {
   unitType: string;
   frequency: string;
   route: string;
+  duration: string;
   fluidType: string; // Only used for IV
   prn: boolean;
   quantity: number;
@@ -534,7 +577,7 @@ const dosageOptions = [
   "Strip","Suppository","Swab","Syringe","Tablet","Troche","Unit","Vial","Wafer"
 ]
 
-/** The main reactive form data. */
+/** Main reactive form data. */
 const formData = ref<MedicationFormData>({
   medicationName: '',
   ndcNumber: '',
@@ -544,6 +587,7 @@ const formData = ref<MedicationFormData>({
   unitType: '',
   frequency: '',
   route: 'Oral/Sublingual',
+  duration: '',
   fluidType: '',
   prn: false,
   quantity: 0,
@@ -618,6 +662,7 @@ function resetForm() {
     unitType: '',
     frequency: '',
     route: 'Oral/Sublingual',
+    duration: '',
     fluidType: '',
     prn: false,
     quantity: 0,
@@ -669,13 +714,13 @@ function handleSave() {
   })
 }
 
-/** Watchers for howLong & endTime. (Optional, if you want to keep them) */
+/** Watchers for howLong & endTime (optional). */
 watch(
   [() => formData.value.totalVolume, () => formData.value.rate, () => formData.value.totalVolumeUnit],
   () => {
     const vol = parseFloat(formData.value.totalVolume) || 0
     let numericRate = parseFloat(formData.value.rate) || 0
-    // parse out "50 ml/hr"
+    // parse out "50 ml/hr", etc.
     if (!numericRate) {
       const match = formData.value.rate.match(/(\d+(\.\d+)?)/)
       if (match) {
@@ -718,7 +763,6 @@ watch(
 </script>
 
 <style scoped>
-/* Basic fade for the modal appear/disappear */
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.2s;
 }
