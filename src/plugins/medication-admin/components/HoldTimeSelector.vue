@@ -93,6 +93,14 @@
       class="status-reason"
     />
 
+    <!-- Nurse Signature input -->
+    <input
+      v-model="nurseSignature"
+      type="text"
+      placeholder="Enter Nurse Signature"
+      class="nurse-signature"
+    />
+
     <!-- Submit/Cancel -->
     <div class="action-buttons">
       <button
@@ -130,8 +138,15 @@ const props = defineProps<{
 
 /**
  * Emits:
- *  - "submit" => user clicked Submit with 
- *                { dateRange, times, reason, holdType, statusOption }.
+ *  - "submit" => user clicked Submit with an object:
+ *      {
+ *         dateRange: [Date, Date];
+ *         times: string[] | null;
+ *         reason: string;
+ *         holdType: 'all' | 'specific';
+ *         statusOption: 'hold' | 'new' | 'discontinue';
+ *         nurseSignature: string; // <= Added
+ *      }
  *  - "cancel" => user clicked Cancel.
  */
 const emit = defineEmits<{
@@ -141,6 +156,7 @@ const emit = defineEmits<{
     reason: string;
     holdType: 'all' | 'specific';
     statusOption: 'hold' | 'new' | 'discontinue';
+    nurseSignature: string;
   }): void;
   (e: 'cancel'): void;
 }>()
@@ -151,11 +167,14 @@ const timeSelection = ref<'all' | 'specific'>('all')
 // Single date
 const selectedDate = ref<Date | null>(null)
 
-// Times user checked if timeSelection='specific'
+// Times user checks if "specific"
 const selectedTimes = ref<string[]>([])
 
 // Reason
 const reasonValue = ref('')
+
+// Nurse signature
+const nurseSignature = ref('')
 
 // Dynamic placeholder text
 const reasonPlaceholder = computed(() => {
@@ -167,9 +186,9 @@ const reasonPlaceholder = computed(() => {
   return 'Enter reason for hold'
 })
 
-// Form is valid if we have a date + reason, and times if "specific"
+// Form is valid if we have a date, reason, nurse signature, and times (if "specific")
 const isValid = computed(() => {
-  if (!selectedDate.value || !reasonValue.value.trim()) {
+  if (!selectedDate.value || !reasonValue.value.trim() || !nurseSignature.value.trim()) {
     return false
   }
   if (timeSelection.value === 'specific' && selectedTimes.value.length === 0) {
@@ -189,13 +208,15 @@ function handleSubmit() {
     times: (timeSelection.value === 'specific') ? selectedTimes.value : null,
     reason: reasonValue.value.trim(),
     holdType: timeSelection.value,
-    statusOption: props.statusOption
+    statusOption: props.statusOption,
+    nurseSignature: nurseSignature.value.trim()
   })
 
   // Reset
   selectedDate.value = null
   selectedTimes.value = []
   reasonValue.value = ''
+  nurseSignature.value = ''
   timeSelection.value = 'all'
 }
 </script>
@@ -277,8 +298,9 @@ function handleSubmit() {
   width: 100%;
 }
 
-/* Reason input */
-.status-reason {
+/* Reason + Nurse signature */
+.status-reason,
+.nurse-signature {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid #ddd;
@@ -286,7 +308,8 @@ function handleSubmit() {
   font-size: 14px;
   margin-top: -4px;
 }
-.status-reason:focus {
+.status-reason:focus,
+.nurse-signature:focus {
   outline: none;
   border-color: #0C8687;
   box-shadow: 0 0 0 2px rgba(12, 134, 135, 0.1);

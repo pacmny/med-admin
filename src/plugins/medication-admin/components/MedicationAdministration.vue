@@ -628,65 +628,14 @@ const medications = ref<Medication[]>([])
 
 /** We reuse the same unit options for both the "AddMedicationForm" and the dropdown here. */
 const unitOptions = [
-  "Actuation",
-  "Ampule",
-  "Application",
-  "Applicator",
-  "Auto-Injector",
-  "Bar",
-  "Capful",
-  "Caplet",
-  "Capsule",
-  "Cartridge",
-  "Centimeter",
-  "Disk",
-  "Dropperful",
-  "Each",
-  "Film",
-  "Fluid Ounce",
-  "Gallon",
-  "Gram",
-  "Gum",
-  "Implant",
-  "Inch",
-  "Inhalation",
-  "Injection",
-  "Insert",
-  "Liter",
-  "Lollipop",
-  "Lozenge",
-  "Metric Drop",
-  "Microgram",
-  "Milliequivalent",
-  "Milligram",
-  "Milliliter",
-  "Nebule",
-  "Ounce",
-  "Package",
-  "Packet",
-  "Pad",
-  "Patch",
-  "Pellet",
-  "Pill",
-  "Pint",
-  "Pre-filled Pen Syringe",
-  "Puff",
-  "Pump",
-  "Ring",
-  "Sachet",
-  "Scoopful",
-  "Sponge",
-  "Spray",
-  "Stick",
-  "Strip",
-  "Suppository",
-  "Swab",
-  "Syringe",
-  "Tablet",
-  "Troche",
-  "Unit",
-  "Vial",
-  "Wafer"
+  "Actuation", "Ampule", "Application", "Applicator", "Auto-Injector", "Bar",
+  "Capful", "Caplet", "Capsule", "Cartridge", "Centimeter", "Disk", "Dropperful",
+  "Each", "Film", "Fluid Ounce", "Gallon", "Gram", "Gum", "Implant", "Inch",
+  "Inhalation", "Injection", "Insert", "Liter", "Lollipop", "Lozenge", "Metric Drop",
+  "Microgram", "Milliequivalent", "Milligram", "Milliliter", "Nebule", "Ounce",
+  "Package", "Packet", "Pad", "Patch", "Pellet", "Pill", "Pint", "Pre-filled Pen Syringe",
+  "Puff", "Pump", "Ring", "Sachet", "Scoopful", "Sponge", "Spray", "Stick", "Strip",
+  "Suppository", "Swab", "Syringe", "Tablet", "Troche", "Unit", "Vial", "Wafer"
 ]
 
 // Sort
@@ -1190,7 +1139,11 @@ function handleSave() {
           if (idx === -1) {
             med.dates[ds].push({ ...t })
           } else {
-            if (!med.dates[ds][idx].locked && med.dates[ds][idx].status !== 'discontinue') {
+            if (
+              !med.dates[ds][idx].locked &&
+              med.dates[ds][idx].status !== 'discontinue' &&
+              med.dates[ds][idx].status !== 'hold'
+            ) {
               med.dates[ds][idx] = { ...t }
             }
           }
@@ -1272,42 +1225,33 @@ function handleHoldSubmit(data: {
 }) {
   if (!selectedMedicationForHold.value) return
   const medication = selectedMedicationForHold.value
-  const discDate = normalizeToMidnight(data.dateRange[0])
-
-  if (data.statusOption === 'discontinue') {
-    if (data.holdType === 'all') {
-      medication.discontinuedDate = discDate
-      const dateStr = formatDateToYYYYMMDD(discDate)
-      if (!medication.dates) medication.dates = {}
-      if (medication.dates[dateStr]) {
-        medication.dates[dateStr].forEach((slot: any) => {
-          slot.status = 'discontinue'
-          slot.locked = true
-        })
-      }
-    } else if (data.holdType === 'specific' && data.times) {
-      if (!medication.discontinuedTimes) {
-        medication.discontinuedTimes = {}
-      }
-      const dateStr = formatDateToYYYYMMDD(discDate)
-      if (!medication.discontinuedTimes[dateStr]) {
-        medication.discontinuedTimes[dateStr] = []
-      }
-      if (medication.dates && medication.dates[dateStr]) {
-        data.times.forEach(t => {
-          const found = medication.dates[dateStr].find((obj: any) => obj.time === t)
-          if (found) {
-            found.status = 'discontinue'
-            found.locked = true
-          }
-          if (!medication.discontinuedTimes[dateStr].includes(t)) {
-            medication.discontinuedTimes[dateStr].push(t)
-          }
-        })
-      }
+  const dateStr = formatDateToYYYYMMDD(data.dateRange[0])
+  if (data.holdType === 'all') {
+    if (medication.dates && medication.dates[dateStr]) {
+      medication.dates[dateStr].forEach((timeObj: any) => {
+        if (data.statusOption === 'discontinue' || data.statusOption === 'change') {
+          timeObj.status = 'discontinue'
+        } else if (data.statusOption === 'new') {
+          timeObj.status = 'new'
+        } else {
+          timeObj.status = 'hold'
+        }
+      })
     }
+  } else if (data.holdType === 'specific' && data.times && medication.dates && medication.dates[dateStr]) {
+    data.times.forEach(tStr => {
+      const timeObj = medication.dates[dateStr].find((obj: any) => obj.time === tStr)
+      if (timeObj) {
+        if (data.statusOption === 'discontinue' || data.statusOption === 'change') {
+          timeObj.status = 'discontinue'
+        } else if (data.statusOption === 'new') {
+          timeObj.status = 'new'
+        } else {
+          timeObj.status = 'hold'
+        }
+      }
+    })
   }
-
   medication.holdInfo = {
     dateRange: data.dateRange,
     times: data.times,
@@ -1579,7 +1523,42 @@ function handlePrnSignOff() {
 }
 
 // Just a stub for PRN stamping
-function stampPRNTime(_med: Medication) {}
+function stampPRNTime(med: Medication) {
+  const limit = getTimesCountFromFrequency(med.frequency || '')
+  if (!med.times) {
+    med.times = []
+  }
+  const todayStr = formatDateToYYYYMMDD(new Date())
+  const todaysPRNs = med.times.filter(entry => entry.date === todayStr)
+  if (todaysPRNs.length >= limit) {
+    alert(`You can only add up to ${limit} PRN timestamp(s) per day.`)
+    return
+  }
+  if (med.frequency === '2 times daily' && med.times.length > 0) {
+    const lastDose = med.times[med.times.length - 1]
+    const lastDoseDateTime = new Date(lastDose.date + ' ' + lastDose.time)
+    const now = new Date()
+    const diffHours = (now.getTime() - lastDoseDateTime.getTime()) / (1000 * 60 * 60)
+    if (diffHours < 11) {
+      confirmationMessage.value = "This medication is early (less than 11 hours from the initial dose). Do you still want to give it?"
+      isEarly.value = true
+      showTimeConfirmationPopup.value = true
+      pendingDateAndTime.value = { dateObj: new Date(), timeObj: { med }, medication: med }
+      return
+    }
+  }
+  const now = new Date()
+  const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  const newTimeObj = {
+    time: timeStr,
+    status: 'PRN',
+    date: todayStr,
+    dosage: med.dosage || '1',
+    reason: ''
+  }
+  med.times.push(newTimeObj)
+  openPrnSignOffPopup(med, newTimeObj)
+}
 function getTooltipText(timeObj: any) {
   if (!timeObj.signedOff) {
     return ''
@@ -1701,7 +1680,10 @@ function hideTooltip() {}
 
 /* Category Section + Sticky Category Header */
 .category-section {
-  overflow-x: scroll;
+  overflow-x: auto;
+  /* Add vertical scroll and fix max height: */
+  max-height: 400px; 
+  overflow-y: auto;
   margin-bottom: 2rem;
 }
 .category-header {
@@ -1724,13 +1706,21 @@ function hideTooltip() {}
   background-color: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
+/* Sticky table header for vertical scrolling */
+.schedule-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 2;
+}
+
 .schedule-table th,
 .schedule-table td {
   border: 1px solid #ddd;
   padding: 12px;
   text-align: center;
 }
-/* Sticky headers/columns */
+/* Sticky columns */
 .schedule-table .sticky-header-1,
 .schedule-table .sticky-header-2,
 .schedule-table .sticky-header-3,
@@ -1740,7 +1730,7 @@ function hideTooltip() {}
   position: sticky;
   top: 0;
   background-color: #f8f9fa;
-  z-index: 2;
+  z-index: 10;
 }
 .schedule-table .sticky-column-1,
 .schedule-table .sticky-column-2,
@@ -1752,28 +1742,28 @@ function hideTooltip() {}
   background-color: #ffffff;
   z-index: 3;
 }
-.schedule-table .sticky-column-1 {
+.schedule-table .sticky-column-1, .sticky-header-1 {
   left: 0;
-  min-width: 220px;
+  min-width: 250px;
 }
-.schedule-table .sticky-column-2 {
-  left: 220px;
+.schedule-table .sticky-column-2,.sticky-header-2 {
+  left: 262px;
   min-width: 120px;
 }
-.schedule-table .sticky-column-3 {
-  left: 340px;
+.schedule-table .sticky-column-3, .sticky-header-3 {
+  left: 394px;
   min-width: 180px; /* a bit wider to fit both number + dropdown */
 }
-.schedule-table .sticky-column-4 {
-  left: 520px;
+.schedule-table .sticky-column-4, .sticky-header-4 {
+  left: 651px;
   min-width: 100px;
 }
-.schedule-table .sticky-column-5 {
-  left: 620px;
+.schedule-table .sticky-column-5, .sticky-header-5 {
+  left: 765px;
   min-width: 100px;
 }
-.schedule-table .sticky-column-6 {
-  left: 720px;
+.schedule-table .sticky-column-6, .sticky-header-6 {
+  left: 875px;
   min-width: 200px;
 }
 
@@ -1866,6 +1856,11 @@ function hideTooltip() {}
 .time-entry.discontinue {
   background-color: #f8d7da !important;
 }
+.time-entry.hold {
+  background-color: #fff3cd;
+  color: #000;
+}
+
 .icon-immediate {
   font-weight: bold;
   font-size: 1rem;
