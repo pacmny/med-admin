@@ -124,13 +124,23 @@
                   :class="getRowStatusClass(med)"
                   :data-med-index="medIndex"
                 >
-                  <!-- Medication Info: clickable name => edit -->
+                  <!-- Medication Info: clickable name => edit 
+                       PLUS the new tooltip icon showing the nurse/time from Add New Medication -->
                   <td class="sticky-column-1">
                     <span
                       class="medication-link"
                       @click="openMedicationForm(med)"
                     >
                       {{ med.name }}
+                    </span>
+                    <!-- Tooltip icon for nurse/time from Add New Medication -->
+                    <span
+                      v-if="getAddMedicationTooltip(med)"
+                      class="tooltip-icon"
+                      :title="getAddMedicationTooltip(med)"
+                      style="margin-left: 4px;"
+                    >
+                      ℹ️
                     </span>
                   </td>
 
@@ -587,6 +597,7 @@ export interface Medication {
     temporaryStatus?: string
     dosage?: number|string
     earlyReason?: string
+    reason?: string
   }[]>
   tabsAvailable: number
   frequency?: string
@@ -621,6 +632,13 @@ export interface Medication {
 
   /** Link dosage type to the dropdown in "Amount Available" */
   unitType?: string
+
+  /**
+   * NEW FIELDS for capturing the nurse name and timestamp
+   * from the "Add New Medication" popup
+   */
+  addedByNurse?: string
+  addedTimestamp?: string
 }
 
 const router = useRouter()
@@ -681,15 +699,23 @@ function openMedicationForm(med: Medication) {
     prescriberDeaNpi: med.prescriberDeaNpi || '',
 
     /** Add the unitType so it can be edited if needed */
-    unitType: med.unitType || ''
+    unitType: med.unitType || '',
+
+    // We'll store the previously entered nurse name if any:
+    nurseSignature: med.addedByNurse || ''
   }
   showAddForm.value = true
 }
 
-/** Called when the user clicks "Save" in AddMedicationForm */
+/**
+ * Called when the user clicks "Save" in AddMedicationForm
+ * We'll capture the nurse name and a timestamp, and store them
+ * in the medication object for tooltip display.
+ */
 function handleMedicationFormSave(payload: any) {
   const isEdit = payload.isEdit
   const originalName = payload.originalName
+  const nurseSignature = payload.nurseSignature || ''
 
   if (!isEdit) {
     // Creating new medication
@@ -716,10 +742,15 @@ function handleMedicationFormSave(payload: any) {
       prescriberDeaNpi: payload.prescriberDeaNpi || '',
 
       administrationTimes: '',
-      dates: {}
+      dates: {},
+
+      // NEW: store nurse name & timestamp
+      addedByNurse: nurseSignature,
+      addedTimestamp: new Date().toISOString()
     }
     medications.value.push(newMedication)
     populateMedicationTable()
+
   } else {
     // Editing an existing med
     const idx = medications.value.findIndex(m => m.name === originalName)
@@ -744,6 +775,10 @@ function handleMedicationFormSave(payload: any) {
       medications.value[idx].pharmacyDea = payload.pharmacyDea
       medications.value[idx].prescriberInfo = payload.prescriberInfo
       medications.value[idx].prescriberDeaNpi = payload.prescriberDeaNpi
+
+      // NEW: update nurse name & timestamp on edit
+      medications.value[idx].addedByNurse = nurseSignature
+      medications.value[idx].addedTimestamp = new Date().toISOString()
 
       populateMedicationTable()
     }
@@ -837,6 +872,16 @@ function formatDateToYYYYMMDD(d: Date): string {
   )
 }
 
+/**
+ * Return a tooltip string (similar styling to other tooltips)
+ * showing which nurse added the medication and when.
+ */
+function getAddMedicationTooltip(med: Medication) {
+  if (!med.addedByNurse || !med.addedTimestamp) return ''
+  const addedTime = new Date(med.addedTimestamp).toLocaleString()
+  return `Nurse: ${med.addedByNurse}\nAdded On: ${addedTime}`
+}
+
 const statusOptions = [
   { value: 'active', label: 'Active', color: '#d4edda' },
   { value: 'discontinue', label: 'Discontinue', color: '#f8d7da' },
@@ -863,6 +908,7 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
   })
   return grouped
 }
+
 const routeCategories = [
   'PRN',
   'Neb/INH',
@@ -877,8 +923,27 @@ const routeCategories = [
   'Optic',
   'Otic'
 ]
+
+function isMedicationVisible(med: Medication): boolean {
+  if (!med.discontinuedDate) {
+    return true
+  }
+  // If there's no date range, always show
+  if (dateList.value.length === 0) {
+    return true
+  }
+  // If the earliest day is strictly after the discontinuedDate => skip
+  const earliestDay = normalizeToMidnight(dateList.value[0])
+  if (earliestDay.getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
+    return false
+  }
+  return true
+}
+
 const groupedMedications = computed(() => {
-  let sortedMeds = [...medications.value]
+  // Filter out meds not in the date range anymore
+  let sortedMeds = [...medications.value].filter(med => isMedicationVisible(med))
+
   if (selectedStatus.value) {
     sortedMeds = sortedMeds.filter(med => med.status === selectedStatus.value)
   }
@@ -1681,7 +1746,6 @@ function hideTooltip() {}
 /* Category Section + Sticky Category Header */
 .category-section {
   overflow-x: auto;
-  /* Add vertical scroll and fix max height: */
   max-height: 400px; 
   overflow-y: auto;
   margin-bottom: 2rem;
@@ -1706,7 +1770,6 @@ function hideTooltip() {}
   background-color: white;
   box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
-/* Sticky table header for vertical scrolling */
 .schedule-table thead th {
   position: sticky;
   top: 0;
@@ -1752,7 +1815,7 @@ function hideTooltip() {}
 }
 .schedule-table .sticky-column-3, .sticky-header-3 {
   left: 394px;
-  min-width: 180px; /* a bit wider to fit both number + dropdown */
+  min-width: 180px;
 }
 .schedule-table .sticky-column-4, .sticky-header-4 {
   left: 651px;

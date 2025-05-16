@@ -485,13 +485,26 @@
               placeholder="Email"
             />
           </div>
+
+          <!-- NEW: Nurse Signature Box at bottom of Pharmacy Info tab -->
+          <div class="form-group">
+            <label for="nurseSignature">Nurse Signature</label>
+            <input
+              type="text"
+              id="nurseSignature"
+              placeholder="Nurse signature"
+              v-model="formData.nurseSignature"
+            />
+          </div>
         </div>
 
         <!-- Save/Cancel Buttons -->
         <div class="form-actions">
-          <button class="btn-cancel" @click="$emit('close')">
+          <!-- Cancel => call handleCancel() -->
+          <button class="btn-cancel" @click="handleCancel">
             Cancel
           </button>
+          <!-- Save => call handleSave() -->
           <button class="btn-save" @click="handleSave">
             Save
           </button>
@@ -504,7 +517,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineProps, defineEmits } from 'vue'
 
-/** The interface for all fields. */
+/** The interface for all fields, including the new nurseSignature. */
 interface MedicationFormData {
   medicationName: string;
   ndcNumber: string;
@@ -555,6 +568,9 @@ interface MedicationFormData {
   pharmacyOffice: string;
   pharmacyCell: string;
   pharmacyEmail: string;
+
+  /** The new signature field for the nurse. */
+  nurseSignature: string;
 }
 
 const props = defineProps<{
@@ -577,7 +593,7 @@ const dosageOptions = [
   "Strip","Suppository","Swab","Syringe","Tablet","Troche","Unit","Vial","Wafer"
 ]
 
-/** Main reactive form data. */
+/** Main reactive form data, including nurseSignature. */
 const formData = ref<MedicationFormData>({
   medicationName: '',
   ndcNumber: '',
@@ -627,10 +643,12 @@ const formData = ref<MedicationFormData>({
   pharmacyAddress: '',
   pharmacyOffice: '',
   pharmacyCell: '',
-  pharmacyEmail: ''
+  pharmacyEmail: '',
+
+  nurseSignature: '' // Our new field
 })
 
-/** The four tab sections. */
+/** The four tab sections (plus we remain consistent with existing ones). */
 const tabs = [
   { value: 'medInfo',          label: 'Medication Information' },
   { value: 'prescriptionInfo', label: 'Prescription Information' },
@@ -642,7 +660,11 @@ const activeTab = ref('medInfo')
 /** Are we editing an existing medication? */
 const isEditMode = computed(() => !!props.existingMedication)
 
-/** If there's an existingMedication, merge it in; else reset. */
+/**
+ * If there's an existingMedication, merge it in; else reset.
+ * This watch triggers when the parent passes in new data (edit mode),
+ * or null for new med.
+ */
 watch(() => props.existingMedication, (newVal) => {
   if (newVal) {
     formData.value = { ...formData.value, ...newVal }
@@ -651,7 +673,17 @@ watch(() => props.existingMedication, (newVal) => {
   }
 }, { immediate: true })
 
-/** Reset form data to defaults. */
+/**
+ * Also watch 'show'. If the popup closes (show => false),
+ * reset the form so next time it's fresh & blank.
+ */
+watch(() => props.show, (visible) => {
+  if (!visible) {
+    resetForm()
+  }
+})
+
+/** Reset form data to defaults, including nurseSignature. */
 function resetForm() {
   formData.value = {
     medicationName: '',
@@ -702,19 +734,28 @@ function resetForm() {
     pharmacyAddress: '',
     pharmacyOffice: '',
     pharmacyCell: '',
-    pharmacyEmail: ''
+    pharmacyEmail: '',
+
+    nurseSignature: ''
   }
 }
 
-/** Save => emit the entire form + isEdit. */
+/** Called when user presses 'Save'. Emit up, then reset. */
 function handleSave() {
   emit('save', {
     ...formData.value,
     isEdit: isEditMode.value
   })
+  resetForm()
 }
 
-/** Watchers for howLong & endTime (optional). */
+/** Called when user presses 'Cancel'. Emit close, then reset. */
+function handleCancel() {
+  emit('close')
+  resetForm()
+}
+
+/** Watchers for howLong & endTime (IV) */
 watch(
   [() => formData.value.totalVolume, () => formData.value.rate, () => formData.value.totalVolumeUnit],
   () => {
