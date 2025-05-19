@@ -24,28 +24,39 @@
         <div v-if="activeTab === 'medInfo'" class="tab-panel">
           <h3 class="section-title">Medication Information</h3>
 
-          <!-- Medication Name -->
+          <!-- Medication Name (required) -->
           <div class="form-group">
-            <label>Medication Name</label>
+            <label>
+              Medication Name <span class="required">*</span>
+            </label>
             <input
               type="text"
               v-model="formData.medicationName"
               placeholder="Medication Name"
+              required
+              aria-required="true"
             />
           </div>
 
           <!-- Dosage + Frequency row -->
           <div class="form-row">
             <div class="form-group dosage-group">
-              <label>Dosage</label>
+              <label>
+                Dosage <span class="required">*</span>
+              </label>
               <div class="dosage-row">
                 <input
                   type="text"
                   v-model="formData.dosage"
                   placeholder="Dosage"
                   class="dosage-input"
+                  required
+                  aria-required="true"
                 />
-                <select v-model="formData.unitType" class="dosage-select">
+                <select
+                  v-model="formData.unitType"
+                  class="dosage-select"
+                >
                   <option :value="''">Select Dosage Form</option>
                   <option
                     v-for="option in dosageOptions"
@@ -58,8 +69,14 @@
               </div>
             </div>
             <div class="form-group">
-              <label>Frequency</label>
-              <select v-model="formData.frequency">
+              <label>
+                Frequency <span class="required">*</span>
+              </label>
+              <select
+                v-model="formData.frequency"
+                required
+                aria-required="true"
+              >
                 <option value="">Select frequency</option>
                 <option>1 times daily</option>
                 <option>2 times daily</option>
@@ -84,15 +101,29 @@
           <!-- Route & Duration row -->
           <div class="form-row">
             <div class="form-group">
-              <label>Route</label>
-              <select v-model="formData.route">
+              <label>
+                Route <span class="required">*</span>
+              </label>
+              <select
+                v-model="formData.route"
+                required
+                aria-required="true"
+              >
+                <option value="">Select route</option>
                 <option value="Oral/Sublingual">Oral/Sublingual</option>
                 <option value="IVI Intravaginal">IVI Intravaginal</option>
-                <option value="SQ">SQ (Subcutaneous)</option>
-                <option value="IM">IM (Intramuscular)</option>
-                <option value="IV">IV (Intravenous)</option>
-                <option value="ID">ID (Intradermal)</option>
+                <option value="SQ (Subcutaneous)">SQ (Subcutaneous)</option>
+                <option value="IM (Intramuscular)">IM (Intramuscular)</option>
+                <option value="IV (Intravenous)">IV (Intravenous)</option>
+                <option value="ID (Intradermal)">ID (Intradermal)</option>
                 <option value="TOP Topical">TOP Topical</option>
+                <option value="Neb/INH">Neb/INH</option>
+                <option value="NAS Intranasal">NAS Intranasal</option>
+                <option value="TD Transdermal">TD Transdermal</option>
+                <option value="Urethral">Urethral</option>
+                <option value="Rectally">Rectally</option>
+                <option value="Optic">Optic</option>
+                <option value="Otic">Otic</option>
               </select>
             </div>
             <div class="form-group">
@@ -136,9 +167,9 @@
             </div>
           </div>
 
-          <!-- PRN if route is in [IVI, SQ, IM, ID, TOP] => place under NDC Number row -->
+          <!-- PRN if route is in [IVI, SQ, IM, ID, TOP] -->
           <div
-            v-if="['IVI Intravaginal','SQ','IM','ID','TOP Topical'].includes(formData.route)"
+            v-if="!['IV (Intravenous)','Oral/Sublingual'].includes(formData.route)"
             class="form-group checkbox-group"
           >
             <input
@@ -171,7 +202,7 @@
           </div>
 
           <!-- IV Administration -->
-          <div v-if="formData.route === 'IV'">
+          <div v-if="formData.route === 'IV (Intravenous)'">
             <h4>IV Administration</h4>
 
             <!-- Fluid Type & VIA row -->
@@ -204,7 +235,6 @@
 
             <!-- Volume + Rate row -->
             <div class="form-row volume-rate-row">
-              <!-- Volume -->
               <div class="form-group volume-group">
                 <label>Total Volume</label>
                 <div class="volume-row">
@@ -230,7 +260,6 @@
                   </select>
                 </div>
               </div>
-              <!-- Rate -->
               <div class="form-group">
                 <label>Rate</label>
                 <input
@@ -239,7 +268,6 @@
                   placeholder="50 (ml/hr)"
                 />
               </div>
-              <!-- How Long (Computed) -->
               <div class="form-group">
                 <label>How Long (hrs)</label>
                 <input
@@ -271,7 +299,7 @@
               </div>
             </div>
 
-            <!-- PRN if route === 'IV' => place under Start Time row -->
+            <!-- PRN for IV -->
             <div class="form-group checkbox-group">
               <input
                 type="checkbox"
@@ -382,6 +410,7 @@
             <label>License Number</label>
             <input
               type="text"
+              v-model"text"
               v-model="formData.licenseNumber"
               placeholder="License Number"
             />
@@ -486,7 +515,7 @@
             />
           </div>
 
-          <!-- NEW: Nurse Signature Box at bottom of Pharmacy Info tab -->
+          <!-- Nurse Signature -->
           <div class="form-group">
             <label for="nurseSignature">Nurse Signature</label>
             <input
@@ -500,15 +529,18 @@
 
         <!-- Save/Cancel Buttons -->
         <div class="form-actions">
-          <!-- Cancel => call handleCancel() -->
           <button class="btn-cancel" @click="handleCancel">
             Cancel
           </button>
-          <!-- Save => call handleSave() -->
-          <button class="btn-save" @click="handleSave">
+          <button
+            class="btn-save"
+            @click="handleSave"
+            :disabled="!isFormValid"
+          >
             Save
           </button>
         </div>
+
       </div>
     </div>
   </transition>
@@ -517,7 +549,6 @@
 <script setup lang="ts">
 import { ref, computed, watch, defineProps, defineEmits } from 'vue'
 
-/** The interface for all fields, including the new nurseSignature. */
 interface MedicationFormData {
   medicationName: string;
   ndcNumber: string;
@@ -528,7 +559,7 @@ interface MedicationFormData {
   frequency: string;
   route: string;
   duration: string;
-  fluidType: string; // Only used for IV
+  fluidType: string;
   prn: boolean;
   quantity: number;
 
@@ -569,7 +600,6 @@ interface MedicationFormData {
   pharmacyCell: string;
   pharmacyEmail: string;
 
-  /** The new signature field for the nurse. */
   nurseSignature: string;
 }
 
@@ -583,7 +613,6 @@ const emit = defineEmits<{
   (e: 'save', payload: MedicationFormData & { isEdit: boolean }): void;
 }>()
 
-/** The dosage form dropdown list. */
 const dosageOptions = [
   "Actuation","Ampule","Application","Applicator","Auto-Injector","Bar","Capful","Caplet","Capsule",
   "Cartridge","Centimeter","Disk","Dropperful","Each","Film","Fluid Ounce","Gallon","Gram","Gum","Implant",
@@ -593,7 +622,6 @@ const dosageOptions = [
   "Strip","Suppository","Swab","Syringe","Tablet","Troche","Unit","Vial","Wafer"
 ]
 
-/** Main reactive form data, including nurseSignature. */
 const formData = ref<MedicationFormData>({
   medicationName: '',
   ndcNumber: '',
@@ -602,7 +630,7 @@ const formData = ref<MedicationFormData>({
   dosage: '',
   unitType: '',
   frequency: '',
-  route: 'Oral/Sublingual',
+  route: '',
   duration: '',
   fluidType: '',
   prn: false,
@@ -645,10 +673,9 @@ const formData = ref<MedicationFormData>({
   pharmacyCell: '',
   pharmacyEmail: '',
 
-  nurseSignature: '' // Our new field
+  nurseSignature: ''
 })
 
-/** The four tab sections (plus we remain consistent with existing ones). */
 const tabs = [
   { value: 'medInfo',          label: 'Medication Information' },
   { value: 'prescriptionInfo', label: 'Prescription Information' },
@@ -656,15 +683,16 @@ const tabs = [
   { value: 'pharmacyInfo',     label: 'Pharmacy Information' }
 ]
 const activeTab = ref('medInfo')
-
-/** Are we editing an existing medication? */
 const isEditMode = computed(() => !!props.existingMedication)
 
-/**
- * If there's an existingMedication, merge it in; else reset.
- * This watch triggers when the parent passes in new data (edit mode),
- * or null for new med.
- */
+// Require name, dosage, frequency, and route
+const isFormValid = computed(() =>
+  formData.value.medicationName.trim() !== '' &&
+  formData.value.dosage.trim() !== '' &&
+  formData.value.frequency !== '' &&
+  formData.value.route !== ''
+)
+
 watch(() => props.existingMedication, (newVal) => {
   if (newVal) {
     formData.value = { ...formData.value, ...newVal }
@@ -673,17 +701,10 @@ watch(() => props.existingMedication, (newVal) => {
   }
 }, { immediate: true })
 
-/**
- * Also watch 'show'. If the popup closes (show => false),
- * reset the form so next time it's fresh & blank.
- */
 watch(() => props.show, (visible) => {
-  if (!visible) {
-    resetForm()
-  }
+  if (!visible) resetForm()
 })
 
-/** Reset form data to defaults, including nurseSignature. */
 function resetForm() {
   formData.value = {
     medicationName: '',
@@ -693,7 +714,7 @@ function resetForm() {
     dosage: '',
     unitType: '',
     frequency: '',
-    route: 'Oral/Sublingual',
+    route: '',
     duration: '',
     fluidType: '',
     prn: false,
@@ -740,7 +761,6 @@ function resetForm() {
   }
 }
 
-/** Called when user presses 'Save'. Emit up, then reset. */
 function handleSave() {
   emit('save', {
     ...formData.value,
@@ -749,31 +769,23 @@ function handleSave() {
   resetForm()
 }
 
-/** Called when user presses 'Cancel'. Emit close, then reset. */
 function handleCancel() {
   emit('close')
   resetForm()
 }
 
-/** Watchers for howLong & endTime (IV) */
 watch(
   [() => formData.value.totalVolume, () => formData.value.rate, () => formData.value.totalVolumeUnit],
   () => {
     const vol = parseFloat(formData.value.totalVolume) || 0
     let numericRate = parseFloat(formData.value.rate) || 0
-    // parse out "50 ml/hr", etc.
     if (!numericRate) {
       const match = formData.value.rate.match(/(\d+(\.\d+)?)/)
-      if (match) {
-        numericRate = parseFloat(match[1])
-      }
+      if (match) numericRate = parseFloat(match[1])
     }
     const finalVolumeInMl =
       formData.value.totalVolumeUnit === 'liter' ? vol * 1000 : vol
-    let hours = 0
-    if (numericRate > 0) {
-      hours = finalVolumeInMl / numericRate
-    }
+    let hours = numericRate > 0 ? finalVolumeInMl / numericRate : 0
     formData.value.howLong = hours > 0 ? hours.toFixed(2) : ''
   }
 )
@@ -811,7 +823,6 @@ watch(
   opacity: 0;
 }
 
-/* Modal overlay & container */
 .modal-overlay {
   position: fixed; top: 0; left: 0; right: 0; bottom: 0;
   background-color: rgba(0,0,0,0.5);
@@ -831,7 +842,6 @@ watch(
   margin-top: 0; text-align: center; margin-bottom: 1rem;
 }
 
-/* Tabs */
 .tabs {
   display: flex; margin-bottom: 1rem; border-bottom: 1px solid #ccc;
 }
@@ -845,7 +855,6 @@ watch(
   border-bottom: 3px solid #0c8687;
 }
 
-/* Tab panel content */
 .tab-panel { margin: 1rem 0; }
 .section-title {
   margin: 1rem 0; font-size: 1.1rem;
@@ -853,11 +862,11 @@ watch(
   color: #333; padding-bottom: 0.5rem;
 }
 
-/* Form layout */
 .form-group {
   margin-bottom: 1rem; display: flex; flex-direction: column;
 }
 .form-group label { font-weight: 500; margin-bottom: 0.3rem; }
+.required { color: red; }
 .form-group input, .form-group select {
   padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px;
 }
@@ -867,15 +876,13 @@ watch(
 .form-row { display: flex; gap: 1rem; }
 .form-row .form-group { flex: 1; }
 
-/* Dosage row */
-.dosage-group { width: 100%; display: flex; flex-direction: column; }
+.dosage-group { display: flex; flex-direction: column; }
 .dosage-row {
   display: flex; gap: 0.5rem; align-items: center;
 }
 .dosage-input { flex: 0 0 80px; }
 .dosage-select { flex: 1; }
 
-/* Volume & Rate row */
 .volume-rate-row { display: flex; gap: 1rem; }
 .volume-group { display: flex; flex-direction: column; }
 .volume-row {
@@ -883,7 +890,6 @@ watch(
 }
 .volume-dropdown { width: 70px; }
 
-/* Bottom actions */
 .form-actions {
   display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;
 }
@@ -901,5 +907,9 @@ watch(
 }
 .btn-save:hover {
   background-color: #0a7273;
+}
+.btn-save:disabled {
+  background-color: #b2d8d8;
+  cursor: not-allowed;
 }
 </style>

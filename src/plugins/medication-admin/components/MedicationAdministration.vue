@@ -36,7 +36,7 @@
         </button>
       </div>
 
-      <!-- Sorting Controls + Sign Off Button + Expand/Collapse -->
+      <!-- Sorting Controls + Signature Button + Expand/Collapse -->
       <div class="sort-controls">
         <button
           class="sort-button"
@@ -82,12 +82,12 @@
           {{ collapsed ? 'Expand' : 'Collapse' }}
         </button>
 
-        <!-- Sign Off Button -->
+        <!-- Signature Button (was "Sign Off") -->
         <button
           class="sort-button sign-off-button"
           @click="showSignOffPopup = true"
         >
-          Sign Off
+          Signature
         </button>
       </div>
 
@@ -439,12 +439,12 @@
       </div>
     </div>
 
-    <!-- Sign-Off Popup -->
+    <!-- Signature Popup (was Sign-Off Popup) -->
     <div v-if="showSignOffPopup" class="modal-overlay">
       <div class="modal-content">
-        <h3>Sign Off Pending Transactions</h3>
+        <h3>Signature Pending Transactions</h3>
         <div v-if="pendingTransactions.length === 0">
-          <p>No medications pending sign-off.</p>
+          <p>No medications pending signature.</p>
           <div class="button-row">
             <button @click="showSignOffPopup = false">Close</button>
           </div>
@@ -501,7 +501,7 @@
 
           <div class="button-row">
             <button @click="finalSignOff" class="save-button" :disabled="!signOffNurseSignature">
-              Sign Off
+              Signature
             </button>
             <button @click="showSignOffPopup = false" class="cancel-button">Cancel</button>
           </div>
@@ -509,10 +509,10 @@
       </div>
     </div>
 
-    <!-- PRN Sign-Off Popup -->
+    <!-- PRN Signature Popup (was PRN Sign-Off Popup) -->
     <div v-if="showPrnSignOffPopup" class="modal-overlay">
       <div class="modal-content">
-        <h3>PRN Sign-Off</h3>
+        <h3>PRN Signature</h3>
         <p>
           <strong>Medication:</strong>
           {{ prnSignOffMedication?.name }}
@@ -558,7 +558,7 @@
             :disabled="!prnNurseSignature"
             @click="handlePrnSignOff"
           >
-            Sign Off
+            Signature
           </button>
           <button
             class="cancel-button"
@@ -819,12 +819,12 @@ const earlyReason = ref("")
 const showErrorModal = ref(false)
 const errorMessage = ref("")
 
-// Sign off popup
+// Signature popup (was sign off popup)
 const showSignOffPopup = ref(false)
 const signOffNurseSignature = ref('')
 const pendingTransactions = ref<any[]>([])
 
-// PRN sign off
+// PRN signature popup (was PRN sign off)
 const showPrnSignOffPopup = ref(false)
 const prnSignOffMedication = ref<Medication | null>(null)
 const prnSignOffTimeObj = ref<any>(null)
@@ -914,7 +914,12 @@ const routeCategories = [
   'Neb/INH',
   'Oral/Sublingual',
   'IVI Intravaginal',
-  'SQ/IM/IV/ID',
+  'Oral/Sublingual', 
+  'IVI Intravaginal',  
+  'SQ (Subcutaneous)',  
+  'IM (Intramuscular)',  
+  'IV (Intravenous)',  
+  'ID (Intradermal)',
   'NAS Intranasal',
   'TD Transdermal',
   'TOP Topical',
@@ -1492,7 +1497,7 @@ function cancelTimeActionConfirmation() {
   earlyReason.value = ""
 }
 
-// Sign Off
+// "Sign Off" becomes "Signature"
 function groupTransactionsByTime(transactions: any[]) {
   const map: Record<string, any[]> = {}
   transactions.forEach(item => {
@@ -1545,7 +1550,7 @@ function finalSignOff() {
   showSignOffPopup.value = false
 }
 
-// PRN sign off
+// PRN "Sign Off" => PRN "Signature"
 function openPrnSignOffPopup(med: Medication, timeObj: any) {
   if (timeObj.dosage == null || timeObj.dosage === '') {
     timeObj.dosage = med.dosage || '1'
@@ -2060,7 +2065,7 @@ function hideTooltip() {}
   color: white;
 }
 
-/* Sign-Off styling */
+/* Signature styling (was Sign-Off) */
 .status-time-header {
   font-weight: bold;
   margin: 1rem 0 0.5rem;
