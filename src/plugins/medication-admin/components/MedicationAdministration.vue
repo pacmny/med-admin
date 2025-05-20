@@ -574,7 +574,7 @@
 
 <script setup lang="ts">
 import MedicationActionPopup from './MedicationActionPopup.vue'
-import { ref, computed, watch, onMounted, defineProps, withDefaults, defineEmits } from 'vue'
+import { ref, computed, watch, onMounted, defineProps, withDefaults, defineEmits, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import 'flatpickr/dist/flatpickr.css'
 import flatpickr from 'flatpickr'
@@ -831,22 +831,72 @@ const prnSignOffTimeObj = ref<any>(null)
 const prnNurseSignature = ref('')
 
 const frequencyOptions = [
-  '1 times daily',
-  '2 times daily',
-  '3 times daily',
-  '4 times daily',
-  'every other day',
-  'at bedtime',
-  'every hour',
-  'every 2 hours',
-  'every 3 hours',
-  'every 4 hours',
-  'every 6 hours',
-  'every 8 hours',
-  'every 12 hours',
-  'every 24 hours',
-  'monday, wednesday, friday, sunday',
-  'tuesday, thursday, saturday'
+'1 time daily',  
+'2 times daily',  
+'2 times daily, as needed (PRN)',  
+'3 times a day',  
+'3 times a day, as needed for headache (PRN)',  
+'3 times daily',  
+'3 times daily, as needed (PRN)',  
+'4 times a day', 
+'4 times daily',  
+'4 times daily, as needed (PRN)',
+'as directed',  
+'as needed',  
+'as one dose on the first day then take one tablet daily thereafter',  
+'at bedtime',  
+'at bedtime, as needed (PRN)',  
+'at bedtime as needed for sleep (PRN)',  
+'before every meal',  
+'bi-weekly',  
+'constant infusion',  
+'daily',  
+'daily, as needed (PRN)',  
+'daily as directed',  
+'every day',  
+'every month',  
+'every other day',  
+'every morning',  
+'every evening',  
+'every hour',  
+'every hour, as needed (PRN)',  
+'every 2 hours',  
+'every 2 hours, as needed (PRN)',  
+'every 3 hours',  
+'every 3 hours, as needed (PRN)',  
+'every 4 hours',  
+'every 4 hours, as needed (PRN)',  
+'every 4 to 6 hours, as needed for pain (PRN)',  
+'every 4 to 6 minutes',  
+'every 4 to 8 hours',  
+'every 6 hours',  
+'every 6 hours, as needed for pain (PRN)',  
+'every 6 hours, as needed for cough (PRN)',  
+'every 8 hours',  
+'every 8 hours, as needed (PRN)',  
+'every 12 hours',  
+'every 12 hours, as needed (PRN)',  
+'every 24 hours',  
+'every 24 hours, as needed (PRN)',  
+'every Monday, Wednesday, Friday, Sunday',  
+'every Tuesday, Thursday, Saturday',
+'before breakfast, lunch, dinner',
+'after breakfast, lunch, dinner',  
+'Monday',  
+'Tuesday',  
+'Wednesday',  
+'Thursday',  
+'Friday',  
+'Saturday',  
+'Sunday',  
+'once a week',  
+'one time dose',  
+'three times a week',  
+'twice daily',  
+'twice daily, as needed for nausea (PRN)',  
+'two times a week',  
+'use as directed per instructions in pack',  
+'weekly',
 ]
 
 function extractBaseTime(rawTime: string): string {
@@ -912,8 +962,6 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
 const routeCategories = [
   'PRN',
   'Neb/INH',
-  'Oral/Sublingual',
-  'IVI Intravaginal',
   'Oral/Sublingual', 
   'IVI Intravaginal',  
   'SQ (Subcutaneous)',  
@@ -1092,17 +1140,6 @@ const localEmit = defineEmits<{
   (e: 'tabsChange', medication: Medication, tabs: number): void;
 }>()
 
-watch(selectedFrequency, (newFreq, oldFreq) => {
-  if (newFreq === oldFreq) return
-
-  if (!newFreq || selectedMedicationForTime.value?.prn) {
-    timeInputs.value = []
-    return
-  }
-  const timesCount = getTimesCountFromFrequency(newFreq)
-  timeInputs.value = Array(timesCount).fill('')
-})
-
 function getTimesCountFromFrequency(frequency: string): number {
   if (!frequency) return 0
   const dailyMatch = frequency.match(/(\d+)\s*times?\s*daily/)
@@ -1126,23 +1163,81 @@ function getTimesCountFromFrequency(frequency: string): number {
   }
 }
 
-function toggleSelectDropdown(medication: Medication) {
-  if (medication.tabsAvailable <= 0) {
+// // function toggleSelectDropdown(medication: Medication) {
+//   if (medication.tabsAvailable <= 0) {
+//     errorMessage.value = "Please add tabs available"
+//     showErrorModal.value = true
+//     return
+//   }
+//   selectedMedicationForTime.value = medication
+
+//   // Force re-trigger:
+//   selectedFrequency.value = ''
+//   nextTick(() => {
+//     selectedFrequency.value = medication.frequency || ''
+//     selectedDosage.value = medication.dosage || '1'
+//     if (medication.administrationTimes && medication.administrationTimes !== 'As needed') {
+//       console.log(medication.administrationTimes)
+//     const splitted = medication.administrationTimes.split(',')
+//     timeInputs.value = splitted.map(t => t.trim())
+//     console.log(splitted)
+// console.log(timeInputs.value)
+//   }
+//     showTimeModal.value = true
+//   })
+// }
+function toggleSelectDropdown(med: Medication) {
+  if (med.tabsAvailable <= 0) {
     errorMessage.value = "Please add tabs available"
     showErrorModal.value = true
     return
   }
-  selectedMedicationForTime.value = medication
-  selectedFrequency.value = medication.frequency || ''
-  selectedDosage.value = medication.dosage || '1'
-  if (medication.administrationTimes && medication.administrationTimes !== 'As needed') {
-    const splitted = medication.administrationTimes.split(',')
-    timeInputs.value = splitted.map(t => t.trim())
-  } else {
-    timeInputs.value = []
+  selectedMedicationForTime.value = med
+
+  // Check if the med already had times
+  let splitted: string[] = []
+  if (med.administrationTimes && med.administrationTimes !== 'As needed') {
+    splitted = med.administrationTimes.split(',').map(t => t.trim())
   }
-  showTimeModal.value = true
+
+  // Force watch re-run
+  selectedFrequency.value = ''
+  timeInputs.value = [] // clear out for now
+
+  // nextTick => set actual freq, dosage, time array
+  nextTick(() => {
+    selectedFrequency.value = med.frequency || ''
+    selectedDosage.value = med.dosage || '1'
+
+    // If there's an existing array of times & it's not a PRN => preserve them
+    if (!med.prn && splitted.length > 0) {
+      timeInputs.value = splitted
+    }
+    showTimeModal.value = true
+  })
 }
+
+// /** Watch selectedFrequency => fill timeInputs unless PRN or blank freq. */
+// watch(selectedFrequency, (newFreq) => {
+//   if (selectedMedicationForTime.value?.prn || !newFreq) {
+//     timeInputs.value = []
+//     return
+//   }
+//   const count = getTimesCountFromFrequency(newFreq)
+//   timeInputs.value = Array(count).fill('')
+// })
+watch(selectedFrequency, (newFreq) => {
+  if (selectedMedicationForTime.value?.prn || !newFreq) {
+    timeInputs.value = []
+    return
+  }
+  // If we already have times from splitted, skip overwriting
+  if (timeInputs.value.length > 0) return
+
+  // Otherwise, generate brand new empty times
+  const count = getTimesCountFromFrequency(newFreq)
+  timeInputs.value = Array(count).fill('')
+})
 function handleSave() {
   if (!selectedMedicationForTime.value) {
     showTimeModal.value = false
@@ -1807,7 +1902,7 @@ function hideTooltip() {}
 .schedule-table .sticky-column-5,
 .schedule-table .sticky-column-6 {
   position: sticky;
-  background-color: #ffffff;
+  background-color: #d4edda;
   z-index: 3;
 }
 .schedule-table .sticky-column-1, .sticky-header-1 {

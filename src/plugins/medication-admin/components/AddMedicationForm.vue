@@ -78,22 +78,72 @@
                 aria-required="true"
               >
                 <option value="">Select frequency</option>
-                <option>1 times daily</option>
-                <option>2 times daily</option>
-                <option>3 times daily</option>
-                <option>4 times daily</option>
-                <option>every other day</option>
-                <option>at bedtime</option>
-                <option>every hour</option>
-                <option>every 2 hours</option>
-                <option>every 3 hours</option>
-                <option>every 4 hours</option>
-                <option>every 6 hours</option>
-                <option>every 8 hours</option>
-                <option>every 12 hours</option>
-                <option>every 24 hours</option>
-                <option>monday, wednesday, friday, sunday</option>
-                <option>tuesday, thursday, saturday</option>
+  <option>1 time daily</option>
+  <option>2 times daily</option>
+  <option>2 times daily, as needed (PRN)</option>
+  <option>3 times a day</option>
+  <option>3 times a day, as needed for headache (PRN)</option>
+  <option>3 times daily</option>
+  <option>3 times daily, as needed (PRN)</option>
+  <option>4 times a day</option>
+  <option>4 times daily</option>
+  <option>4 times daily, as needed (PRN)</option>
+  <option>as directed</option>
+  <option>as needed</option>
+  <option>as one dose on the first day then take one tablet daily thereafter</option>
+  <option>at bedtime</option>
+  <option>at bedtime, as needed (PRN)</option>
+  <option>at bedtime as needed for sleep (PRN)</option>
+  <option>before every meal</option>
+  <option>bi-weekly</option>
+  <option>constant infusion</option>
+  <option>daily</option>
+  <option>daily, as needed (PRN)</option>
+  <option>daily as directed</option>
+  <option>every day</option>
+  <option>every month</option>
+  <option>every other day</option>
+  <option>every morning</option>
+  <option>every evening</option>
+  <option>every hour</option>
+  <option>every hour, as needed (PRN)</option>
+  <option>every 2 hours</option>
+  <option>every 2 hours, as needed (PRN)</option>
+  <option>every 3 hours</option>
+  <option>every 3 hours, as needed (PRN)</option>
+  <option>every 4 hours</option>
+  <option>every 4 hours, as needed (PRN)</option>
+  <option>every 4 to 6 hours, as needed for pain (PRN)</option>
+  <option>every 4 to 6 minutes</option>
+  <option>every 4 to 8 hours</option>
+  <option>every 6 hours</option>
+  <option>every 6 hours, as needed for pain (PRN)</option>
+  <option>every 6 hours, as needed for cough (PRN)</option>
+  <option>every 8 hours</option>
+  <option>every 8 hours, as needed (PRN)</option>
+  <option>every 12 hours</option>
+  <option>every 12 hours, as needed (PRN)</option>
+  <option>every 24 hours</option>
+  <option>every 24 hours, as needed (PRN)</option>
+  <option>every Monday, Wednesday, Friday, Sunday</option>
+  <option>every Tuesday, Thursday, Saturday</option>
+  <option>before breakfast, lunch, dinner</option>
+  <option>after breakfast, lunch, dinner</option>
+  <option>Friday</option>
+  <option>Monday</option>
+  <option>once a week</option>
+  <option>one time dose</option>
+  <option>Saturday</option>
+  <option>Sunday</option>
+  <option>three times a week</option>
+  <option>Thursday</option>
+  <option>Tuesday</option>
+  <option>twice daily</option>
+  <option>twice daily, as needed for nausea (PRN)</option>
+  <option>two times a week</option>
+  <option>use as directed per instructions in pack</option>
+  <option>Wednesday</option>
+  <option>weekly</option>
               </select>
             </div>
           </div>
