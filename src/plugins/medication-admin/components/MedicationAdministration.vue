@@ -211,7 +211,12 @@
                     <div class="administration-times">
                       <!-- PRN Meds -->
                       <template v-if="med.prn">
-                        <div class="prn-indicator" @click="stampPRNTime(med)">
+                        <!-- Only show "As needed" if no PRN times exist for that date -->
+                        <div
+                          class="prn-indicator"
+                          v-if="!hasPrnTimesForDate(med, dateObj)"
+                          @click="stampPRNTime(med)"
+                        >
                           As needed
                         </div>
                         <div
@@ -571,7 +576,6 @@
     </div>
   </div>
 </template>
-
 <script setup lang="ts">
 import MedicationActionPopup from './MedicationActionPopup.vue'
 import { ref, computed, watch, onMounted, defineProps, withDefaults, defineEmits, nextTick } from 'vue'
@@ -589,6 +593,8 @@ export interface Medication {
   name: string
   ndcNumber?: string
   rxNorm?: string
+
+  /** Scheduled times, keyed by date: */
   dates?: Record<string, {
     time: string
     status?: string
@@ -628,17 +634,35 @@ export interface Medication {
   instructions?: string
   status?: string
   discontinuedDate?: Date
+
+  /**
+   * If user discontinues only certain times after a certain date,
+   * we store them here so those times won't appear for *future* days
+   * (although day-of is shown in red).
+   */
   discontinuedTimes?: Record<string, string[]>
 
   /** Link dosage type to the dropdown in "Amount Available" */
   unitType?: string
 
-  /**
-   * NEW FIELDS for capturing the nurse name and timestamp
-   * from the "Add New Medication" popup
-   */
+  /** For "Add New Medication" nurse + time */
   addedByNurse?: string
   addedTimestamp?: string
+
+  /** For hold reasons, etc. */
+  holdInfo?: any
+
+  /** For PRN meds, we store usage times in a separate array. */
+  times?: {
+    time: string
+    status: string
+    date: string
+    locked?: boolean
+    signedOff?: any
+    dosage?: number|string
+    earlyReason?: string
+    reason?: string
+  }[]
 }
 
 const router = useRouter()
@@ -656,7 +680,7 @@ const unitOptions = [
   "Suppository", "Swab", "Syringe", "Tablet", "Troche", "Unit", "Vial", "Wafer"
 ]
 
-// Sort
+// Sorting
 const sortBy = ref<string>('')
 const currentDate = ref(new Date())
 
@@ -666,18 +690,15 @@ function toggleCollapse() {
   collapsed.value = !collapsed.value
 }
 
-// For add/edit
+// Add/edit med
 const showAddForm = ref(false)
-/** If null => new; else => editing */
 const editingMedication = ref<any | null>(null)
 
-/** "Add Manually" => new med */
 function onAddMedication() {
   editingMedication.value = null
   showAddForm.value = true
 }
 
-/** "Click medication name" => edit */
 function openMedicationForm(med: Medication) {
   editingMedication.value = {
     ...med,
@@ -698,27 +719,18 @@ function openMedicationForm(med: Medication) {
     prescriberInfo: med.prescriberInfo || '',
     prescriberDeaNpi: med.prescriberDeaNpi || '',
 
-    /** Add the unitType so it can be edited if needed */
     unitType: med.unitType || '',
-
-    // We'll store the previously entered nurse name if any:
     nurseSignature: med.addedByNurse || ''
   }
   showAddForm.value = true
 }
 
-/**
- * Called when the user clicks "Save" in AddMedicationForm
- * We'll capture the nurse name and a timestamp, and store them
- * in the medication object for tooltip display.
- */
 function handleMedicationFormSave(payload: any) {
   const isEdit = payload.isEdit
   const originalName = payload.originalName
   const nurseSignature = payload.nurseSignature || ''
 
   if (!isEdit) {
-    // Creating new medication
     const newMedication: Medication = {
       name: payload.medicationName,
       ndcNumber: payload.ndcNumber || '',
@@ -730,7 +742,6 @@ function handleMedicationFormSave(payload: any) {
       prn: payload.prn,
       diagnosis: payload.diagnosis || '',
       unitType: payload.unitType || '',
-
       rxNumber: payload.rxNumber || '',
       refills: payload.refills || 0,
       pharmacy: payload.pharmacy || '',
@@ -740,19 +751,14 @@ function handleMedicationFormSave(payload: any) {
       pharmacyDea: payload.pharmacyDea || '',
       prescriberInfo: payload.prescriberInfo || '',
       prescriberDeaNpi: payload.prescriberDeaNpi || '',
-
       administrationTimes: '',
       dates: {},
-
-      // NEW: store nurse name & timestamp
       addedByNurse: nurseSignature,
       addedTimestamp: new Date().toISOString()
     }
     medications.value.push(newMedication)
     populateMedicationTable()
-
   } else {
-    // Editing an existing med
     const idx = medications.value.findIndex(m => m.name === originalName)
     if (idx !== -1) {
       medications.value[idx].name = payload.medicationName
@@ -765,7 +771,6 @@ function handleMedicationFormSave(payload: any) {
       medications.value[idx].prn = payload.prn
       medications.value[idx].diagnosis = payload.diagnosis
       medications.value[idx].unitType = payload.unitType
-
       medications.value[idx].rxNumber = payload.rxNumber
       medications.value[idx].refills = payload.refills
       medications.value[idx].pharmacy = payload.pharmacy
@@ -775,8 +780,6 @@ function handleMedicationFormSave(payload: any) {
       medications.value[idx].pharmacyDea = payload.pharmacyDea
       medications.value[idx].prescriberInfo = payload.prescriberInfo
       medications.value[idx].prescriberDeaNpi = payload.prescriberDeaNpi
-
-      // NEW: update nurse name & timestamp on edit
       medications.value[idx].addedByNurse = nurseSignature
       medications.value[idx].addedTimestamp = new Date().toISOString()
 
@@ -786,7 +789,7 @@ function handleMedicationFormSave(payload: any) {
   showAddForm.value = false
 }
 
-/** Filter by status */
+// Status filter
 const selectedStatus = ref<string | null>(null)
 function handleStatusFilter(status: string | null) {
   selectedStatus.value = selectedStatus.value === status ? null : status
@@ -819,84 +822,36 @@ const earlyReason = ref("")
 const showErrorModal = ref(false)
 const errorMessage = ref("")
 
-// Signature popup (was sign off popup)
+// Signature popup
 const showSignOffPopup = ref(false)
 const signOffNurseSignature = ref('')
 const pendingTransactions = ref<any[]>([])
 
-// PRN signature popup (was PRN sign off)
+// PRN signature popup
 const showPrnSignOffPopup = ref(false)
 const prnSignOffMedication = ref<Medication | null>(null)
 const prnSignOffTimeObj = ref<any>(null)
 const prnNurseSignature = ref('')
 
 const frequencyOptions = [
-'1 time daily',  
-'2 times daily',  
-'2 times daily, as needed (PRN)',  
-'3 times a day',  
-'3 times a day, as needed for headache (PRN)',  
-'3 times daily',  
-'3 times daily, as needed (PRN)',  
-'4 times a day', 
-'4 times daily',  
-'4 times daily, as needed (PRN)',
-'as directed',  
-'as needed',  
-'as one dose on the first day then take one tablet daily thereafter',  
-'at bedtime',  
-'at bedtime, as needed (PRN)',  
-'at bedtime as needed for sleep (PRN)',  
-'before every meal',  
-'bi-weekly',  
-'constant infusion',  
-'daily',  
-'daily, as needed (PRN)',  
-'daily as directed',  
-'every day',  
-'every month',  
-'every other day',  
-'every morning',  
-'every evening',  
-'every hour',  
-'every hour, as needed (PRN)',  
-'every 2 hours',  
-'every 2 hours, as needed (PRN)',  
-'every 3 hours',  
-'every 3 hours, as needed (PRN)',  
-'every 4 hours',  
-'every 4 hours, as needed (PRN)',  
-'every 4 to 6 hours, as needed for pain (PRN)',  
-'every 4 to 6 minutes',  
-'every 4 to 8 hours',  
-'every 6 hours',  
-'every 6 hours, as needed for pain (PRN)',  
-'every 6 hours, as needed for cough (PRN)',  
-'every 8 hours',  
-'every 8 hours, as needed (PRN)',  
-'every 12 hours',  
-'every 12 hours, as needed (PRN)',  
-'every 24 hours',  
-'every 24 hours, as needed (PRN)',  
-'every Monday, Wednesday, Friday, Sunday',  
-'every Tuesday, Thursday, Saturday',
-'before breakfast, lunch, dinner',
-'after breakfast, lunch, dinner',  
-'Monday',  
-'Tuesday',  
-'Wednesday',  
-'Thursday',  
-'Friday',  
-'Saturday',  
-'Sunday',  
-'once a week',  
-'one time dose',  
-'three times a week',  
-'twice daily',  
-'twice daily, as needed for nausea (PRN)',  
-'two times a week',  
-'use as directed per instructions in pack',  
-'weekly',
+  '1 time daily','2 times daily','2 times daily, as needed (PRN)',
+  '3 times a day','3 times a day, as needed for headache (PRN)',
+  '3 times daily','3 times daily, as needed (PRN)',
+  '4 times a day','4 times daily','4 times daily, as needed (PRN)',
+  'as directed','as needed','as one dose on the first day then take one tablet daily thereafter',
+  'at bedtime','at bedtime, as needed (PRN)','at bedtime as needed for sleep (PRN)',
+  'before every meal','bi-weekly','constant infusion','daily','daily, as needed (PRN)',
+  'daily as directed','every day','every month','every other day','every morning','every evening',
+  'every hour','every hour, as needed (PRN)','every 2 hours','every 2 hours, as needed (PRN)',
+  'every 3 hours','every 3 hours, as needed (PRN)','every 4 hours','every 4 hours, as needed (PRN)',
+  'every 4 to 6 hours, as needed for pain (PRN)','every 4 to 6 minutes','every 4 to 8 hours',
+  'every 6 hours','every 6 hours, as needed for pain (PRN)','every 6 hours, as needed for cough (PRN)',
+  'every 8 hours','every 8 hours, as needed (PRN)','every 12 hours','every 12 hours, as needed (PRN)',
+  'every 24 hours','every 24 hours, as needed (PRN)','every Monday, Wednesday, Friday, Sunday',
+  'every Tuesday, Thursday, Saturday','before breakfast, lunch, dinner','after breakfast, lunch, dinner',
+  'Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','once a week','one time dose',
+  'three times a week','twice daily','twice daily, as needed for nausea (PRN)',
+  'two times a week','use as directed per instructions in pack','weekly',
 ]
 
 function extractBaseTime(rawTime: string): string {
@@ -922,10 +877,7 @@ function formatDateToYYYYMMDD(d: Date): string {
   )
 }
 
-/**
- * Return a tooltip string (similar styling to other tooltips)
- * showing which nurse added the medication and when.
- */
+/** Tooltip for which nurse added med + timestamp */
 function getAddMedicationTooltip(med: Medication) {
   if (!med.addedByNurse || !med.addedTimestamp) return ''
   const addedTime = new Date(med.addedTimestamp).toLocaleString()
@@ -960,32 +912,20 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
 }
 
 const routeCategories = [
-  'PRN',
-  'Neb/INH',
-  'Oral/Sublingual', 
-  'IVI Intravaginal',  
-  'SQ (Subcutaneous)',  
-  'IM (Intramuscular)',  
-  'IV (Intravenous)',  
-  'ID (Intradermal)',
-  'NAS Intranasal',
-  'TD Transdermal',
-  'TOP Topical',
-  'Urethral',
-  'Rectally',
-  'Optic',
-  'Otic'
+  'PRN','Neb/INH','Oral/Sublingual','IVI Intravaginal','SQ (Subcutaneous)',
+  'IM (Intramuscular)','IV (Intravenous)','ID (Intradermal)',
+  'NAS Intranasal','TD Transdermal','TOP Topical','Urethral','Rectally',
+  'Optic','Otic'
 ]
 
 function isMedicationVisible(med: Medication): boolean {
-  if (!med.discontinuedDate) {
-    return true
-  }
-  // If there's no date range, always show
-  if (dateList.value.length === 0) {
-    return true
-  }
-  // If the earliest day is strictly after the discontinuedDate => skip
+  // If no discontinuedDate => show
+  if (!med.discontinuedDate) return true
+
+  // If no date range => show
+  if (dateList.value.length === 0) return true
+
+  // If earliest day is after med.discontinuedDate => hide the med entirely
   const earliestDay = normalizeToMidnight(dateList.value[0])
   if (earliestDay.getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
     return false
@@ -994,7 +934,6 @@ function isMedicationVisible(med: Medication): boolean {
 }
 
 const groupedMedications = computed(() => {
-  // Filter out meds not in the date range anymore
   let sortedMeds = [...medications.value].filter(med => isMedicationVisible(med))
 
   if (selectedStatus.value) {
@@ -1156,36 +1095,21 @@ function getTimesCountFromFrequency(frequency: string): number {
     case 'daily':
     case 'at bedtime':
     case 'every 24 hours':
-    case 'every other day': return 1
+    case 'every other day':
+      return 1
     case 'monday, wednesday, friday, sunday': return 4
     case 'tuesday, thursday, saturday': return 3
     default: return 1
   }
 }
 
-// // function toggleSelectDropdown(medication: Medication) {
-//   if (medication.tabsAvailable <= 0) {
-//     errorMessage.value = "Please add tabs available"
-//     showErrorModal.value = true
-//     return
-//   }
-//   selectedMedicationForTime.value = medication
+/** For PRN meds, we check if any times exist that day to hide "As needed" */
+function hasPrnTimesForDate(med: Medication, dateObj: Date): boolean {
+  if (!med.times) return false
+  const dateStr = formatDateToYYYYMMDD(dateObj)
+  return med.times.some(entry => entry.date === dateStr)
+}
 
-//   // Force re-trigger:
-//   selectedFrequency.value = ''
-//   nextTick(() => {
-//     selectedFrequency.value = medication.frequency || ''
-//     selectedDosage.value = medication.dosage || '1'
-//     if (medication.administrationTimes && medication.administrationTimes !== 'As needed') {
-//       console.log(medication.administrationTimes)
-//     const splitted = medication.administrationTimes.split(',')
-//     timeInputs.value = splitted.map(t => t.trim())
-//     console.log(splitted)
-// console.log(timeInputs.value)
-//   }
-//     showTimeModal.value = true
-//   })
-// }
 function toggleSelectDropdown(med: Medication) {
   if (med.tabsAvailable <= 0) {
     errorMessage.value = "Please add tabs available"
@@ -1194,22 +1118,17 @@ function toggleSelectDropdown(med: Medication) {
   }
   selectedMedicationForTime.value = med
 
-  // Check if the med already had times
   let splitted: string[] = []
   if (med.administrationTimes && med.administrationTimes !== 'As needed') {
     splitted = med.administrationTimes.split(',').map(t => t.trim())
   }
 
-  // Force watch re-run
   selectedFrequency.value = ''
-  timeInputs.value = [] // clear out for now
+  timeInputs.value = []
 
-  // nextTick => set actual freq, dosage, time array
   nextTick(() => {
     selectedFrequency.value = med.frequency || ''
     selectedDosage.value = med.dosage || '1'
-
-    // If there's an existing array of times & it's not a PRN => preserve them
     if (!med.prn && splitted.length > 0) {
       timeInputs.value = splitted
     }
@@ -1217,27 +1136,18 @@ function toggleSelectDropdown(med: Medication) {
   })
 }
 
-// /** Watch selectedFrequency => fill timeInputs unless PRN or blank freq. */
-// watch(selectedFrequency, (newFreq) => {
-//   if (selectedMedicationForTime.value?.prn || !newFreq) {
-//     timeInputs.value = []
-//     return
-//   }
-//   const count = getTimesCountFromFrequency(newFreq)
-//   timeInputs.value = Array(count).fill('')
-// })
 watch(selectedFrequency, (newFreq) => {
   if (selectedMedicationForTime.value?.prn || !newFreq) {
     timeInputs.value = []
     return
   }
-  // If we already have times from splitted, skip overwriting
-  if (timeInputs.value.length > 0) return
-
-  // Otherwise, generate brand new empty times
   const count = getTimesCountFromFrequency(newFreq)
-  timeInputs.value = Array(count).fill('')
+  const existingTimes = [...timeInputs.value]
+  timeInputs.value = Array.from({ length: count }, (_, i) =>
+    i < existingTimes.length ? existingTimes[i] : ''
+  )
 })
+
 function handleSave() {
   if (!selectedMedicationForTime.value) {
     showTimeModal.value = false
@@ -1259,11 +1169,13 @@ function handleSave() {
     med.administrationTimes = 'As needed'
     med.dates = {}
   } else {
-    const newTimeArray = timeInputs.value.filter(t => t).map(t => ({
-      time: t,
-      status: 'pending',
-      dosage: parseInt(selectedDosage.value, 10) || 1
-    }))
+    const newTimeArray = timeInputs.value
+      .filter(t => t)
+      .map(t => ({
+        time: t,
+        status: 'pending',
+        dosage: parseInt(selectedDosage.value, 10) || 1
+      }))
     med.administrationTimes = timeInputs.value.join(', ')
 
     if (!med.startDate) {
@@ -1281,11 +1193,11 @@ function handleSave() {
         }
       }
     }
-
     for (let i = 0; i < FUTURE_DAYS_TO_POPULATE; i++) {
       const futureDate = new Date(todayMidnight)
       futureDate.setDate(futureDate.getDate() + i)
-      if (med.discontinuedDate && normalizeToMidnight(futureDate).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
+      if (med.discontinuedDate &&
+          normalizeToMidnight(futureDate).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
         break
       }
       const ds = formatDateToYYYYMMDD(futureDate)
@@ -1321,12 +1233,14 @@ function handleSave() {
   selectedMedicationForTime.value = null
   timeInputs.value = []
 }
+
 function handleCancel() {
   showTimeModal.value = false
   selectedMedicationForTime.value = null
   timeInputs.value = []
 }
 
+/** Populate the table for each medication's daily times. */
 function populateMedicationTable() {
   medications.value.forEach(med => {
     if (med.prn) return
@@ -1338,7 +1252,10 @@ function populateMedicationTable() {
 
     dateList.value.forEach(d => {
       const dStr = formatDateToYYYYMMDD(d)
-      if (med.discontinuedDate && normalizeToMidnight(d).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
+      if (
+        med.discontinuedDate &&
+        normalizeToMidnight(d).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()
+      ) {
         return
       }
       if (!med.dates![dStr]) {
@@ -1365,7 +1282,7 @@ function handleStatusChange(event: Event, medIndex: number) {
     showHoldSelector.value = true
     return
   }
-  emit('statusChange', medications.value[medIndex], status)
+  localEmit('statusChange', medications.value[medIndex], status)
 }
 
 const holdTimes = computed(() => {
@@ -1381,6 +1298,14 @@ const holdTimes = computed(() => {
   }
   return Array.from(timesSet)
 })
+function parseDateKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+/**
+ * When user picks dateRange + times + reason + holdType + status
+ */
 function handleHoldSubmit(data: {
   dateRange: [Date, Date];
   times: string[] | null;
@@ -1390,56 +1315,110 @@ function handleHoldSubmit(data: {
 }) {
   if (!selectedMedicationForHold.value) return
   const medication = selectedMedicationForHold.value
-  const dateStr = formatDateToYYYYMMDD(data.dateRange[0])
-  if (data.holdType === 'all') {
-    if (medication.dates && medication.dates[dateStr]) {
-      medication.dates[dateStr].forEach((timeObj: any) => {
-        if (data.statusOption === 'discontinue' || data.statusOption === 'change') {
-          timeObj.status = 'discontinue'
-        } else if (data.statusOption === 'new') {
-          timeObj.status = 'new'
-        } else {
-          timeObj.status = 'hold'
+  medication.holdInfo = data
+
+  // If user chose "discontinue"...
+  if (data.statusOption === 'discontinue') {
+    const startDate = normalizeToMidnight(data.dateRange[0])
+    const startDateStr = formatDateToYYYYMMDD(startDate)
+
+    if (data.holdType === 'all') {
+      // ======= DISCONTINUE ALL TIMES FOR THIS MEDICATION =======
+      // 1) Set the entire medication as discontinued from startDate forward
+      medication.discontinuedDate = startDate
+
+      if (medication.dates) {
+        // For the exact date of discontinuation => mark *all* times as 'discontinue' (so they show red)
+        if (medication.dates[startDateStr]) {
+          medication.dates[startDateStr].forEach(slot => {
+            slot.status = 'discontinue'
+          })
         }
-      })
-    }
-  } else if (data.holdType === 'specific' && data.times && medication.dates && medication.dates[dateStr]) {
-    data.times.forEach(tStr => {
-      const timeObj = medication.dates[dateStr].find((obj: any) => obj.time === tStr)
-      if (timeObj) {
-        if (data.statusOption === 'discontinue' || data.statusOption === 'change') {
-          timeObj.status = 'discontinue'
-        } else if (data.statusOption === 'new') {
-          timeObj.status = 'new'
-        } else {
-          timeObj.status = 'hold'
+
+        // For future days after that date => remove them entirely
+        for (const dKey of Object.keys(medication.dates)) {
+          const dObj = normalizeToMidnight(parseDateKey(dKey))
+          if (dObj.getTime() > startDate.getTime()) {
+            delete medication.dates[dKey]
+          }
         }
       }
-    })
+
+    } else if (data.holdType === 'specific') {
+      // ======= DISCONTINUE ONLY THE SELECTED TIME SLOTS =======
+      if (!data.times || data.times.length === 0) {
+        showHoldSelector.value = false
+        selectedMedicationForHold.value = null
+        return
+      }
+
+      // Make sure medication.discontinuedTimes is defined
+      if (!medication.discontinuedTimes) {
+        medication.discontinuedTimes = {}
+      }
+
+      // 1) On the EXACT start date => set selected time(s) to 'discontinue'
+      if (medication.dates && medication.dates[startDateStr]) {
+        medication.dates[startDateStr].forEach(slot => {
+          if (data.times.includes(slot.time)) {
+            slot.status = 'discontinue'
+          }
+        })
+      }
+
+      // 2) For all future dates after startDate => remove only those times
+      const endDate = new Date(startDate)
+      endDate.setDate(endDate.getDate() + FUTURE_DAYS_TO_POPULATE)
+
+      let day = new Date(startDate)
+      day.setDate(day.getDate() + 1) // skip the "start" day itself
+
+      while (day <= endDate) {
+        const ds = formatDateToYYYYMMDD(day)
+
+        // Also record them in discontinuedTimes so we never auto-repopulate them later
+        if (!medication.discontinuedTimes[ds]) {
+          medication.discontinuedTimes[ds] = []
+        }
+        data.times.forEach(tStr => {
+          if (!medication.discontinuedTimes[ds].includes(tStr)) {
+            medication.discontinuedTimes[ds].push(tStr)
+          }
+        })
+
+        // If medication.dates[ds] exists, remove those times from that day
+        if (medication.dates[ds]) {
+          medication.dates[ds] = medication.dates[ds].filter(
+            slot => !data.times.includes(slot.time)
+          )
+        }
+        day.setDate(day.getDate() + 1)
+      }
+    }
   }
-  medication.holdInfo = {
-    dateRange: data.dateRange,
-    times: data.times,
-    reason: data.reason,
-    type: data.holdType
-  }
+
+  // any other logic for hold/new/change ...
   showHoldSelector.value = false
   selectedMedicationForHold.value = null
 }
 
+
 function closeErrorModal() {
   showErrorModal.value = false
 }
-
 function handleTabsChange(medication: Medication, newValue: number) {
   medication.tabsAvailable = newValue
-  emit('tabsChange', medication, newValue)
+  localEmit('tabsChange', medication, newValue)
 }
-
 function getRowStatusClass(_medication: Medication) {
   return 'active-row'
 }
 
+/**
+ * Return the time slots for a given dateObj,
+ * skipping those in discontinuedTimes, except if it's the EXACT date of discontinuation
+ * (that day will show the slot in red).
+ */
 function getTimesForDate(med: Medication, dateObj: Date) {
   const dateStr = formatDateToYYYYMMDD(dateObj)
   if (!med.dates || !med.dates[dateStr]) {
@@ -1447,6 +1426,7 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   }
   let slots = [...med.dates[dateStr]]
 
+  // If medication is fully discontinued after a certain date => no times after that
   if (med.discontinuedDate) {
     const discDay = normalizeToMidnight(med.discontinuedDate)
     const thisDay = normalizeToMidnight(dateObj)
@@ -1454,16 +1434,26 @@ function getTimesForDate(med: Medication, dateObj: Date) {
       return []
     }
   }
-  if (med.discontinuedTimes) {
-    for (const discDateStr of Object.keys(med.discontinuedTimes)) {
-      const discDayParsed = normalizeToMidnight(new Date(discDateStr))
-      const thisDay = normalizeToMidnight(dateObj)
-      if (thisDay.getTime() > discDayParsed.getTime()) {
-        const timesToRemove = med.discontinuedTimes[discDateStr]
-        slots = slots.filter(s => !timesToRemove.includes(s.time))
+
+  // For "partial" specific-time discontinuation:
+  if (med.discontinuedTimes && med.discontinuedTimes[dateStr]) {
+    // Let’s skip those times, *unless* the date is the same as when they were first discontinued
+    // But we do not actually know which "first day" might apply, so we rely on the slot's status.
+    // By default we set them to 'discontinue' on that day so they appear in red.
+    const timesToSkip = med.discontinuedTimes[dateStr]
+    // Skip any slot that does *not* have status=discontinue
+    // but is in timesToSkip. Because if we actually changed it to 'discontinue',
+    // it should remain in the array (so user sees it in red).
+    slots = slots.filter(s => {
+      if (timesToSkip.includes(s.time)) {
+        // If we *did not* manually set s.status='discontinue', we skip it.
+        // If s.status === 'discontinue', keep it so it shows red.
+        return s.status === 'discontinue'
       }
-    }
+      return true
+    })
   }
+
   return slots
 }
 
@@ -1535,7 +1525,7 @@ function handleTimeActionSelected({ action }: { action: string }) {
   showTimeActionPopup.value = false
 }
 
-// Early / Late confirmation
+// Early/late
 function confirmTimeAction() {
   showTimeConfirmationPopup.value = false
   if (!isEarly.value && pendingDateAndTime.value) {
@@ -1592,7 +1582,7 @@ function cancelTimeActionConfirmation() {
   earlyReason.value = ""
 }
 
-// "Sign Off" becomes "Signature"
+// Signature grouping
 function groupTransactionsByTime(transactions: any[]) {
   const map: Record<string, any[]> = {}
   transactions.forEach(item => {
@@ -1614,6 +1604,7 @@ const refusedGrouped = computed(() => {
   const refusedItems = pendingTransactions.value.filter(pt => pt.timeObj.temporaryStatus === 'refused')
   return groupTransactionsByTime(refusedItems)
 })
+
 function finalSignOff() {
   if (!signOffNurseSignature.value) {
     alert("Please enter your nurse signature before signing off.")
@@ -1639,13 +1630,12 @@ function finalSignOff() {
     }
   })
 
-  // Clear pending items and signature input
   pendingTransactions.value = []
   signOffNurseSignature.value = ''
   showSignOffPopup.value = false
 }
 
-// PRN "Sign Off" => PRN "Signature"
+// PRN sign-off
 function openPrnSignOffPopup(med: Medication, timeObj: any) {
   if (timeObj.dosage == null || timeObj.dosage === '') {
     timeObj.dosage = med.dosage || '1'
@@ -1687,7 +1677,7 @@ function handlePrnSignOff() {
   closePrnSignOffPopup()
 }
 
-// Just a stub for PRN stamping
+/** "As needed" => user stamps a new time record now */
 function stampPRNTime(med: Medication) {
   const limit = getTimesCountFromFrequency(med.frequency || '')
   if (!med.times) {
@@ -1724,6 +1714,7 @@ function stampPRNTime(med: Medication) {
   med.times.push(newTimeObj)
   openPrnSignOffPopup(med, newTimeObj)
 }
+
 function getTooltipText(timeObj: any) {
   if (!timeObj.signedOff) {
     return ''
@@ -1739,7 +1730,6 @@ function getTooltipText(timeObj: any) {
 function showTooltip(_timeObj: any) {}
 function hideTooltip() {}
 </script>
-
 <style scoped>
 /* Make the medication name clickable */
 .medication-link {
