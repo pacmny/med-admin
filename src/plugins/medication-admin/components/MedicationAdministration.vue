@@ -1317,25 +1317,23 @@ function handleHoldSubmit(data: {
   const medication = selectedMedicationForHold.value
   medication.holdInfo = data
 
-  // If user chose "discontinue"...
+  // Shared references
+  const startDate = normalizeToMidnight(data.dateRange[0])
+  const startDateStr = formatDateToYYYYMMDD(startDate)
+
+  // --- 1) DISCONTINUE LOGIC (unchanged, as you said it's perfect) ---
   if (data.statusOption === 'discontinue') {
-    const startDate = normalizeToMidnight(data.dateRange[0])
-    const startDateStr = formatDateToYYYYMMDD(startDate)
-
     if (data.holdType === 'all') {
-      // ======= DISCONTINUE ALL TIMES FOR THIS MEDICATION =======
-      // 1) Set the entire medication as discontinued from startDate forward
+      // Discontinue entire medication
       medication.discontinuedDate = startDate
-
       if (medication.dates) {
-        // For the exact date of discontinuation => mark *all* times as 'discontinue' (so they show red)
+        // On the discontinuation date => set all to red (status='discontinue')
         if (medication.dates[startDateStr]) {
           medication.dates[startDateStr].forEach(slot => {
             slot.status = 'discontinue'
           })
         }
-
-        // For future days after that date => remove them entirely
+        // Remove future dates entirely
         for (const dKey of Object.keys(medication.dates)) {
           const dObj = normalizeToMidnight(parseDateKey(dKey))
           if (dObj.getTime() > startDate.getTime()) {
@@ -1343,40 +1341,32 @@ function handleHoldSubmit(data: {
           }
         }
       }
-
     } else if (data.holdType === 'specific') {
-      // ======= DISCONTINUE ONLY THE SELECTED TIME SLOTS =======
+      // Discontinue only selected time(s)
       if (!data.times || data.times.length === 0) {
         showHoldSelector.value = false
         selectedMedicationForHold.value = null
         return
       }
-
-      // Make sure medication.discontinuedTimes is defined
       if (!medication.discontinuedTimes) {
         medication.discontinuedTimes = {}
       }
-
-      // 1) On the EXACT start date => set selected time(s) to 'discontinue'
+      // On the exact start date => mark those times 'discontinue'
       if (medication.dates && medication.dates[startDateStr]) {
         medication.dates[startDateStr].forEach(slot => {
-          if (data.times.includes(slot.time)) {
+          if (data.times!.includes(slot.time)) {
             slot.status = 'discontinue'
           }
         })
       }
-
-      // 2) For all future dates after startDate => remove only those times
+      // Remove those times from all future dates
       const endDate = new Date(startDate)
       endDate.setDate(endDate.getDate() + FUTURE_DAYS_TO_POPULATE)
-
       let day = new Date(startDate)
-      day.setDate(day.getDate() + 1) // skip the "start" day itself
+      day.setDate(day.getDate() + 1)
 
       while (day <= endDate) {
         const ds = formatDateToYYYYMMDD(day)
-
-        // Also record them in discontinuedTimes so we never auto-repopulate them later
         if (!medication.discontinuedTimes[ds]) {
           medication.discontinuedTimes[ds] = []
         }
@@ -1385,11 +1375,9 @@ function handleHoldSubmit(data: {
             medication.discontinuedTimes[ds].push(tStr)
           }
         })
-
-        // If medication.dates[ds] exists, remove those times from that day
         if (medication.dates[ds]) {
           medication.dates[ds] = medication.dates[ds].filter(
-            slot => !data.times.includes(slot.time)
+            slot => !data.times!.includes(slot.time)
           )
         }
         day.setDate(day.getDate() + 1)
@@ -1397,10 +1385,62 @@ function handleHoldSubmit(data: {
     }
   }
 
-  // any other logic for hold/new/change ...
+  // --- 2) HOLD LOGIC (newly added to match "discontinue" behavior) ---
+  else if (data.statusOption === 'hold') {
+    if (data.holdType === 'all') {
+      // Hold entire medication
+      //  a) On the hold date => set status='hold' (yellow)
+      if (medication.dates && medication.dates[startDateStr]) {
+        medication.dates[startDateStr].forEach(slot => {
+          slot.status = 'hold'
+        })
+      }
+      //  b) Remove all future days from medication.dates
+      if (medication.dates) {
+        for (const dKey of Object.keys(medication.dates)) {
+          const dObj = normalizeToMidnight(parseDateKey(dKey))
+          if (dObj.getTime() > startDate.getTime()) {
+            delete medication.dates[dKey]
+          }
+        }
+      }
+    } else if (data.holdType === 'specific') {
+      // Hold only selected time(s)
+      if (!data.times || data.times.length === 0) {
+        showHoldSelector.value = false
+        selectedMedicationForHold.value = null
+        return
+      }
+      // a) On the hold date => set those slot(s) status='hold' (yellow)
+      if (medication.dates && medication.dates[startDateStr]) {
+        medication.dates[startDateStr].forEach(slot => {
+          if (data.times.includes(slot.time)) {
+            slot.status = 'hold'
+          }
+        })
+      }
+      // b) Remove those times on all subsequent days
+      const endDate = new Date(startDate)
+      endDate.setDate(endDate.getDate() + FUTURE_DAYS_TO_POPULATE)
+      let day = new Date(startDate)
+      day.setDate(day.getDate() + 1)
+      while (day <= endDate) {
+        const ds = formatDateToYYYYMMDD(day)
+        if (medication.dates && medication.dates[ds]) {
+          medication.dates[ds] = medication.dates[ds].filter(
+            slot => !data.times!.includes(slot.time)
+          )
+        }
+        day.setDate(day.getDate() + 1)
+      }
+    }
+  }
+
+  // "new"/"change" logic (if any) ...
   showHoldSelector.value = false
   selectedMedicationForHold.value = null
 }
+
 
 
 function closeErrorModal() {
@@ -2010,7 +2050,7 @@ function hideTooltip() {}
   background-color: #f8d7da !important;
 }
 .time-entry.hold {
-  background-color: #fff3cd;
+  background-color: #fff3cd !important;
   color: #000;
 }
 
