@@ -138,15 +138,8 @@ const props = defineProps<{
 
 /**
  * Emits:
- *  - "submit" => user clicked Submit with an object:
- *      {
- *         dateRange: [Date, Date];
- *         times: string[] | null;
- *         reason: string;
- *         holdType: 'all' | 'specific';
- *         statusOption: 'hold' | 'new' | 'discontinue';
- *         nurseSignature: string; // <= Added
- *      }
+ *  - "submit" => user clicked Submit with 
+ *                { dateRange, times, reason, holdType, statusOption }.
  *  - "cancel" => user clicked Cancel.
  */
 const emit = defineEmits<{
@@ -156,7 +149,6 @@ const emit = defineEmits<{
     reason: string;
     holdType: 'all' | 'specific';
     statusOption: 'hold' | 'new' | 'discontinue';
-    nurseSignature: string;
   }): void;
   (e: 'cancel'): void;
 }>()
@@ -167,14 +159,11 @@ const timeSelection = ref<'all' | 'specific'>('all')
 // Single date
 const selectedDate = ref<Date | null>(null)
 
-// Times user checks if "specific"
+// Times user checked if timeSelection='specific'
 const selectedTimes = ref<string[]>([])
 
 // Reason
 const reasonValue = ref('')
-
-// Nurse signature
-const nurseSignature = ref('')
 
 // Dynamic placeholder text
 const reasonPlaceholder = computed(() => {
@@ -186,9 +175,9 @@ const reasonPlaceholder = computed(() => {
   return 'Enter reason for hold'
 })
 
-// Form is valid if we have a date, reason, nurse signature, and times (if "specific")
+// Form is valid if we have a date + reason, and times if "specific"
 const isValid = computed(() => {
-  if (!selectedDate.value || !reasonValue.value.trim() || !nurseSignature.value.trim()) {
+  if (!selectedDate.value || !reasonValue.value.trim()) {
     return false
   }
   if (timeSelection.value === 'specific' && selectedTimes.value.length === 0) {
@@ -208,15 +197,13 @@ function handleSubmit() {
     times: (timeSelection.value === 'specific') ? selectedTimes.value : null,
     reason: reasonValue.value.trim(),
     holdType: timeSelection.value,
-    statusOption: props.statusOption,
-    nurseSignature: nurseSignature.value.trim()
+    statusOption: props.statusOption
   })
 
   // Reset
   selectedDate.value = null
   selectedTimes.value = []
   reasonValue.value = ''
-  nurseSignature.value = ''
   timeSelection.value = 'all'
 }
 </script>

@@ -1,85 +1,3 @@
-<script setup lang="ts">
-import { ref } from 'vue';
-import type { Medication } from '../types';
-
-const props = defineProps<{
-  show: boolean;
-  medication: Medication | null;
-}>();
-
-const emit = defineEmits<{
-  (e: 'close'): void;
-  (e: 'save', medication: Medication): void;
-}>();
-
-const selectedFrequency = ref('');
-const selectedDosage = ref('1');
-const selectedTimes = ref<string[]>([]);
-
-const routeOptions = [
-  'Prepour',
-  'Administration',
-  'PRN',
-  'RN Admin',
-  'Neb/INH',
-  'Oral/Sublingual',
-  'IVI Intravaginal',
-  'SQ/IM/IV/ID',
-  'NAS Intranasal',
-  'TD Transdermal',
-  'TOP Topical',
-  'Urethral',
-  'Rectally',
-  'Optic',
-  'Otic'
-];
-
-const dosageFormOptions = [
-  'Applicator',
-  'Blister',
-  'Caplet',
-  'Capsule',
-  'Each',
-  'Film',
-  'Gram',
-  'Gum',
-  'Implant',
-  'Insert',
-  'Kit',
-  'Lancet',
-  'Lozenge',
-  'Milliliter',
-  'Packet',
-  'Pad',
-  'Patch',
-  'Pen Needle',
-  'Ring',
-  'Sponge',
-  'Stick',
-  'Strip',
-  'Suppository',
-  'Swab',
-  'Tablet',
-  'Troche',
-  'Unspecified',
-  'Wafer'
-];
-
-const handleSave = () => {
-  if (props.medication) {
-    emit('save', props.medication);
-  }
-};
-
-const addTime = () => {
-  selectedTimes.value.push('');
-};
-
-const removeTime = (index: number) => {
-  selectedTimes.value.splice(index, 1);
-};
-</script>
-
 <template>
   <div v-if="show && medication" class="details-popup-overlay">
     <div class="details-popup">
@@ -186,6 +104,88 @@ const removeTime = (index: number) => {
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import type { Medication } from '../types';
+
+const props = defineProps<{
+  show: boolean;
+  medication: Medication | null;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+  (e: 'save', medication: Medication): void;
+}>();
+
+const selectedFrequency = ref('');
+const selectedDosage = ref('1');
+const selectedTimes = ref<string[]>([]);
+
+const routeOptions = [
+  'Prepour',
+  'Administration',
+  'PRN',
+  'RN Admin',
+  'Neb/INH',
+  'Oral/Sublingual',
+  'IVI Intravaginal',
+  'SQ/IM/IV/ID',
+  'NAS Intranasal',
+  'TD Transdermal',
+  'TOP Topical',
+  'Urethral',
+  'Rectally',
+  'Optic',
+  'Otic'
+];
+
+const dosageFormOptions = [
+  'Applicator',
+  'Blister',
+  'Caplet',
+  'Capsule',
+  'Each',
+  'Film',
+  'Gram',
+  'Gum',
+  'Implant',
+  'Insert',
+  'Kit',
+  'Lancet',
+  'Lozenge',
+  'Milliliter',
+  'Packet',
+  'Pad',
+  'Patch',
+  'Pen Needle',
+  'Ring',
+  'Sponge',
+  'Stick',
+  'Strip',
+  'Suppository',
+  'Swab',
+  'Tablet',
+  'Troche',
+  'Unspecified',
+  'Wafer'
+];
+
+const handleSave = () => {
+  if (props.medication) {
+    emit('save', props.medication);
+  }
+};
+
+const addTime = () => {
+  selectedTimes.value.push('');
+};
+
+const removeTime = (index: number) => {
+  selectedTimes.value.splice(index, 1);
+};
+</script>
 
 <style scoped>
 .details-popup-overlay {

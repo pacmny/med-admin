@@ -1,52 +1,3 @@
-<script setup lang="ts">
-import { ref } from 'vue';
-import type { Medication } from '../types';
-import EditDetailsForm from './EditDetailsForm.vue';
-
-const props = defineProps<{
-  medication: Medication;
-}>();
-
-const emit = defineEmits<{
-  (e: 'update', medication: Medication): void;
-}>();
-
-const expanded = ref(false);
-const detailsId = ref(`details-${Math.random().toString(36).substr(2, 9)}`);
-const showEditForm = ref(false);
-const editingSection = ref('');
-
-function toggleExpanded() {
-  expanded.value = !expanded.value;
-}
-
-function formatDate(date: Date | string | undefined | null): string {
-  if (!date) return 'N/A';
-  return new Date(date).toLocaleDateString();
-}
-
-function handleEdit(section: string) {
-  editingSection.value = section;
-  showEditForm.value = true;
-}
-
-function handleSave(updatedData: Partial<Medication>) {
-  const mergedMedication = {
-    ...props.medication,
-    ...updatedData
-  };
-  
-  emit('update', mergedMedication);
-  showEditForm.value = false;
-}
-
-function closeDetails(event: MouseEvent) {
-  if (event.target === event.currentTarget) {
-    expanded.value = false;
-  }
-}
-</script>
-
 <template>
   <div class="expandable-container">
     <div class="content-preview">
@@ -207,6 +158,55 @@ function closeDetails(event: MouseEvent) {
     />
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref } from 'vue';
+import type { Medication } from '../types';
+import EditDetailsForm from './EditDetailsForm.vue';
+
+const props = defineProps<{
+  medication: Medication;
+}>();
+
+const emit = defineEmits<{
+  (e: 'update', medication: Medication): void;
+}>();
+
+const expanded = ref(false);
+const detailsId = ref(`details-${Math.random().toString(36).substr(2, 9)}`);
+const showEditForm = ref(false);
+const editingSection = ref('');
+
+function toggleExpanded() {
+  expanded.value = !expanded.value;
+}
+
+function formatDate(date: Date | string | undefined | null): string {
+  if (!date) return 'N/A';
+  return new Date(date).toLocaleDateString();
+}
+
+function handleEdit(section: string) {
+  editingSection.value = section;
+  showEditForm.value = true;
+}
+
+function handleSave(updatedData: Partial<Medication>) {
+  const mergedMedication = {
+    ...props.medication,
+    ...updatedData
+  };
+  
+  emit('update', mergedMedication);
+  showEditForm.value = false;
+}
+
+function closeDetails(event: MouseEvent) {
+  if (event.target === event.currentTarget) {
+    expanded.value = false;
+  }
+}
+</script>
 
 <style scoped>
 .expandable-container {

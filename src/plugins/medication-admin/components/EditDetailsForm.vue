@@ -1,185 +1,3 @@
-<script setup lang="ts">
-import { ref, onMounted } from 'vue';
-import type { Medication } from '../types';
-
-const props = defineProps<{
-  show: boolean;
-  section: string;
-  medication: Medication;
-}>();
-
-const emit = defineEmits<{
-  (e: 'close'): void;
-  (e: 'save', data: Partial<Medication>): void;
-}>();
-
-const routeOptions = [
-  'Administration',
-  'Neb/INH',
-  'Oral/Sublingual',
-  'IVI Intravaginal',
-  'SQ/IM/IV/ID',
-  'NAS Intranasal',
-  'TD Transdermal',
-  'TOP Topical',
-  'Urethral',
-  'Rectally',
-  'Optic',
-  'Otic'
-];
-
-const frequencyOptions = [
-'1 time daily',  
-'2 times daily',  
-'2 times daily, as needed (PRN)',  
-'3 times a day',  
-'3 times a day, as needed for headache (PRN)',  
-'3 times daily',  
-'3 times daily, as needed (PRN)',  
-'4 times a day', 
-'4 times daily',  
-'4 times daily, as needed (PRN)',
-'as directed',  
-'as needed',  
-'as one dose on the first day then take one tablet daily thereafter',  
-'at bedtime',  
-'at bedtime, as needed (PRN)',  
-'at bedtime as needed for sleep (PRN)',  
-'before every meal',  
-'bi-weekly',  
-'constant infusion',  
-'daily',  
-'daily, as needed (PRN)',  
-'daily as directed',  
-'every day',  
-'every month',  
-'every other day',  
-'every morning',  
-'every evening',  
-'every hour',  
-'every hour, as needed (PRN)',  
-'every 2 hours',  
-'every 2 hours, as needed (PRN)',  
-'every 3 hours',  
-'every 3 hours, as needed (PRN)',  
-'every 4 hours',  
-'every 4 hours, as needed (PRN)',  
-'every 4 to 6 hours, as needed for pain (PRN)',  
-'every 4 to 6 minutes',  
-'every 4 to 8 hours',  
-'every 6 hours',  
-'every 6 hours, as needed for pain (PRN)',  
-'every 6 hours, as needed for cough (PRN)',  
-'every 8 hours',  
-'every 8 hours, as needed (PRN)',  
-'every 12 hours',  
-'every 12 hours, as needed (PRN)',  
-'every 24 hours',  
-'every 24 hours, as needed (PRN)',  
-'every Monday, Wednesday, Friday, Sunday',  
-'every Tuesday, Thursday, Saturday', 
-'before breakfast, lunch, dinner',
-'after breakfast, lunch, dinner',
-'Monday',  
-'Tuesday',  
-'Wednesday',  
-'Thursday',  
-'Friday',  
-'Saturday',  
-'Sunday',  
-'once a week',  
-'one time dose',  
-'three times a week',  
-'twice daily',  
-'twice daily, as needed for nausea (PRN)',  
-'two times a week',  
-'use as directed per instructions in pack',  
-'weekly',
-];
-
-const form = ref({
-  // Medication Information
-  ndcNumber: props.medication.ndc || '',
-  dosage: props.medication.dosage || '',
-  frequency: props.medication.frequency || '',
-  route: props.medication.route || 'Oral/Sublingual',
-  prn: props.medication.prn || false,
-  tabsAvailable: props.medication.tabsAvailable || 0,
-  deaNumber: props.medication.pharmacyDea || '',
-  diagnosis: props.medication.diagnosis || '',
-
-  // Prescription Information
-  rxNumber: props.medication.rxNumber || '',
-  scriptFillDate: props.medication.scriptFillDate || '',
-  refills: props.medication.refills || 0,
-  startDate: props.medication.startDate ? new Date(props.medication.startDate).toISOString().split('T')[0] : '',
-  endDate: props.medication.endDate ? new Date(props.medication.endDate).toISOString().split('T')[0] : '',
-  refillReminderDate: props.medication.refillReminderDate ? new Date(props.medication.refillReminderDate).toISOString().split('T')[0] : '',
-  expirationDate: props.medication.expirationDate || '',
-
-  // Pharmacy Information
-  pharmacy: props.medication.pharmacy || '',
-  pharmacyNpi: props.medication.pharmacyNpi || '',
-  pharmacyAddress: props.medication.pharmacyAddress || '',
-  pharmacyPhone: props.medication.pharmacyPhone || '',
-
-  // Provider Information
-  providerName: props.medication.prescriberInfo || '',
-  providerDeaNpi: props.medication.prescriberDeaNpi || ''
-});
-
-const handleSubmit = () => {
-  const updatedData: Partial<Medication> = {};
-
-  switch (props.section) {
-    case 'medication':
-      updatedData.ndc = form.value.ndcNumber;
-      updatedData.dosage = form.value.dosage;
-      updatedData.frequency = form.value.frequency;
-      updatedData.route = form.value.route;
-      updatedData.prn = form.value.prn;
-      updatedData.tabsAvailable = form.value.tabsAvailable;
-      updatedData.pharmacyDea = form.value.deaNumber;
-      updatedData.diagnosis = form.value.diagnosis;
-      break;
-
-    case 'prescription':
-      updatedData.rxNumber = form.value.rxNumber;
-      updatedData.scriptFillDate = form.value.scriptFillDate;
-      updatedData.refills = form.value.refills;
-      updatedData.startDate = form.value.startDate ? new Date(form.value.startDate) : undefined;
-      updatedData.endDate = form.value.endDate ? new Date(form.value.endDate) : undefined;
-      updatedData.refillReminderDate = form.value.refillReminderDate ? new Date(form.value.refillReminderDate) : undefined;
-      updatedData.expirationDate = form.value.expirationDate;
-      break;
-
-    case 'pharmacy':
-      updatedData.pharmacy = form.value.pharmacy;
-      updatedData.pharmacyNpi = form.value.pharmacyNpi;
-      updatedData.pharmacyAddress = form.value.pharmacyAddress;
-      updatedData.pharmacyPhone = form.value.pharmacyPhone;
-      break;
-
-    case 'provider':
-      updatedData.prescriberInfo = form.value.providerName;
-      updatedData.prescriberDeaNpi = form.value.providerDeaNpi;
-      break;
-  }
-
-  emit('save', updatedData);
-};
-
-onMounted(() => {
-  const datePickers = document.querySelectorAll('.date-picker');
-  datePickers.forEach(picker => {
-    flatpickr(picker, {
-      dateFormat: "Y-m-d",
-      allowInput: true
-    });
-  });
-});
-</script>
-
 <template>
   <div v-if="show" class="edit-overlay" @click.self="$emit('close')">
     <div class="edit-container">
@@ -307,6 +125,138 @@ onMounted(() => {
     </div>
   </div>
 </template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue';
+import type { Medication } from '../types';
+
+const props = defineProps<{
+  show: boolean;
+  section: string;
+  medication: Medication;
+}>();
+
+const emit = defineEmits<{
+  (e: 'close'): void;
+  (e: 'save', data: Partial<Medication>): void;
+}>();
+
+const routeOptions = [
+  'Administration',
+  'Neb/INH',
+  'Oral/Sublingual',
+  'IVI Intravaginal',
+  'SQ/IM/IV/ID',
+  'NAS Intranasal',
+  'TD Transdermal',
+  'TOP Topical',
+  'Urethral',
+  'Rectally',
+  'Optic',
+  'Otic'
+];
+
+const frequencyOptions = [
+  '1 times daily',
+  '2 times daily',
+  '3 times daily',
+  '4 times daily',
+  'every other day',
+  'at bedtime',
+  'every hour',
+  'every 2 hours',
+  'every 3 hours',
+  'every 4 hours',
+  'every 6 hours',
+  'every 8 hours',
+  'every 12 hours',
+  'every 24 hours',
+  'monday, wednesday, friday, sunday',
+  'tuesday, thursday, saturday'
+];
+
+const form = ref({
+  // Medication Information
+  ndcNumber: props.medication.ndc || '',
+  dosage: props.medication.dosage || '',
+  frequency: props.medication.frequency || '',
+  route: props.medication.route || 'Oral/Sublingual',
+  prn: props.medication.prn || false,
+  tabsAvailable: props.medication.tabsAvailable || 0,
+  deaNumber: props.medication.pharmacyDea || '',
+  diagnosis: props.medication.diagnosis || '',
+
+  // Prescription Information
+  rxNumber: props.medication.rxNumber || '',
+  scriptFillDate: props.medication.scriptFillDate || '',
+  refills: props.medication.refills || 0,
+  startDate: props.medication.startDate ? new Date(props.medication.startDate).toISOString().split('T')[0] : '',
+  endDate: props.medication.endDate ? new Date(props.medication.endDate).toISOString().split('T')[0] : '',
+  refillReminderDate: props.medication.refillReminderDate ? new Date(props.medication.refillReminderDate).toISOString().split('T')[0] : '',
+  expirationDate: props.medication.expirationDate || '',
+
+  // Pharmacy Information
+  pharmacy: props.medication.pharmacy || '',
+  pharmacyNpi: props.medication.pharmacyNpi || '',
+  pharmacyAddress: props.medication.pharmacyAddress || '',
+  pharmacyPhone: props.medication.pharmacyPhone || '',
+
+  // Provider Information
+  providerName: props.medication.prescriberInfo || '',
+  providerDeaNpi: props.medication.prescriberDeaNpi || ''
+});
+
+const handleSubmit = () => {
+  const updatedData: Partial<Medication> = {};
+
+  switch (props.section) {
+    case 'medication':
+      updatedData.ndc = form.value.ndcNumber;
+      updatedData.dosage = form.value.dosage;
+      updatedData.frequency = form.value.frequency;
+      updatedData.route = form.value.route;
+      updatedData.prn = form.value.prn;
+      updatedData.tabsAvailable = form.value.tabsAvailable;
+      updatedData.pharmacyDea = form.value.deaNumber;
+      updatedData.diagnosis = form.value.diagnosis;
+      break;
+
+    case 'prescription':
+      updatedData.rxNumber = form.value.rxNumber;
+      updatedData.scriptFillDate = form.value.scriptFillDate;
+      updatedData.refills = form.value.refills;
+      updatedData.startDate = form.value.startDate ? new Date(form.value.startDate) : undefined;
+      updatedData.endDate = form.value.endDate ? new Date(form.value.endDate) : undefined;
+      updatedData.refillReminderDate = form.value.refillReminderDate ? new Date(form.value.refillReminderDate) : undefined;
+      updatedData.expirationDate = form.value.expirationDate;
+      break;
+
+    case 'pharmacy':
+      updatedData.pharmacy = form.value.pharmacy;
+      updatedData.pharmacyNpi = form.value.pharmacyNpi;
+      updatedData.pharmacyAddress = form.value.pharmacyAddress;
+      updatedData.pharmacyPhone = form.value.pharmacyPhone;
+      break;
+
+    case 'provider':
+      updatedData.prescriberInfo = form.value.providerName;
+      updatedData.prescriberDeaNpi = form.value.providerDeaNpi;
+      break;
+  }
+
+  emit('save', updatedData);
+};
+
+onMounted(() => {
+  const datePickers = document.querySelectorAll('.date-picker');
+  datePickers.forEach(picker => {
+    flatpickr(picker, {
+      dateFormat: "Y-m-d",
+      allowInput: true
+    });
+  });
+});
+</script>
 
 <style scoped>
 .edit-overlay {

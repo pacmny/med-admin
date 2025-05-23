@@ -31,7 +31,7 @@
       </div>
     </div>
   </template>
-  
+
   <script setup lang="ts">
   import { ref, defineProps, defineEmits } from 'vue'
   
@@ -66,7 +66,7 @@
     })
   }
   </script>
-  
+
   <style scoped>
   .modal-overlay {
     position: fixed;
@@ -120,4 +120,3 @@
     cursor: not-allowed;
   }
   </style>
-  

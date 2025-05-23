@@ -597,33 +597,22 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, defineProps, defineEmits } from 'vue'
+import { ref, defineProps, defineEmits } from 'vue'
+import { PastProvarItem } from '../types';
+import axios from 'axios';
 
+/** Define the structure of all form fields. */
 interface MedicationFormData {
   medicationName: string;
-  ndcNumber: string;
-  rxNorm: string;
+  ndcnumber: string;
+  rxnorns: string;
   diagnosis: string;
+  diagdescription:string;
   dosage: string;
-  unitType: string;
   frequency: string;
   route: string;
-  duration: string;
-  fluidType: string;
   prn: boolean;
   quantity: number;
-
-  totalVolume: string;
-  totalVolumeUnit: string;
-  rate: string;
-  howLong: string;
-  startTime: string;
-  endTime: string;
-  via: string;
-
-  sqInjectionSite: string;
-  idInjectionSite: string;
-  imInjectionSite: string;
 
   rxNumber: string;
   filledDate: string;
@@ -649,54 +638,42 @@ interface MedicationFormData {
   pharmacyOffice: string;
   pharmacyCell: string;
   pharmacyEmail: string;
-
-  nurseSignature: string;
 }
-
+//const pastProvar = ref<string[]>([]);
+/**
+ * Props:
+ *  show: controls visibility of the modal
+ */
 const props = defineProps<{
   show: boolean;
-  existingMedication?: Partial<MedicationFormData> | null;
+  pastProvloaded:boolean;
+  pastProvar: PastProvarItem[];
 }>()
 
+/**
+ * Emits:
+ *  close  -> for closing/canceling the modal
+ *  save   -> sends the entire formData object
+ */
 const emit = defineEmits<{
   (e: 'close'): void;
-  (e: 'save', payload: MedicationFormData & { isEdit: boolean }): void;
+  (e: 'save', payload: MedicationFormData): void;
+  (e: 'loadprov'): void;
+  (e: 'updtPastProvbool'):void;
 }>()
 
-const dosageOptions = [
-  "Actuation","Ampule","Application","Applicator","Auto-Injector","Bar","Capful","Caplet","Capsule",
-  "Cartridge","Centimeter","Disk","Dropperful","Each","Film","Fluid Ounce","Gallon","Gram","Gum","Implant",
-  "Inch","Inhalation","Injection","Insert","Liter","Lollipop","Lozenge","Metric Drop","Microgram",
-  "Milliequivalent","Milligram","Milliliter","Nebule","Ounce","Package","Packet","Pad","Patch","Pellet",
-  "Pill","Pint","Pre-filled Pen Syringe","Puff","Pump","Ring","Sachet","Scoopful","Sponge","Spray","Stick",
-  "Strip","Suppository","Swab","Syringe","Tablet","Troche","Unit","Vial","Wafer"
-]
-
+/** Reactive object storing all form fields. */
 const formData = ref<MedicationFormData>({
   medicationName: '',
-  ndcNumber: '',
-  rxNorm: '',
+  ndcnumber: '',
+  rxnorns: '',
   diagnosis: '',
+  diagdescription:'',
   dosage: '',
-  unitType: '',
   frequency: '',
-  route: '',
-  duration: '',
-  fluidType: '',
+  route: 'Oral/Sublingual',
   prn: false,
   quantity: 0,
-
-  totalVolume: '',
-  totalVolumeUnit: 'ml',
-  rate: '',
-  howLong: '',
-  startTime: '',
-  endTime: '',
-  via: '',
-
-  sqInjectionSite: '',
-  idInjectionSite: '',
-  imInjectionSite: '',
 
   rxNumber: '',
   filledDate: '',
@@ -721,148 +698,285 @@ const formData = ref<MedicationFormData>({
   pharmacyAddress: '',
   pharmacyOffice: '',
   pharmacyCell: '',
-  pharmacyEmail: '',
-
-  nurseSignature: ''
+  pharmacyEmail: ''
 })
 
+/** The four tabs: */
 const tabs = [
-  { value: 'medInfo',          label: 'Medication Information' },
-  { value: 'prescriptionInfo', label: 'Prescription Information' },
-  { value: 'providerInfo',     label: 'Provider Information' },
-  { value: 'pharmacyInfo',     label: 'Pharmacy Information' }
+  { value: 'medInfo',         label: 'Medication Information' },
+  { value: 'prescriptionInfo',label: 'Prescription Information'},
+  { value: 'providerInfo',    label: 'Provider Information'    },
+  { value: 'pharmacyInfo',    label: 'Pharmacy Information'    }
 ]
+const CURR_API = ref<string>('https://medadministration:8890/keyon');
+const loadedProvider = ref<string>('');
+const loadedpatientNPI = ref<string>('');
+const newProvider = ref<PastProvarItem[]>([]);
+  const newPharmacy = ref<PastProvarItem[]>([]);
+  const pastpatPharmacy = ref<PastProvarItem[]>([]);
+    const drugs = ref<PastProvarItem[]>([]);
+const newProvloaded =ref<boolean>(false);
+const newpastPatPharcy = ref<boolean>(false);
+const  newPharmloaded = ref<boolean>(false);
+const searchTerm = ref<string>('');
+const newDiagloaded = ref<boolean>(false);
+const newDiagcodes = ref<PastProvarItem[]>([]);
+/** Track which tab is active. */
 const activeTab = ref('medInfo')
-const isEditMode = computed(() => !!props.existingMedication)
 
-// Require name, dosage, frequency, and route
-const isFormValid = computed(() =>
-  formData.value.medicationName.trim() !== '' &&
-  formData.value.dosage.trim() !== '' &&
-  formData.value.frequency !== '' &&
-  formData.value.route !== ''
-)
-
-watch(() => props.existingMedication, (newVal) => {
-  if (newVal) {
-    formData.value = { ...formData.value, ...newVal }
-  } else {
-    resetForm()
+/*Handle Tab Function */
+const handleTabClick = (tabValue: string) => {
+  activeTab.value = tabValue; //set the active tab
+  //Run or emit event when the providerInfo tab is active 
+  if(tabValue === 'providerInfo') {
+    loadPastProviders();
   }
-}, { immediate: true })
-
-watch(() => props.show, (visible) => {
-  if (!visible) resetForm()
-})
-
-function resetForm() {
-  formData.value = {
-    medicationName: '',
-    ndcNumber: '',
-    rxNorm: '',
-    diagnosis: '',
-    dosage: '',
-    unitType: '',
-    frequency: '',
-    route: '',
-    duration: '',
-    fluidType: '',
-    prn: false,
-    quantity: 0,
-
-    totalVolume: '',
-    totalVolumeUnit: 'ml',
-    rate: '',
-    howLong: '',
-    startTime: '',
-    endTime: '',
-    via: '',
-
-    sqInjectionSite: '',
-    idInjectionSite: '',
-    imInjectionSite: '',
-
-    rxNumber: '',
-    filledDate: '',
-    refills: 0,
-    startDate: '',
-    endDate: '',
-    refillReminderDate: '',
-    expirationDate: '',
-
-    providerName: '',
-    providerDea: '',
-    providerNpi: '',
-    licenseNumber: '',
-    providerAddress: '',
-    providerOffice: '',
-    providerCell: '',
-    providerEmail: '',
-
-    pharmacyName: '',
-    pharmacyDea: '',
-    pharmacyNpi: '',
-    pharmacyAddress: '',
-    pharmacyOffice: '',
-    pharmacyCell: '',
-    pharmacyEmail: '',
-
-    nurseSignature: ''
+  if(tabValue==='pharmacyInfo')
+  {
+    loadPatientPharmacy();
   }
-}
-
+};
+/** Handler for the Save button. */
 function handleSave() {
-  emit('save', {
-    ...formData.value,
-    isEdit: isEditMode.value
-  })
-  resetForm()
+  // You can do validation or other logic here
+  emit('save', formData.value)
 }
-
-function handleCancel() {
-  emit('close')
-  resetForm()
+/*Handles the Patient Pharmacy Select Box Change and parsing*/
+function selectpastPharm()
+{
+  
+  for(var i=0; i < pastpatPharmacy.value.length; i++)
+  {
+    
+    if(pastpatPharmacy.value[i].npinumber==loadedpatientNPI.value)
+    {
+      formData.value.pharmacyName = pastpatPharmacy.value[i].pharmacyname;
+      formData.value.pharmacyNpi = pastpatPharmacy.value[i].npinumber;
+      formData.value.pharmacyAddress = pastpatPharmacy.value[i].pharmaddress;
+     // formData.value.pharmacyOffice = pastpatPharmacy.value[i].addresses[index].tel;
+     // formData.value.pharmacyCell = pastpatPharmacy.value[i].addresses[index].tel;
+     newpastPatPharcy.value=false;
+    }
+  }
 }
+/*Handle Selecting the Diagnosis code and description*/
+function selectDiagcode(index: number)
+{
+  formData.value.diagnosis = newDiagcodes.value[index].code;
+  formData.value.diagdescription = newDiagcodes.value[index].description;
+  //now close list container 
+  newDiagloaded.value=false;
+}
+/*Handle SElecting a Pharmacy*/
+function selectPharm(index: number)
+{
+      formData.value.pharmacyName = newPharmacy.value[index].name;
+      formData.value.pharmacyNpi = newPharmacy.value[index].npinumber;
+      formData.value.pharmacyAddress = newPharmacy.value[index].addresses[index].address;
+      formData.value.pharmacyOffice = newPharmacy.value[index].addresses[index].tel;
+      formData.value.pharmacyCell = newPharmacy.value[index].addresses[index].tel;
+       newPharmloaded.value=false;
+      
+}
+/*Handle NewProvider Function*/
+function selectProvider(index: number)
+{
+      formData.value.providerName = newProvider.value[index].name;
+      formData.value.providerNpi = newProvider.value[index].npinumber;
+      formData.value.providerAddress = newProvider.value[index].addresses[0].address;
+      formData.value.providerOffice = newProvider.value[index].addresses[0].tel;
+      formData.value.providerCell = newProvider.value[index].addresses[0].tel;
+      //formData.value.providerEmail = newProvider[index].email;
+      newProvloaded.value=false;
+     
+}
+function getDrugSynonym(synonym: string)
+{
+  console.log(`Fetching synonyms: ${synonym}`);
+  formData.value.medicationName = synonym
+  drugs.value =[];
+}
+async function fetchDiagnosis()
+{
+   searchTerm.value =formData.value.diagnosis;
+   let content = {
+    action:"CodeLookUp",
+    searchTerm:searchTerm.value
+   };
+   if(formData.value.diagnosis=="")
+   {
+    newDiagcodes.value = [];  //resetting the newDiagcodes array if the input field is blank
+    newDiagloaded.value=false; //Should make the code display box disappear based on the boolean
+    return;
+   }
+   try{
 
-watch(
-  [() => formData.value.totalVolume, () => formData.value.rate, () => formData.value.totalVolumeUnit],
-  () => {
-    const vol = parseFloat(formData.value.totalVolume) || 0
-    let numericRate = parseFloat(formData.value.rate) || 0
-    if (!numericRate) {
-      const match = formData.value.rate.match(/(\d+(\.\d+)?)/)
-      if (match) numericRate = parseFloat(match[1])
-    }
-    const finalVolumeInMl =
-      formData.value.totalVolumeUnit === 'liter' ? vol * 1000 : vol
-    let hours = numericRate > 0 ? finalVolumeInMl / numericRate : 0
-    formData.value.howLong = hours > 0 ? hours.toFixed(2) : ''
-  }
-)
+    await axios
+        .post( "https://medadministration:8890/keyon/icd_calls.php", content, {
+          headers: { "Content-Type": "application/json;" },
+        })
+        .then((res) => {
+          console.log(res.data); //see what the response looks like from a data structure stanpoint
+          if (res.data && res.data.result <=0) {
+            newDiagcodes.value = [];  //resetting the newDiagcodes array if the input field is blank
+            newDiagloaded.value=false; //Should make the code display box disappear based on the boolean
+            formData.value.diagnosis="No Results Found";
+          } else{ 
+            
+            
+            newDiagcodes.value = res.data.actualResults;
+            newDiagloaded.value=true;
+           
+           
+          }
+        });
+   }
+   catch(error){
+    console.error('Error fetching Diagnosis Code:', error);
+   }
+}
+async function fetchDrugs()
+{
+  if (formData.value.medicationName.trim() === '') { 
+      drugs.value = [];       
+       return; 
+      }
+      try {        
+        const response = await axios.get(`https://rxnav.nlm.nih.gov/REST/drugs.json?name=${encodeURIComponent(formData.value.medicationName)}`); 
+        const data = response.data;                
+        if (data && data.drugGroup && data.drugGroup.conceptGroup) {  
+            const conceptProperties = data.drugGroup.conceptGroup            
+            .flatMap(group => group.conceptProperties || []);                   
+             // Assigning to drugs array with PastProvItem type          
+             drugs.value = conceptProperties.map(drug => ({            
+              0: drug.rxcui,          // RXCUI           
+              1: drug.name,           // Drug Name           
+              2: drug.synonym         // Synonym          
+              })) as PastProvarItem[];       
+        } else {          
+          drugs.value = [];        
 
-watch(
-  [() => formData.value.howLong, () => formData.value.startTime],
-  () => {
-    if (!formData.value.howLong || !formData.value.startTime) {
-      formData.value.endTime = ''
-      return
+        }      
+      } catch (error) { 
+          console.error('Error fetching drugs:', error);     
+      }
+}
+async function showPharmacyResult()
+{
+  let content = {
+        methname:"GetAllInfo",
+        primphysician:"",
+        organization: formData.value.pharmacyName, 
+        postalCode:"46260",
+        enumeration:"NPI-2"
+      };
+      // this.showPreloader()
+      await axios
+        .post( "https://medadministration:8890/keyon/NPILookup.php", content, {
+          headers: { "Content-Type": "application/json;" },
+        })
+        .then((res) => {
+          if (res.data && res.data.length < 1) {
+            console.log(res.data);
+            newPharmacy.value = [];
+          } else{ 
+            
+            console.log(res.data);
+            newPharmacy.value = res.data;
+            console.log(newPharmacy);
+            newPharmloaded.value=true;
+            newpastPatPharcy.value=false;
+           
+          }
+        });
+      // this.stopPreloader()
+}
+/*Patient assigned Pharmacy Lookup Axios Call*/
+async function loadPatientPharmacy()
+{
+  //newPharmloaded.value=false;
+   let content = {
+     MedicationAdmin: {
+      API_Meth:"GetAssignedPatPharmacy",
+      patientid:"709081242",
+      accountnumber:"904575107"
+     }
+   };
+   await axios
+        .post( "https://medadministration:8890/keyon/tswebhook.php", content, {
+          headers: { "Content-Type": "application/json;" },
+        })
+        .then((res) => {
+ 
+          if (res.data.results && res.data.results =="") {
+            pastpatPharmacy.value = [];
+            newpastPatPharcy.value=false;
+          } else{ 
+            pastpatPharmacy.value = res.data.results;
+           newpastPatPharcy.value=true;
+           newPharmloaded.value=false;
+            console.log(res.data);
+           
+            console.log(pastpatPharmacy);
+          
+           // newPharmloaded.value=false;
+           
+          }
+        });
+}
+/* Npi Search Result from the NPIRegistery on click event*/
+async function showNpiResult()
+{
+  let content = {
+        methname: "GetAllInfo",
+        primphysician: formData.value.providerName, 
+      };
+      // this.showPreloader()
+      await axios
+        .post( "https://medadministration:8890/keyon/NPILookup.php", content, {
+          headers: { "Content-Type": "application/json;" },
+        })
+        .then((res) => {
+          if (res.data.results && res.data.results == "No Results Found") {
+            newProvider.value = [];
+          } else{ 
+            emit('updtPastProvbool');
+            console.log(res.data);
+            newProvider.value = res.data;
+            console.log(newProvider);
+            newProvloaded.value=true;
+           
+          }
+        });
+      // this.stopPreloader()
+}
+/*function to handle the on change event on the provider select box - Fill PRovider information into the Provider form */
+function fillProviderInfo()
+{
+  for(var i=0; i < props.pastProvar.length;i++)
+  {
+    let name = props.pastProvar[i]["firstname"] + ' ' + props.pastProvar[i]["lastname"];
+    if(loadedProvider.value == name)
+    {
+      
+      console.log(props.pastProvar[i]);
+      console.log(props.pastProvar[i].npinumber);
+      formData.value.providerName = name;
+      formData.value.providerNpi = props.pastProvar[i].npinumber;
+      formData.value.providerAddress = props.pastProvar[i].addr1;
+      formData.value.providerOffice = props.pastProvar[i].tel;
+      formData.value.providerCell = props.pastProvar[i].tel;
+      formData.value.providerEmail = props.pastProvar[i].email;
+      emit('updtPastProvbool');
     }
-    const [startH, startM] = formData.value.startTime.split(':').map(Number)
-    const hoursFloat = parseFloat(formData.value.howLong)
-    if (isNaN(hoursFloat) || isNaN(startH)) {
-      formData.value.endTime = ''
-      return
-    }
-    const totalMinutes = Math.round(hoursFloat * 60)
-    let newH = startH
-    let newM = startM + totalMinutes
-    newH += Math.floor(newM / 60)
-    newM = newM % 60
-    const hh = String(newH % 24).padStart(2, '0')
-    const mm = String(newM).padStart(2, '0')
-    formData.value.endTime = `${hh}:${mm}`
   }
-)
+}
+/*Function to go and lookup past providers */
+function loadPastProviders()
+{
+  
+  emit('loadprov');
+}
 </script>
 
 <style scoped>
