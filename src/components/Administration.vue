@@ -33,10 +33,11 @@ const selectedTimeElement = ref<HTMLElement | null>(null);
 const selectedTime = ref<string>('');
 const selectedAction = ref<string>('');
 const medicationStatus = ref<Record<string, any>>({});
+const showPopupDialog = ref(false);
 
 onMounted(() => {
   initializeDateRangePicker();
-  populateMedicationTable();
+  populateMedicationTable()
 });
 
 const formatDateToYYYYMMDD = (date: Date): string => {
@@ -105,41 +106,16 @@ const handleStatusChange = (event: Event, medIndex: number) => {
   }
 };
 
-const showPopup = (time: string, element: HTMLElement) => {
-  const popup = document.getElementById('popup');
-  if (popup) {
-    popup.style.display = 'flex';
-    const timeElement = document.getElementById('time');
-    if (timeElement) {
-      timeElement.textContent = time;
-    }
-    selectedTimeElement.value = element;
-    selectedTime.value = time;
-    selectedAction.value = '';
-    
-    const currentDate = new Date();
-    const selectedDateElement = document.getElementById('selected-date');
-    if (selectedDateElement) {
-      selectedDateElement.textContent = currentDate.toDateString();
-    }
-    
-    const reasonContainer = document.getElementById('reason-container');
-    const reasonInput = document.getElementById('reason-input') as HTMLTextAreaElement;
-    if (reasonContainer && reasonInput) {
-      reasonContainer.style.display = 'none';
-      reasonInput.value = '';
-    }
-  }
+const handleTimeClick = (time: string, element: HTMLElement) => {
+  selectedTime.value = time;
+  selectedTimeElement.value = element;
+  showPopupDialog.value = true;
 };
 
 const selectOption = (action: string) => {
   selectedAction.value = action;
-  const reasonContainer = document.getElementById('reason-container');
-  if (reasonContainer) {
-    reasonContainer.style.display = action === 'take-later' || action === 'refused' ? 'block' : 'none';
-    if (action === 'taken') {
-      applyAction();
-    }
+  if (action === 'taken') {
+    applyAction();
   }
 };
 
@@ -147,84 +123,25 @@ const applyAction = () => {
   if (!selectedTimeElement.value || !selectedTime.value || !selectedAction.value) return;
 
   const currentDate = formatDateToYYYYMMDD(new Date());
-  const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  const reasonInput = document.getElementById('reason-input') as HTMLTextAreaElement;
-  const reason = reasonInput ? reasonInput.value : '';
-
   if (medicationStatus.value[currentDate] && 
       medicationStatus.value[currentDate][selectedTime.value]) {
     const medIndex = selectedTimeElement.value.getAttribute('data-med-index');
     if (medIndex !== null) {
       medicationStatus.value[currentDate][selectedTime.value][medIndex] = selectedAction.value;
-      if (reason) {
-        medicationStatus.value[currentDate][selectedTime.value][`${medIndex}_reason`] = reason;
-      }
     }
   }
 
-  closePopup();
-  checkForSignature(currentDate, selectedTime.value);
+  showPopupDialog.value = false;
+  selectedTimeElement.value = null;
+  selectedTime.value = '';
+  selectedAction.value = '';
 };
 
 const closePopup = () => {
-  const popup = document.getElementById('popup');
-  if (popup) {
-    popup.style.display = 'none';
-  }
-};
-
-const checkForSignature = (date: string, time: string) => {
-  const medsForTime = medicationStatus.value[date][time];
-  const allDone = Object.entries(medsForTime).every(([key, status]) => {
-    return !key.includes('_reason') && (status === 'taken' || status === 'refused');
-  });
-
-  if (allDone) {
-    showSignaturePopup(date, time);
-  }
-};
-
-const showSignaturePopup = (date: string, time: string) => {
-  const popup = document.getElementById('signaturePopup');
-  if (popup) {
-    popup.style.display = 'flex';
-    const timeElement = document.getElementById('signature-time');
-    const dateElement = document.getElementById('signature-date');
-    if (timeElement) timeElement.textContent = time;
-    if (dateElement) dateElement.textContent = new Date(date).toDateString();
-
-    const medicationListDiv = document.getElementById('medication-list');
-    if (medicationListDiv) {
-      medicationListDiv.innerHTML = '';
-      const medsForTime = medicationStatus.value[date][time];
-      
-      Object.entries(medsForTime).forEach(([key, status]) => {
-        if (!key.includes('_reason')) {
-          const med = medications.value[parseInt(key)];
-          const reason = medsForTime[`${key}_reason`] || '';
-          const medDiv = document.createElement('div');
-          medDiv.textContent = `${med.name} - Status: ${status}${reason ? ' - Reason: ' + reason : ''}`;
-          medicationListDiv.appendChild(medDiv);
-        }
-      });
-    }
-  }
-};
-
-const submitSignature = () => {
-  const signatureInput = document.getElementById('signature-input') as HTMLInputElement;
-  if (!signatureInput || !signatureInput.value) {
-    alert('Please provide your signature.');
-    return;
-  }
-
-  const timestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  console.log(`Signature: ${signatureInput.value}, Timestamp: ${timestamp}`);
-
-  const popup = document.getElementById('signaturePopup');
-  if (popup) {
-    popup.style.display = 'none';
-  }
+  showPopupDialog.value = false;
+  selectedTimeElement.value = null;
+  selectedTime.value = '';
+  selectedAction.value = '';
 };
 </script>
 
@@ -282,81 +199,9 @@ const submitSignature = () => {
                         <a href="#" class="edit">Edit</a>
                       </div>
                     </div>
-                    <div class="details-box">
-                      <h3>Prescription Information</h3>
-                      <div class="details-content">
-                        <div class="detail-row">
-                          <span class="detail-label">RX Number:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">Date the script was filled:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">Number of Refills:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">Expiration/Refills until:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                      </div>
-                      <div class="edit-link">
-                        <a href="#" class="edit">Edit</a>
-                      </div>
-                    </div>
-                    <div class="details-box">
-                      <h3>Pharmacy Information</h3>
-                      <div class="details-content">
-                        <div class="detail-row">
-                          <span class="detail-label">Pharmacy:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">NPI Number:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">Address:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">Phone Number:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">DEA BL Number:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                      </div>
-                      <div class="edit-link">
-                        <a href="#" class="edit">Edit</a>
-                      </div>
-                    </div>
-                    <div class="details-box">
-                      <h3>Prescribers Information</h3>
-                      <div class="details-content">
-                        <div class="detail-row">
-                          <span class="detail-label">Prescriber:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">DEA Number or NPI Number:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                        <div class="detail-row">
-                          <span class="detail-label">Auth Number:</span>
-                          <span class="detail-value">N/A</span>
-                        </div>
-                      </div>
-                      <div class="edit-link">
-                        <a href="#" class="edit">Edit</a>
-                      </div>
-                    </div>
                   </div>
                 </template>
-              </ExpandableDetails>
+              </ExpandableDetails> 
             </td>
             <td>
               <select class="status-dropdown" @change="(e) => handleStatusChange(e, medIndex)">
@@ -374,7 +219,7 @@ const submitSignature = () => {
                   class="time-entry"
                   :data-time="time"
                   :data-med-index="medIndex"
-                  @click="showPopup(time, $event.target as HTMLElement)"
+                  @click="handleTimeClick(time, $event.target as HTMLElement)"
                 >
                   {{ time }}
                 </div>
@@ -392,55 +237,45 @@ const submitSignature = () => {
                   }"
                   :data-time="time"
                   :data-med-index="medIndex"
-                  @click="showPopup(time, $event.target as HTMLElement)"
+                  @click="handleTimeClick(time, $event.target as HTMLElement)"
                 ></div>
               </template>
             </td>
           </tr>
         </tbody>
       </table>
+     
     </div>
 
-    <!-- Popup for medication administration -->
-    <div id="popup" class="popup">
-      <div class="popup-content">
-        <h3>Choose Action for <span id="time"></span></h3>
-        <p>Date: <span id="selected-date"></span></p>
-        <div class="button-row">
-          <button type="button" class="taken" @click="selectOption('taken')">Taken</button>
-          <button type="button" class="take-later" @click="selectOption('take-later')">Take Later</button>
-          <button type="button" class="refused" @click="selectOption('refused')">Refused</button>
-        </div>
-        <div id="reason-container" style="display: none; margin-top: 10px;">
-          <label for="reason-input">Reason:</label>
-          <textarea id="reason-input" rows="3" style="width: 100%;"></textarea>
-          <button type="button" @click="applyAction">Submit</button>
+    <Teleport to="body">
+      <div v-if="showPopupDialog" class="popup">
+        <div class="popup-content">
+          <h3>Choose Action for {{ selectedTime }}</h3>
+          <p>Date: {{ new Date().toDateString() }}</p>
+          <div class="button-row">
+            <button type="button" class="taken" @click="selectOption('taken')">Taken</button>
+            <button type="button" class="take-later" @click="selectOption('take-later')">Take Later</button>
+            <button type="button" class="refused" @click="selectOption('refused')">Refused</button>
+          </div>
+          <div v-if="selectedAction === 'take-later' || selectedAction === 'refused'" style="margin-top: 10px;">
+            <label for="reason-input">Reason:</label>
+            <textarea id="reason-input" rows="3" style="width: 100%;"></textarea>
+            <button type="button" @click="applyAction">Submit</button>
+          </div>
+          <button type="button" class="cancel-button" @click="closePopup" style="margin-top: 10px;">Cancel</button>
         </div>
       </div>
-    </div>
-
-    <!-- Signature Popup -->
-    <div id="signaturePopup" class="popup">
-      <div class="popup-content">
-        <h3>Signature Required for <span id="signature-time"></span></h3>
-        <p>Date: <span id="signature-date"></span></p>
-        <div id="medication-list"></div>
-        <label for="signature-input">Signature:</label>
-        <input type="text" id="signature-input">
-        <button type="button" @click="submitSignature">Submit</button>
-      </div>
-    </div>
+    </Teleport>
 
     <div class="footer-buttons">
       <button type="button" @click="$router.push('/')">Back to Medications</button>
-      <button type="button" @click="handleData">Data</button>
-      <button type="button" @click="handleReports">Reports</button>
+      <button type="button">Data</button>
+      <button type="button">Reports</button>
     </div>
   </div>
 </template>
 
 <style>
-/* Add these new styles to your existing styles */
 .medication-details {
   font-size: 14px;
 }
@@ -496,5 +331,178 @@ const submitSignature = () => {
   text-decoration: underline;
 }
 
-/* Existing styles from style.css remain unchanged */
+.table-container {
+  margin: 20px auto;
+  width: 90%;
+  overflow-x: auto;
+}
+
+.schedule-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.schedule-table th,
+.schedule-table td {
+  border: 1px solid #ddd;
+  padding: 12px;
+  text-align: center;
+}
+
+.schedule-table th {
+  background-color: #f8f9fa;
+  font-weight: normal;
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.schedule-table td:first-child {
+  text-align: left;
+  width: 300px;
+  white-space: pre-line;
+}
+
+.schedule-table td:nth-child(2) {
+  width: 150px;
+}
+
+.schedule-table td:nth-child(3) {
+  width: 100px;
+}
+
+.schedule-table td[data-date] {
+  width: 80px;
+}
+
+.popup {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+}
+
+.popup-content {
+  background-color: white;
+  padding: 20px;
+  border-radius: 5px;
+  width: 300px;
+  text-align: center;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+}
+
+.popup-content h3 {
+  margin-top: 0;
+}
+
+.popup-content button {
+  margin: 0 10px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  flex: 1;
+}
+
+.popup-content .taken {
+  background-color: #28a745;
+  color: white;
+}
+
+.popup-content .take-later {
+  background-color: #ffc107;
+  color: black;
+}
+
+.popup-content .refused {
+  background-color: #dc3545;
+  color: white;
+}
+
+.button-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 20px;
+}
+
+.time-entry {
+  cursor: pointer;
+  padding: 5px;
+}
+
+hr {
+  border: none;
+  border-top: 1px solid #ddd;
+  margin: 5px 0;
+}
+
+.time-slot {
+  min-height: 30px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.date-cell {
+  padding: 0 !important;
+}
+
+.active-cell {
+  background-color: #d4edda;
+}
+
+.discontinued-cell {
+  background-color: #f8d7da;
+}
+
+.hold-cell {
+  background-color: #fff3cd;
+}
+
+.new-cell {
+  background-color: #869ccd;
+}
+
+.pending-cell {
+  background-color: #bf86cd;
+}
+
+.active-row {
+  background-color: #d4edda;
+}
+
+.medication-row.discontinued-row {
+  background-color: #f8d7da;
+}
+
+.medication-row.new-row {
+  background-color: #869ccd;
+}
+
+.medication-row.hold-row {
+  background-color: #fff3cd;
+}
+
+.medication-row.pending-row {
+  background-color: #bf86cd;
+}
+
+.medication-row.active-row {
+  background-color: #d4edda;
+}
+
+.cancel-button {
+  background-color: #6c757d;
+  color: white;
+  width: 100%;
+  margin: 0 !important;
+}
 </style>

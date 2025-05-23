@@ -1,0 +1,617 @@
+<!DOCTYPE html>
+    <head>
+        <title>Dr Order Template</title>
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC" crossorigin="anonymous">
+        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+        <link href="https://willowbuilt.it/fora/css/style.css" type="text/css" rel="stylesheet"/>  
+        <script src="https://code.jquery.com/jquery-3.6.1.min.js" integrity="sha256-o88AwQnZB+VDvE9tvIXrMQaPlFFSUTR+nldQm1LuPXQ=" crossorigin="anonymous"></script>
+        <script src="https://cdn.tiny.cloud/1/hmmgqdqhf31sd67f9s1ldoajy1sevp7s0xs399dsxpjo8g62/tinymce/6/tinymce.min.js" referrerpolicy="origin"></script>
+        <script src="https://willowbuilt.it/fora/js/tinyplugin.js?vs=1.0" type="text/javascript"></script>
+    </head>
+    <body>
+        <div class="order-wrapper col-sm-12 col-lg-12">
+            <div class="container">
+                <div class="col-sm-12 col-lg-12 opclosesec"><a href="#" id="closeOrdermod">X</a><h4></h4></div>
+                <!--Add Patiets Form-->
+                <div class="providerformsec col-sm-12 col-md-12 col-lg-12">
+                    
+                    <form id="providform">
+                        <p id="npidlbl">NPID<span id="npispan"></span></p>
+                        <h3>Add Provider Form</h3>
+                       <div class="provformrow">
+                            <div class="fnamesec col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="fnamefield" placeholder="* First Name" value=""/>
+                            </div>
+                            <div class="lnamesec  col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="lnamefield" placeholder="* Last Name" value=""/>
+                            </div>
+                        </div>
+                        <div class="provformrow">
+                            <div class="addronesec  col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="addr1field" placeholder="* Address" value=""/>
+                            </div>
+                            <div class="addrtwosec  col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="addr2field" placeholder="* Address 2" value=""/>
+                            </div>
+                        </div>
+                        <div class="provformrow">
+                            <div class="citysec  col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="cityfield" placeholder="* City" value=""/>
+                            </div>
+                            <div class="statesec  col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="statefield" placeholder="* State" value=""/>
+                            </div>
+                        </div>
+                        <div class="provformrow" style="padding:0px 85px;">
+                            <div class="zipsec  col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="zipfield" placeholder="* Zip" value=""/>
+                            </div>
+                            <div class="telsec  col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="telfield" placeholder="* Tel" value=""/>
+                            </div>
+                            <div class="faxsec  col-sm-12 col-md-4 col-lg-4">
+                                <input type="text" id="faxfield" placeholder="* Fax" value=""/>
+                            </div>
+                        </div>
+                        <div class="provformrow" >
+                            <div class="savebnt  col-sm-12 col-md-2 col-lg-2">
+                                <input type="button" id="savebtnel" value="Save and Continue"/>
+                            </div>
+                            <div class="closebnt  col-sm-12 col-md-2 col-lg-2">
+                                <input type="button" id="closebtnel" value="Close"/>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <!--end Paitent Form-->
+                <form id="orderform" method="dialog">
+                    <div class="firstrow col-sm-12 col-md-12 col-lg-1">
+                        <div class="col-sm-12 col-md-2 col-lg-2">
+                            <label for="orderdate" role="text">* Order Date</label>
+                            <input type="date" required="required" id="orderdate" class="datefield"/>
+                        </div>
+                        <div class="col-sm-12 col-md-2 col-lg-2">
+                            <label for="orderdate" role="text">* Order Time</label><br/>
+                            <input type="time" required="required" id="ordertime" class="timefield"/>
+                        </div>
+                        <div class="col-sm-12 col-md-3 col-lg-3">
+                            <label for="ordertype" role="text">* Order Type</label><br/>
+                            <select required="required" id="ordertype" class="ordertype">
+                                <option selected="select" value="">Select Order Type</option>
+                                <option value="Physicians Order">Physicians Order</option>
+                                <option value="Nurses Order">Nurses Order</option>
+                                </select>
+                        </div>
+                        <div class="col-sm-12 col-md-2 col-lg-2">
+                            <label for="abndelivered" role="text"> ABN Delivered To Patient</label>
+                            <select required="required" id="abntopatient" class="abntopatient">
+                                <option selected="select" value="NA">NA</option>
+                                <option value="Dont Know">Dont Know</option>
+                                <option value="Lets Try">Lets Try</option>
+                            </select>
+                        </div>
+                        <div class="col-sm-12 col-md-2 col-lg-2">
+                            <label for="phyAgentphy" role="text"> Order Read Back To<br/>Physican/Agent Of Physican</label>
+                            <select required="required" id="phyAgentphy" class="phyAgentphy">
+                                <option selected="select" value="NA">Yes</option>
+                                <option value="No">No</option>
+                                <option value="NA">N/A</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="col-sm-12 col-md-12 col-lg-12 secondrow">
+                        <div class="col-sm-12 col-md-4 col-lg-4">
+                                <label for="primphysician" role="text">* Primary Physican</label><br/>
+                                <input type="text" required="required" placeholder="" id="primphysician" style="z-index:9000;position:relative;" class="primphyfield"/>
+                                <div class="addimgprovider"><img src="https://cdn0.iconfinder.com/data/icons/users-android-l-lollipop-icon-pack/24/add_user-512.png" alt="Add Provider Image" title="Add Provider" width="40" height="40"></div>
+                        </div>
+                        <div class="col-sm-12 col-md-4 col-lg-4">
+                            <label for="secphysician" role="text"> Secondary Physicians</label><br/>
+                            <input type="text" required="required" id="secphysician" class="secphysician"/>
+                        </div>
+                        <div class="col-sm-12 col-md-4 col-lg-4">
+                            <label for="ordertrackinggrp" role="text">Order Tracking Group</label><br/>
+                            <input type="text" required="required" id="ordtrackinggrp" class="ordertrackingroup"/>
+                        </div>
+                    </div>
+                    <div class="col-sm-12 col-md-12 col-lg-12 thirdrow">
+                        <div class="col-sm-12 col-md-4 col-lg-3">
+                            <label for="npinumber" role="text">* NPI Number</label><br/>
+                            <input type="text" required="required" placeholder="" id="npinumber" class="npifield"/>
+                        </div>
+                        <div class="col-sm-12 col-md-4 col-lg-3">
+                            <label for="physaddress" role="text">*Address</label><br/>
+                            <input type="text" required="required" id="physaddress" class="physaddressclass"/>
+                        </div>
+                        <div class="col-sm-12 col-md-4 col-lg-3">
+                            <label for="orderphonenumber" role="text">Order Phone Number</label><br/>
+                            <input type="tel" required="required" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" id="orderphonenumber" class="orderphoneclass"/>
+                        </div>
+                        <div class="col-sm-12 col-md-4 col-lg-3">
+                            <label for="orderfaxnumber" role="text">Order Fax Number</label><br/>
+                            <input type="tel" required="required" pattern="[0-9]{3}-[0-9]{3}-[0-9]{4}" id="orderfaxnumber" class="orderfaxclass"/>
+                        </div>
+                    </div>
+                    <div class="col-sm-12 col-md-12 col-lg-12 forthfrow">
+                        <div class="col-sm-12 col-md-6 col-lg-6 orderaction">
+                           <label> <input type="checkbox" id="sendtophysician" name="sendtophysician" value="Send To Physician"/>Send To Physicians</label>
+                           <label> <input type="checkbox" name="woundcareorder" id="woundcare" value="Wound Care Order"/>Wound Care Order</label><br/>
+                           <label> <input type="checkbox" id="verbalorder" name="verbalorder" value="Verbal Order"/>Verbal Order</label>
+                           <input type="date" name="verbaldate" class="verbdatefield"/>
+                           <input type="time" name="timefield" class="verbtimefield"/>
+                           <!--<div class="showverober col-sm-12 col-md-12 col-lg-12">
+                                <input type="date" name="verbaldate" class="verbdatefield"/>
+                                <input type="time" name="timefield" class="timefield"/>
+                            </div>-->
+                        </div>
+                        <div class="col-sm-12 col-md-6 col-lg-6 seccol">
+                            <label for="ordertypenote">After Order Type is Selected, The Appropriate content reason box will show</label><br/>
+                            <label>Content Reasons</label><br/>
+                            <div class="contentcontainer col-sm-12 col-md-12 col-lg-12">
+                               <label><input type="checkbox" value="Medications" id="medication"/>Medication</label>
+                               <label><input type="checkbox" value="Supplies" id="medication"/>Supplies</label>
+                               <label><input type="checkbox" value="Value Sign Parameters" id="medication"/>Value Sign Parameters</label><br/>
+                               <label><input type="checkbox" value="Diagnosis" id="diagnosis"/>Diagnosis</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-sm-12 col-md-12 col-lg-12">
+                        <div class="preloader" style="display: none;">
+                            <div class="container">
+                                <svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" style="margin:auto;background:#fff;display:block;" width="200px" height="200px" viewBox="0 0 100 100" preserveAspectRatio="xMidYMid">
+                                    <g transform="translate(16.666666666666668 50)">
+                                    <circle cx="0" cy="0" r="6" fill="#85a2b6">
+                                      <animateTransform attributeName="transform" type="scale" begin="-0.4s" calcMode="spline" keySplines="0.3 0 0.7 1;0.3 0 0.7 1" values="0;1;0" keyTimes="0;0.5;1" dur="1s" repeatCount="indefinite"></animateTransform>
+                                    </circle>
+                                    </g><g transform="translate(33.333333333333336 50)">
+                                    <circle cx="0" cy="0" r="6" fill="#bbcedd">
+                                      <animateTransform attributeName="transform" type="scale" begin="-0.3s" calcMode="spline" keySplines="0.3 0 0.7 1;0.3 0 0.7 1" values="0;1;0" keyTimes="0;0.5;1" dur="1s" repeatCount="indefinite"></animateTransform>
+                                    </circle>
+                                    </g><g transform="translate(50 50)">
+                                    <circle cx="0" cy="0" r="6" fill="#dce4eb">
+                                      <animateTransform attributeName="transform" type="scale" begin="-0.2s" calcMode="spline" keySplines="0.3 0 0.7 1;0.3 0 0.7 1" values="0;1;0" keyTimes="0;0.5;1" dur="1s" repeatCount="indefinite"></animateTransform>
+                                    </circle>
+                                    </g><g transform="translate(66.66666666666667 50)">
+                                    <circle cx="0" cy="0" r="6" fill="#fdfdfd">
+                                      <animateTransform attributeName="transform" type="scale" begin="-0.1s" calcMode="spline" keySplines="0.3 0 0.7 1;0.3 0 0.7 1" values="0;1;0" keyTimes="0;0.5;1" dur="1s" repeatCount="indefinite"></animateTransform>
+                                    </circle>
+                                    </g><g transform="translate(83.33333333333333 50)">
+                                    <circle cx="0" cy="0" r="6" fill="#85a2b6">
+                                      <animateTransform attributeName="transform" type="scale" begin="0s" calcMode="spline" keySplines="0.3 0 0.7 1;0.3 0 0.7 1" values="0;1;0" keyTimes="0;0.5;1" dur="1s" repeatCount="indefinite"></animateTransform>
+                                    </circle>
+                                    </g>
+                                    </svg>
+                                </div>
+                        </div>
+                        <div class="tabs col-sm-12 col-md-12 col-lg-12">
+                            <div class="ordescriptab active"><a href="#orderscript" id="ordescripbtn" title="Order Description">Order Description</a></div>
+                            <div class="medicationtab"><a href="#medtab" id="medicationbtn" title="Medications Tab">Medications</a></div>
+                            <div class="diagnosistab"><a href="#diagnosistab" id="diagnosisbtn" title="Diagnosis Tab">Diagnosis</a></div>
+                            
+                        </div> 
+                        <!--<label for="ordertextarea" class="orderlbl">Order Descripton</label><br/>-->
+                        <div id="ordercanvas">
+                            <textarea id="ordertextarea" class="ordertxtarea"></textarea><br/>
+                            <!--<div class="col-sm-12 col-md-12 col-lg-12 ordclosebtn">
+                                <input type="button" value="Cancel" id="cancelbtn" class="cancelbtn"/>
+                                <input type="button" value="Save & Close" id="ordersavebtn" class="orderbtn"/>
+                            </div>-->
+                        </div>
+                        <div id="medicationcanvas">
+                            <div class="medbtn_nav">
+                                <select class="transbuttons" id="addtransbtn">
+                                    <option selected="selected" value="Add Transaction">Add Transaction</option>
+                                    <option value="New">New</option>
+                                    <option value="Change">Change</option>
+                                    <option value="DC">Discountinue</option>
+                                    <option value="void">Void</option>
+                                </select>
+                                <!--<a href="#Addtransaction" title="Add Transaction" class="transbuttons active" id="addtransbtn">Add Transaction</a>-->
+                                <a href="#Edittransaction" class="transbuttons" title="Edit Transaction" id="edittransbtn">Edit Transaction</a>
+                                <a href="#Deletetransaction" class="transbuttons" title="Delete Transaction" id="delettransbtn">Delete Transaction</a>
+                                <a href="#Viewmedications" class="transbuttons" title="Veiw Medications" id="viewcurrentmedsbtn">View Current Medications</a>
+                               
+                            </div>
+                            <div class="divider"></div>
+                            <div class="mediationmodal col-sm-12 col-md-12 col-lg-12">
+                                <section class="modalclose"><a href="#close" title="close Modal" id="amodalclose">X</a></section>
+                                <div class="modaltop">
+                                    <section class="patienttopinfosec col-sm-12 col-md-6 col-lg-6">
+                                        <div id="patientname"><p id="pname">David Geeter</p></div>
+                                        <div class="allergysec"><span>Allergies</span><br/>
+                                            <p></p>
+                                        </div>
+                                    </section>
+                                    <section class="patientsecondinfosec col-sm-12 col-md-6 col-lg-6">
+                                        <div id="patientbday"><p id="pday">5/10/2022</p></div>
+                                        <div class="attendphysician"><span>Attending Physician</span><br/>
+                                            <p>Dr. Josephy Mulvehill</p>
+                                        </div>
+                                    </section>
+                                </div>
+                                <div class="modalbottom">
+                                    <form id="medsearchform">
+                                        <input type="search" id="medsearchbox" placeholder="Search for Medications"/>
+                                        <div class="searchresult"></div>
+                                        <div class="srchbtncontainer">
+                                            
+                                            <input type="submit" id="medsubmitbtn" value="Save"/>
+                                            <input type="button" value="Next" id="nextbtn"/>
+                                        </div>
+                                       
+                                    </form>
+                                    <div class="mednamesec col-sm-12 col-lg-12"><h3 id="medicationName"></h3></div>
+                                    <form id="dosesform col-sm-12 col-md-12 col-lg-12">
+                                        
+                                        <div class="medfirstSec col-sm-12 col-md-4 col-lg-4">
+                                            <div class="flex-row">
+                                                <input type="text" placeholder="Ex 2.5 or 1-2.5" id="doseamount"/>
+                                                <select id="doesUOM">
+                                                    <option selected="selected" value="Dose UOM">DOSE UOM *</option>
+                                                    <option value="mg">mg</option>
+                                                    <option value="tablet">tablet</option>
+                                                    <option value="per instruction">Per Instruction</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex-row">
+                                                <select id="freqselect">
+                                                    <option selected="selected" value="Frequency">Frequency *</option>
+                                                    <option value="1 Times Daily">1 Times Daily</option>
+                                                    <option value="1 Times Weekly">2 Times Daily</option>
+                                                    <option value="2 Times Daily">3 Times Weekly</option>
+                                                    <option value="2 Times Weekly">2 Times Daily</option>
+                                                    <option value="3 Times Daily">3 Times Daily</option>
+                                                    <option value="3 Times Weekly">3 Times Weekly</option>
+                                                </select>
+                                                <label><input type="checkbox" id="prncheckbox" value="PRN"/> PRN</label>
+                                            </div>
+                                            <div class="flex-column">
+                                                <input type="text" placeholder="Reason *" name="Reason" id="medReason"/>
+
+                                            </div>
+                                            <div class="flex-row">
+                                                <input type="text" placeholder="Route" name="Route" id="medRoute"/>
+                                            </div>
+                                            <div class="flex-row">
+                                                <select id="altrouteselect">
+                                                    <option selected="selected" value="Frequency">Alternative Route*</option>
+                                                    <option value="1 daily">By Mouth</option>
+                                                    <option value="2 daily">By Mouth Under Toungue</option>
+                                                    <option value="3 daily">Cheek of Mouth</option>
+                                                    <option value="2">Each Ear</option>
+                                                    <option value="2">Each Eye</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex-row">
+                                                <input type="text" placeholder="Instruction" name="Instructions" id="medInstructions"/>
+                                            </div>
+                                        </div>
+                                        <div class="medsecondSec col-sm-12 col-md-4 col-lg-4">
+                                            <div class="flex-row">
+                                                <input type="date"  id="medStartdate"/>
+                                                <select id="neworchange">
+                                                    <option selected="selected" value="Dose UOM">New/Change</option>
+                                                    <option value="New">New</option>
+                                                    <option value="Change">Change</option>
+                                                    <option value="Other">Other</option>
+                                                </select>
+                                            </div>
+                                            <div class="flex-row">
+                                                
+                                                <input type="date" id="Medenddate"/>
+                                            </div>
+                                            <div class="flex-column">
+                                                <label>Drug Classification</label><br/>
+                                                <input type="text" id="drugcategory" placeholder=""/>
+                                            </div>
+                                        </div>
+                                        <div class="medthirdSec col-sm-12 col-md-4 col-lg-4">
+                                            <div class="flex-column">
+                                                <label>Medication Understanding</label>
+                                                <label><input type="checkbox" id="meddirectionuse"/>Direction for Use</label>
+                                                <label><input type="checkbox" id="Medpurpose"/>Purpose</label>
+                                                <label><input type="checkbox" id="MedSideffects"/>Side Effects/Interactions</label>
+                                            </div>
+                                            <div class="flex-column">
+                                                <label>Additional Settings</label>
+                                                <label><input type="checkbox" id="agencyadmin"/>Agency Administered</label>
+                                                <label><input type="checkbox" id="highrisk"/>High Risk</label>
+                                                
+                                            </div>
+                                            <div class="flex-row">
+                                                <a href="#trash" id="deletemed" title="Delete Medication"><img src="https://cdn1.iconfinder.com/data/icons/hawcons/32/699374-icon-27-trash-can-512.png" height="30" width="30" alt="trash img"/></a>
+                                                <a href="#trash" id="savemed" title="Save Medication"><img src="https://cdn3.iconfinder.com/data/icons/google-material-design-icons/48/ic_save_48px-512.png" height="35" width="35" alt="Save Btn"/></a>
+                                                
+                                            </div>
+                                        </div>
+                                    </form>
+                                </div>
+                                <!--Start Cuerrent Med Grid-->
+                                <div class="order-grid col-sm-12 col-md-12 col-lg-12">
+                                    <div class="sortgrid">
+                                        <label id="switchlbl">View Current Medications</label><label id="switch"><input type="checkbox" id="toggleSearch"> <span class="slider round"></span></label>
+                                    </div>
+                                    <div class="columntop"><!--Start Colum-->
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col0" class="coltext">Order ID</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col1" class="coltext">Transaction Type</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col2" class="coltext">High Risk</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col3" class="coltext">Medication</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col4" class="coltext">Dose</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col4" class="coltext">Frequency</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col6" class="coltext">PRN</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col7" class="coltext">Route</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col8" class="coltext">Alternative Route</span>
+                                        </div>
+                                    </div><!--end Column top-->
+                                    <!--end Column Row-->
+                                     <div class="container med-modifers">
+                                        <div class="changedt">
+                                            <label for="changemeddt">Change Medication Date</label><br/>
+                                            <input type="date" id="changemeddt" />
+                                        </div>
+                                        <div class="dcontinuedt" id="dcdate">
+                                            <label for="discontdt">Discontinue Medication Date</label><br/>
+                                            <input type="date" id="discontdt"/>
+                                        </div>
+                                        <div class="voiddtfield">
+                                            <label for="voiddtfield">Voide Medication Date</label><br/>
+                                            <input type="date" id="voiddtfield"/>
+                                        </div>
+                                        <div class="savemodifiedvalbtn">
+                                            <input class="btn btn-primary" type="button" value="Save Changes" id="savemodifierbtn"/>
+                                        </div>
+                                    </div>
+                                </div>
+                                <!--End Med Grid-->
+                            </div>
+                            <div class="order-grid col-sm-12 col-md-12 col-lg-12">
+                                <div class="columntop"><!--Start Colum-->
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col0" class="coltext">Order ID</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col1" class="coltext">Transaction Type</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col2" class="coltext">High Risk</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col3" class="coltext">Medication</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col4" class="coltext">Dose</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col4" class="coltext">Frequency</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col6" class="coltext">PRN</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col7" class="coltext">Route</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col8" class="coltext">Alternative Route</span>
+                                    </div>
+                                </div><!--end Column top-->
+                                <div class="columnbottom"><!--start column row-->
+                                    
+                                </div><!--end Column Row-->
+                            </div>
+                        </div>
+                        <!--Diagnosis Canvas-->
+                        <div id="diagnosiscanvas">
+                            <div class="diagnosisbtn_nav">
+                                <a href="#Adddiagnosis" title="Add Diagnosis" class="transbuttons active" id="adddiagbtn">Add Diagnosis</a>
+                                <a href="#Edittransaction" class="transbuttons" title="Edit Transaction" id="editdiagnosisbtn">Edit Diagnosis</a>
+                                <a href="#Deletetransaction" class="transbuttons" title="Delete Transaction" id="delettransbtn">Delete Diagnosis</a>
+                                <a href="#Viewmedications" class="transbuttons" title="Veiw Medications" id="viewdiagnosisbtn">View Current Diagnosis</a>
+                               
+                            </div>
+                            <div class="divider"></div>
+                            <div class="diagnosismodal col-sm-12 col-md-12 col-lg-12">
+                                <section class="modalclose"><a href="#close" title="close Modal" id="amodalclose">X</a></section>
+                                <div class="modaltop">
+                                    <section class="diagtitlesec col-sm-12 col-md-6 col-lg-6">
+                                        <h3>Diagnosis/Proceedure</h3>
+                                        
+                                    </section>
+                                </div>
+                                <div class="modalbottom">
+                                    <div id="diagnostypeSec">
+                                       <label>Type:</label> <br/>
+                                      <label> <input type="checkbox" id="diagchkbox"/>Diagnosis</label><br/>
+                                      <label><input type="checkbox" id="procedurechkbox"/>Proceedure</label>
+                
+                                       
+                                    </div>
+                                    <div class="icd10second col-sm-12 col-lg-12">
+                                        <div id="icdfirstopt" class="col-sm-12 col-md-4 col-lg-4">
+
+                                            <label>ICD-10 Code *</label> <label id="srchbylbl">Search By ICD-10 Codes</label><label id="switch"><input type='checkbox' id='toggleSearch'/> <span class="slider round"></span></label><br/>
+                                            <input type="text" id="srchnlookupterms" tite="icd-10 diagnosis field" placeholder="Type in your IC10 Codes"><a href="#searchicon"><img src="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-search-512.png" width="20" height="20"/></a></input>
+                                            <input type="text" id="procedurelookupterms" tite="icd-10 procedure field" placeholder="Type in your Procedure PCS Codes"><a href="#searchicon"><img style="display:none;" src="https://cdn4.iconfinder.com/data/icons/ionicons/512/icon-ios7-search-512.png" width="20" height="20"/></a></input>
+                                        </div>
+                                        <div id="icdsectopt" class="col-sm-12 col-md-4 col-lg-4">
+
+                                            <label>Onset/Exacerbation *</label><br/>
+                                            <label> <input type="checkbox" id="onsetkbox"/>Onset</label>
+                                            <label><input type="checkbox" id="excaberationchkbox"/>Exacerbation</label>
+                                        </div>
+                                        <div id="icdthirdopt" class="col-sm-12 col-md-4 col-lg-4">
+
+                                            <label>Date *</label><br/>
+                                             <input type="date" id="diagnosisDate"/>
+                                            
+                                        </div>
+                                        
+                                        
+                                    </div>
+                                    <div class="icd10thrid col-sm-12 col-lg-12">
+                                        <div id="icd10thirdRating">
+
+                                            <label>System Control Rating </label><br/>
+                                            <input type="number" id="controlnumber"/>
+                                            
+                                        </div>
+                                    </div>
+                                    <div class="icd10proceduresec col-sm-12 col-md-12 col-lg-12">
+                                        <div class="procorder-grid col-sm-12 col-md-12 col-lg-12">
+                                            <div class="columntop"><!--Start Colum-->
+                                                <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                                    <span id="col1" class="coltext">Procedure ID</span>
+                                                </div>
+                                                <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                                    <span id="col2" class="coltext">Procedure Code</span>
+                                                </div>
+                                                <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                                    <span id="col3" class="coltext">Description</span>
+                                                </div>
+                                                <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                                    <span id="col4" class="coltext"></span>
+                                                </div>
+                                                <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                                    <span id="col4" class="coltext"></span>
+                                                </div>
+                                                <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                                    <span id="col6" class="coltext"></span>
+                                                </div>
+                                                <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                                    <span id="col7" class="coltext"></span>
+                                                </div>
+                                                <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                                    <span id="col8" class="coltext"></span>
+                                                </div>
+                                            </div><!--end Column top-->
+                                            <div class="columnbottom">
+
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="icd10fourth col-sm-12 col-lg-12">
+                                        <div id="icdsfrthopt" class="col-sm-12 col-md-12 col-lg-12">
+
+                                            <input type="button" id="savediagnbtn" value="Save"/>
+                                            <input type="button" id="canceldiagbtn" value="Cancel"/>
+                                        </div>
+                                    </div>
+
+                                </div>
+                                 <!--ordergird for Diagnosimodal-->
+                                 <div class="order-grid col-sm-12 col-md-12 col-lg-12">
+                                    <div class="columntop"><!--Start Colum-->
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col1" class="coltext">Order ID</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col2" class="coltext">Patient ID</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col3" class="coltext">Diagnosis Code</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col4" class="coltext">Procedure Code</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col4" class="coltext">Diagnosis Type</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col4" class="coltext">System Rating</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col6" class="coltext">Onset/Exacerbation</span>
+                                        </div>
+                                        <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col7" class="coltext">Date</span>
+                                        </div>
+                                        
+                                    </div><!--end Column top-->
+                                    <div class="columnbottom"><!--start column row-->
+                                        
+                                    </div><!--end Column Row-->
+                                </div>
+                                <!--end Order Grid for Modal-->
+                            </div>
+                            <div class="order-grid col-sm-12 col-md-12 col-lg-12">
+                                <div class="columntop"><!--Start Colum-->
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col1" class="coltext">Order ID</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col2" class="coltext">Patient ID</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col3" class="coltext">Diagnosis Code</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                            <span id="col4" class="coltext">Procedure Code</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col4" class="coltext">Diagnosis Type</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col4" class="coltext">System Rating</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col6" class="coltext">Onset/Exacerbation</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-col">
+                                        <span id="col7" class="coltext">Date</span>
+                                    </div>
+                                </div><!--end Column top-->
+                                <div class="columnbottom"><!--start column row-->
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-row">
+                                            <span id="row" class="coltext">455344</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-row">
+                                            <span id="row" class="coltext">Keon White</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-row">
+                                            <span id="row" class="coltext">1/31/1980</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-row">
+                                            <span id="row" class="coltext">XiD4</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-row">
+                                            <span id="row" class="coltext">01-21-23:09:23</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-row">
+                                            <span id="row" class="coltext">12 mil</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-row">
+                                            <span id="row" class="coltext msgiconbtn">33 liters</span>
+                                    </div>
+                                    <div class="col-xs-2 col-sm-4 col-md-2 col-lg-2 col-xl-2 top-row">
+                                            <span id="row" class="coltext">Pending</span>
+                                    </div>
+                                </div><!--end Column Row-->
+                            </div>
+                        </div>
+                        <!--end Diagnosis Canvas-->
+                        <div class="col-sm-12 col-md-12 col-lg-12 ordclosebtn">
+                                <input type="button" value="Cancel" id="cancelbtn" class="cancelbtn"/>
+                                <input type="button" value="Save & Close" id="ordersavebtn" class="orderbtn"/>
+                        </div>
+                    </div>
+                </form>
+            </div><!--endcontainer-->
+        </div>
+    </body>
+</html>

@@ -1,0 +1,1021 @@
+.container{
+    
+}
+.container .top-col{
+    background: #98bfe1;
+}
+.columntop{
+    width:75%;/*80%;*/
+    display: flex;
+    flex-direction: row;
+    max-width: 1320px;
+    text-align: center;
+}
+#medicationcanvas .columntop{
+    width:66.6%;
+}
+#medicationcanvas .columnrow:hover{
+    background-color:#3333;
+    color:#fff;
+}
+#medicationcanvas .columnbottom{
+    /*width:100%;
+    display: flex;
+    flex-direction: row;
+    max-width: 1320px;
+    text-align: center;
+    justify-content: center;
+    background-color:#98bfe1;*/
+    flex-direction: column;
+    color:#000000;
+}
+#medicationcanvas .columnrow{
+    width:100%;
+    height: 97px;
+}
+#medicationcanvas .order-grid{
+    overflow:scroll;
+    height:339px;
+}
+.pagnav a{
+    color:#ffffff;
+    margin-left:10px;
+}
+.columntop span{
+    
+    color:#fff;
+}
+
+.toptitle h1{
+    text-align: center;
+    color:#ffffff;
+    font-size:22px;
+}
+.toptitle{
+    background-color:#98bfe1;
+}
+.searchfindarea .container form{
+    display:flex;
+    flex-direction:row;
+}
+.gridarea{
+    width:100%;
+    height: auto;
+}
+.addPatientBtn{
+    background-color:#165891;
+    color:#ffffff;
+    font-size:18px;
+    text-align: center;
+    width:220px;
+}
+.columnrow{
+    display:flex;
+    flex-direction:row;
+    width:100%;/*80%;*/
+    text-align: center;
+}
+.mediationmodal .columnrow.prn{
+    background-color:#f5f3bf;
+}
+.columnrow:nth-child(even)
+{
+    background-color:#ffff;
+}
+.columnrow:nth-child(odd)
+{
+    background-color:#98bfe1;
+}
+#notifyptchkbx{
+    margin-right:30px;
+    margin-left:10px;
+}
+.top-row{
+    flex:inherit;
+}
+.med-data{
+    flex:inherit;
+}
+#nextbtn{
+    display:none;
+    width:220px;
+
+}
+.msboxwrapper{
+    display:none;
+    position: relative;
+    top: -434px;
+    width: 56%;
+    height: auto;
+    margin: 0px auto;
+   /* display: flex;*/
+    text-align: center;
+    background-color: #ffff;
+    border-radius: 9px;
+}
+.msboxwrapper .container{
+    padding:0px;
+}
+.mboxtitle{
+    text-align: center;
+    
+}
+.mboxtitle h2{
+    font-size:17px;
+    margin-top:15px;
+}
+.msgbox{
+    text-align: right;
+    border-style: solid;
+    border-width: 1px;
+    border-color: #c0b6b6;
+    background-color: #e0dddd;
+    border-bottom-left-radius: 9px;
+    border-bottom-right-radius: 9px
+}
+.ptxtarea{
+    width:100%;
+    height:251px;
+    border-style:none;
+}
+.modalbtn{
+    background-color:#165891;
+    color:#ffffff;
+    font-size:18px;
+    width:130px;
+    height:42px;
+    margin-top:20px;
+    position: relative;
+    right:20px;
+    border-radius:8px;
+}
+.modalcancelbtn{
+    background-color:#dee2e6;
+    color:#000;
+    width:130px;
+    height:42px;
+    margin-top:20px;
+    right:40px;
+    margin-right:35px;
+    border-radius:8px;
+}
+.notemsglbl{
+    width:100%;
+    height:42px;
+    display:none;
+}
+.notemsglbl.success{
+    background-color:#8cf395;
+    color:#ffffff;
+    font-size:18px;
+    text-align: center;
+}
+
+/*
+*Custom Plugin CSS
+*/
+.order-wrapper{
+    width:100%;
+    height:auto;
+}
+.opclosese{
+    width:100%;
+    height:55px;
+}
+.order-wrapper .container .closeOrdermod{
+    font-size:34px;
+    color:#000000;
+    position: relative;
+    right:12px;
+}
+form{
+    
+    width:100%;
+    height:auto;
+}
+.firstrow{
+    display:flex;
+    flex-direction:row;
+    width:100%;
+    height:auto;
+}
+.firstrow:nth-child(){
+    display: flex;
+    flex-direction:column;
+}
+.secondrow{
+    display:flex;
+    flex-direction:row;
+    width:100%;
+    height:auto;
+    margin-top:20px;
+}
+.secondrow input[type='text']{
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+    width:353px;
+    height:32px;
+}
+.thirdrow{
+    display:flex;
+    flex-direction:row;
+    width:100%;
+    height:auto;
+    margin-top:20px;
+}
+.thirdrow input[type='text']{
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+    width:287px;
+    height:32px;
+}
+.thirdrow input[type='tel']{
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+    width:287px;
+    height:32px;
+}
+.forthfrow{
+    display:flex;
+    flex-direction:row;
+    width:100%;
+    height:auto;
+    margin-top:34px;
+}
+.ordertxtarea{
+    width:100%;
+    height:337px;
+}
+.orderbtn{
+    width: 220px;
+    height: 42px;
+    background-color: #52a0d8;
+    border-radius: 4px;
+
+}
+.cancelbtn{
+    width: 220px;
+    height: 42px;
+    border-radius: 4px;
+    color: #fff;
+    background-color: #000;
+}
+.ordclosebtn{
+    display:flex;
+    flex-direction:row-reverse;
+   
+}
+.ordertype{
+    width: 254px;
+    height: 32px;
+    border-top-style: none;
+    border-left-style: none;
+    border-right-style: none;
+    margin-top:34px;
+}
+.timefield{
+    width: 170px;
+    height: 32px;
+    border-top-style: none;
+    border-left-style: none;
+    border-right-style: none;
+    margin-top:34px;
+}
+.datefield{
+    width: 170px;
+    height: 32px;
+    border-top-style: none;
+    border-left-style: none;
+    border-right-style: none;
+    margin-top:34px;
+}
+.abntopatient{
+    width: 170px;
+    height: 32px;
+    border-top-style: none;
+    border-left-style: none;
+    border-right-style: none;
+    margin-top:34px;
+}
+.phyAgentphy{
+    width: 170px;
+    height: 32px;
+    border-top-style: none;
+    border-left-style: none;
+    border-right-style: none;
+    margin-top:10px;
+}
+.verbtimefield{
+    width: 170px;
+    height: 32px;
+    border-top-style: none;
+    border-left-style: none;
+    border-right-style: none;
+    margin-top:22px;
+    margin-left:22px;
+}
+.verbdatefield{
+    width: 170px;
+    height: 32px;
+    border-top-style: none;
+    border-left-style: none;
+    border-right-style: none;
+    margin-top:22px;
+    margin-left:22px;
+}
+.contentcontainer input[type='checkbox']{
+    margin-right:15px;
+}
+.orderaction input[type="checkbox"]{
+    margin-right:15px;
+}
+.opclosesec{
+    display: none;
+}
+.thirdrow .npiadditionmodal{
+    width: 400px;
+    position: relative;
+    top: 0px;
+    border-style: dotted;
+    right: 0px;
+    z-index: 2000;
+    background-color: #c7e7ed;
+}
+.additonaladdrli:nth-child(even){
+    background-color:#f9f4f4;
+}
+.additonaladdrli{
+    background-color:#ffffff;
+}
+.additonaladdrli:hover{
+    background-color:#98bfe1;
+    color:#ffffff;
+}
+.secondrow .npinamemodal{
+    width: 400px;
+    position: relative;
+    top: 0px;
+    border-style: dotted;
+    right: 0px;
+    z-index: 2000;
+    background-color: #c7e7ed;
+}
+.additionalnameli:nth-child(even)
+{
+    background-color:#f9f4f4;
+}
+.additionalnameli{
+    background-color:#ffffff;
+}
+.additionalnameli:hover{
+    background-color:#98bfe1;
+    color:#ffffff;
+}
+.addimgprovider{
+    width: 101%;
+    height: 40px;
+    display: none;
+    flex-direction: row-reverse;
+    position: relative;
+    top: -40px;
+    right: 30px;
+}
+.additionalnameli.current{
+    background-color:#98bfe1;
+}
+.addimgprovider img{
+    cursor:pointer;
+}
+/*provider form*/
+.providerformsec{
+    display: none;
+    position: relative;
+    top: 167px;
+    z-index: 10000;
+    background-color:#ffffff;
+    justify-content: center;
+}
+.providerformsec h3{
+    text-align: center;
+    font-family:sans-serf;
+    font-size:18px;
+}
+#providform{
+    display: flex;
+    flex-direction:column;
+    border-style: ridge;
+    padding: 18px;
+    border-width: 1px;
+    width:70%;
+    text-align: center;
+}
+.provformrow{
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+   
+}
+ formsec .provformrow:nth-last-child(){
+    flex-direction: row-reverse;
+    padding:0px 185px;
+}
+#providform input[type='text']{
+    width:279px;
+    height:56px;
+    border-top-style:none;
+    border-left-style: none;
+    border-right-style:none;
+    color:#000000;
+}
+.fnamesec{
+    margin-right:40px;
+}
+.addronesec{
+    margin-right:40px;
+}
+.citysec{
+    margin-right:40px;
+}
+#providform .zipsec input[type='text']{
+    width:220px;
+}
+#providform .telsec input[type='text']{
+    width:220px;
+}
+#providform .faxsec input[type='text']{
+    width:220px;
+}
+.savebnt{
+   /* margin-right:40px;*/
+}
+#savebtnel{
+    background-color: #88bdf9;
+    margin-top: 40px;
+    height: 42px;
+    border-radius: 5px;
+}
+#closebtnel{
+    background-color: #818a95;
+    margin-top: 40px;
+    height: 42px;
+    border-radius: 5px;
+}
+#npidlbl{
+    text-align: right;
+}
+#npidlbl span{
+    margin-left:10px;
+    font-weight: 600;
+}
+.tabs{
+    background-color:#2d2a2a;
+    display:flex;
+}
+.ordescriptab{
+   height:51px;
+}
+.tabs .ordescriptab.active{
+    background-color: #ffffff;
+    color: #000;
+    border-radius: 2px;
+    border-bottom-style: none;
+    border-left-color: black;
+    border-left-style: solid;
+    border-left-width: 1px;
+    border-top-style: solid;
+    border-top-width: 1px;
+    border-right-style: solid;
+    border-right-width: 1px;
+
+}
+
+.tabs .medicationtab.active{
+    background-color: #ffffff;
+    color: #000;
+    border-radius: 2px;
+    border-bottom-style: none;
+    border-left-color: black;
+    border-left-style: solid;
+    border-left-width: 1px;
+    border-top-style: solid;
+    border-top-width: 1px;
+    border-right-style: solid;
+    border-right-width: 1px;
+
+}
+.tabs .medicationtab.active a{
+    color:#000000;
+}
+.tabs .ordescriptab.active a{
+    color:#000000;
+}
+.ordescriptab a{
+    height: 35px;
+    width: 220px;
+    padding: 20px;
+   
+    color: #f7f1f1;
+    text-decoration: none;
+    position: relative;
+    top:10px;
+}
+.medicationtab{
+    height:51px;
+    display: none;
+}
+#medicationcanvas{
+   display:none;
+    height:424px;
+}
+.divider{
+    height: 26px;
+    background-color: #cccc;
+}
+.medbtn_nav{
+    height:57px;
+    margin-top:24px;
+}
+.medicationtab a{
+    height: 35px;
+    width: 220px;
+    padding: 20px;
+    color: #f7f1f1;
+    text-decoration: none;
+    position: relative;
+    top:10px;
+}
+.medbtn_nav a{
+    height: 35px;
+    width: 220px;
+    padding: 15px;
+   background-color:#000000;
+    color: #f7f1f1;
+    text-decoration: none;
+    position: relative;
+    top:10px;
+}
+.columntop .top-col{
+    background-color: #000000;
+}
+.mediationmodal{
+    background-color: #ffffff;
+    z-index: 200000;
+    border-style: solid;
+    border-width: 1px;
+    position: absolute;
+    top: 0px;
+    left: 301px;
+    width: 63%;
+    padding: 40px;
+    border-color: #000;
+    display: flex;
+    flex-direction: column;
+    display: none;
+}
+.modaltop{
+  
+    display: flex;
+    padding: 20px;
+}
+.mediationmodal .order-grid{
+    display:none;
+}
+.patienttopinfosec{
+    display: flex;
+    flex-direction:column;
+}
+
+#patientname #pname{
+    font-size:28px;
+    font-family: sans-serif;
+}
+.patientsecondinfosec{
+    display:flex;
+    flex-direction:column;
+}
+.modalbottom input[type='search']{
+    width: 330px;
+    height: 42px;
+    border-left-style: none;
+    border-right-style: none;
+    border-top-style: none;
+}
+#medsubmitbtn{
+    width: 220px;
+    height: 42px;
+    background-color: #3344;
+}
+.searchresult{
+    width:100%;
+    height:342px;
+   /* height:auto;*/
+}
+
+.srchbtncontainer{
+    display:flex;
+ justify-content: flex-end;
+}
+.modalclose{
+    width:100%;
+    height:35px;
+    display: flex;
+    justify-content:flex-end;
+}
+.modalclose a{
+    text-decoration: none;
+    color:#000000;
+    font-size:19px;
+    font-family: sans-serif;
+
+}
+.medlist:hover{
+    background-color:#e7f0fe;
+}
+.mednamesec{
+    color:#000000;
+    font-family: sans-serif;
+}
+.modalbottom form{
+   
+    flex-direction:row;
+    display: none;
+}
+.medfirstSec{
+    display:flex;
+    flex-direction:column;
+    border-right-style:solid;
+    border-right-width:1px;
+    border-color:#cccccc;
+}
+.flex-row{
+    display:flex;
+}
+.medfirstSec input[type='text']{
+    width:220px;
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+    margin-right:10px;
+    border-width:1px;
+    margin-top:20px;
+}
+.medfirstSec select{
+    width:220px;
+    height:35px;
+    margin-top:20px;
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+}
+.medfirstSec input[type='checkbox']{
+    margin-left:50px;
+    margin-top:36px;
+}
+.medfirstSec .flex-column{
+    margin-left:0px;
+}
+.icdlist{
+    display:flex;
+    flex-direction:row;
+}
+.icdlist:hover{
+    background-color:#52a0d8;
+}
+.icdbroswer{
+    display: none;
+    position:absolute;
+    top: 0px;
+    left: 0px;
+    width: 942px;
+    height:450px;
+}
+#icdbrowserlink:hover{
+   /* display: block;*/
+}
+.closeiframe{
+    width: 100%;
+    height: 35px;
+    display: flex;
+    justify-content: flex-end;
+    margin-left: 58px;
+    background-color: beige;
+}
+.closeiframe a{
+    font-size: 19px;
+    color: #000000;
+    font-family: sans-serif;
+    margin-right: 20px;
+}
+.medfirstSec iframe{
+    width: 942px;
+    height: 450px;
+    margin-left:58px;
+}
+.medsecondSec{
+    margin-left:32px;
+}
+.medsecondSec input[type='date']{
+    width:220px;
+    height:35px;
+    border-left-style:none;
+    border-right-style:none;
+    border-top-style:none;
+    margin-top:20px;
+}
+.medsecondSec select{
+    width:220px;
+    height:35px;
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+    margin-left:10px;
+    margin-top:20px;
+}
+.medsecondSec input[type='text']{
+    width:220px;
+    height:35px;
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+}
+.medsecondSec .flex-column{
+    margin-left:0px;
+    margin-top:20px;
+}
+.medthirdSec{
+    margin-left:10px;
+    border-left-style:solid;
+    border-color:#cccccc;
+    border-width:1px;
+}
+.medthirdSec input{
+margin-right:15px;
+}
+.medthirdSec .flex-column{
+    margin-top:20px;
+}
+.flex-column{
+    display:flex;
+    margin-left:20px;
+}
+#medicationName{
+    font-size:21px;
+    font-family: Tahoma,sans-serf;
+}
+.medthirdSec a{
+    margin-left:10px;
+    margin-top:20px;
+}
+/*Diagnosis Module*/
+.diagnosismodal .modaltop{
+    /*display: flex;
+    padding: 20px;*/
+    background-color: #5da1e2;
+    color: #fff;
+    font-family: sans-serif;
+}
+#diagnostypeSec{
+    padding-left:15px;
+}
+#diagnostypeSec input[type='checkbox']{
+    margin-right:10px;
+}
+.icd10second{
+    padding-top: 20px;
+    padding-left:15px;
+    display: flex;
+    flex-direction: row;
+}
+.icd10second input[type='text'],input[type='date']
+{
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+    border-width:1px;
+    border-color:#2d2a2a;
+}
+#icdfirstopt label{
+    margin-left:0px;
+    margin-right:15px;
+}
+.icd10second input[type='text']{
+    width:388px;
+    height:32px;
+
+}
+#icdfirstopt a{
+    margin-left:10px;
+}
+#icdsectopt{
+   /* padding-left:20px;*/
+   text-align: center;
+}
+#icdsectopt label{
+    margin-left:15px;
+}
+#onsetkbox{
+    margin-right:10px;
+    
+}
+#excaberationchkbox{
+    margin-left:10px;
+    margin-right:10px;
+}
+#diagnosisDate{
+    width:240px;
+    height:32px;
+
+}
+.icd10second #icdthirdopt{
+    padding-left:40px;
+}
+.icd10thrid input[type='number']{
+    width:220px;
+    height:32px;
+    border-top-style:none;
+    border-left-style:none;
+    border-right-style:none;
+    border-width:1px;
+}
+.icd10thrid{
+    padding-left:20px;
+    padding-top:20px;
+}
+#icdsfrthopt{
+    display: flex;
+    flex-direction:row;
+    justify-content: flex-end;
+    padding-bottom:40px;
+}
+#canceldiagbtn{
+    
+    width: 220px;
+    height: 42px;
+    border-radius: 4px;
+    color: #fff;
+    background-color: #000;
+  
+}
+#savediagnbtn{
+    width: 220px;
+    height: 42px;
+    background-color: #52a0d8;
+    border-radius: 4px;
+}
+.diagnosismodal{
+    position: absolute;/*relative;*/
+    top:0px;/* -529px;*/
+    left:142px;/*200px;*/
+    width:81%;/*73%;*/
+    background-color: #fff;
+    border-style: solid;
+    border-width: 1px;
+    border-color: #ccc;
+    z-index: 9000;
+    display: none;
+    height: 550px;
+}
+
+/*switch*/
+.switch {
+    position:relative;
+    display:inline-block;
+    width:60px;
+    height:34px;
+}
+.switch input{
+    opacity:0;
+    width:0;
+    height: 0;
+}
+.slider{
+    position:absolute;
+    cursor: pointer;
+    width: 62px;
+    height: 35px;
+    top: 200px;
+    left: 340px;/*316px;*/
+    right:0;
+    bottom:0;
+    background-color:#ccc;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+.slider:before{
+    position:absolute;
+    content:"";
+    height:26px;
+    width:26px;
+    left:4px;
+    bottom:4px;
+    background-color:#ffffff;
+    -webkit-transition: .4s;
+    transition: .4s;
+}
+input:checked + .slider{
+    background-color:#8cf395;
+}
+input:checked + .slider:before{
+    -webkit-transform: translateX(26px);
+    -ms-transform: translateX(26px);
+    transform: translateX(26px);
+}
+/*Rounded sliders*/
+.slider.round{
+    border-radius:34px;
+    margin-left:25px;
+}
+.slider.round:before{
+    border-radius:50%;
+}
+.mediationmodal .slider{
+    top: 61px;
+    left:223px;/* 197px;*/
+}
+.icd10srchlist:hover{
+    background-color:#5da1e2;
+    color:#ffffff;
+    font-weight:600;
+}
+.icd10listcontainer{
+    border-style: ridge;
+    border-width: 1px;
+    border-color: #ccc;
+}
+.diagnosisbtn_nav a{
+    height: 35px;
+    width: 220px;
+    padding: 15px;
+    background-color: #000000;
+    color: #f7f1f1;
+    text-decoration: none;
+    position: relative;
+    top: 10px;
+}
+.diagnosistab{
+    display:none;
+}
+#diagnosisbtn_nav {
+    height: 57px;
+    margin-top: 24px;
+}
+#diagnosiscanvas{
+    display:none;
+    height:424px;
+}
+.diagnosistab a{
+    height: 35px;
+    width: 220px;
+    padding: 20px;
+    color: #f7f1f1;
+    text-decoration: none;
+    position: relative;
+    top: 10px;
+}
+.diagnosisbtn_nav {
+    height: 57px;
+    margin-top: 24px;
+}
+.diagnosistab.active{
+    background-color: #ffffff;
+color: #000000;
+border-radius: 2px;
+border-bottom-style: none;
+border-left-color: black;
+border-left-style: solid;
+border-left-width: 1px;
+border-top-style: solid;
+border-top-width: 1px;
+border-right-style: solid;
+border-right-width: 1px;
+}
+
+.tabs .diagnosistab.active a{
+    color:#000000;
+}
+.preloader{
+    width:100%;
+    display: none;
+}
+.preloader .container svg{
+    margin:0 auto;
+    display: block;
+    height:158px;
+    top:0px;
+    position:relative;
+}
+#procedurelookupterms{
+    display: none;
+}
+#procedurelookupterms a{
+    display: none;
+}
+.procorder-grid{
+    width:100%;
+    height:555px;
+    overflow:scroll;
+    display: none;
+}
