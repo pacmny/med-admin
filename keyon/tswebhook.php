@@ -238,26 +238,72 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
      }
   }
   /*Keyon add 5/21/25 Methods to Insert Medication log times  */
-  elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedectionAdmin->API_Meth=="InsertUpdateMedLogTimes")
+  elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="InsertUpdateMedLogTimes")
   {
 	//see if the administer date is already in the medlog table and if so we are going to update. If not we are going to insert 
-	$accountnumber = $mmdata->MedicationAdmin->accountnumber;
-	$patientid = $mmdata->MedicationAdmin->patientid;
-	$adminDate = date("Y-m-d"); //Use this as a foriegn Key | setting this to todays date but we can changhe it later if we need to with a dynamcic variable 
-	$checkstatus = $processData->checkMedlogtablenfo($accountnumber,$patientid,$adminDate);
+	$accountnumber = $mmdata->MedicationAdmin->accountId;
+	$patientid = $mmdata->MedicationAdmin->pid;
+	$adminDate = $mmdata->MedicationAdmin->adminDate; //Use this as a foriegn Key | setting this to todays date but we can changhe it later if we need to with a dynamcic variable 
+	//var_dump($adminDate);
+	$providerid = $mmdata->MedicationAdmin->providerid;
+	$medname = $mmdata->MedicationAdmin->medname;
+	$ordnumber = $mmdata->MedicationAdmin->ordernumber;
+	$status = $mmdata->MedicationAdmin->status; //Medication Status 
+	$time = date('H:i:s'); //current time or time stamp
+	$admintimes = $mmdata->MedicationAdmin->slotedtimes;
+	//go get the patient information || But we should be able to have the EMR APP pass the patient name and ID over to the endpoint since The Admin App is based on the Clients Charts
+	$getpatientInfo = $processData->GetPatientInfobyPatientId($accountnumber,$patientid);
+	//var_dump($getpatientInfo);
+	$patientname = $getpatientInfo[0]["first_name"]." ".$getpatientInfo[0]["lastname"];
+	//now get the provider ID with the provider ID that's passed over | Or the app should be able to pass in the logged in provider 
+	$provider = $processData->LookUpInternalProvider($providerid);
+	$providername = $provider["provider"][0]["firstname"]." ".$provider["provider"][0]["lastname"];
+    $convdt = new DateTime($adminDate);
+	$administrated_at = $convdt->format('Y-m-d');
+	//var_dump($administrated_at);
+	//go get the medication ID for the active medication (parameter - medname)
+	$getmedid = $processData->DoesMedExist($accountnumber,$ordnumber,$providerid,$patientid,$medname,$status);
+	$medicationid = $getmedid["records"][0]["medentryid"];
+	$checkstatus = $processData->checkMedlogtablenfo($accountnumber,$patientid,$administrated_at,$medicationid);
+	//var_dump($checkstatus);
+	
+	$providersignature = $providername;
+	$initval = explode(" ",$providersignature);
+	$fname = $initval[0];
+	$lname = $initval[1];
+	$provinitials =substr($fname,0,1) ." ". substr($lname,0,1);
 	if($checkstatus["count"] <=0) //emplty
 	{
+		 
+		
 		//lets Insert the Medication Information that we need to log
-		$loginfo = InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,
-		$providername,$providerid,$medicationid,$administrated_at,$time,$status,$yearmedtime,$notes,$providersignature,$provinitials);
+		$loginfo = $processData->InsertMedLog( $accountnumber,$patientid,$patientname,$ordnumber,
+		$providername,$providerid,$medicationid,$administrated_at,$time,$status,json_encode($admintimes),$notes,$providersignature,$provinitials);
+		//var_dump($loginfo);
 		//check to see if it was successfull
 		if(!empty($loginfo) && $loginfo["results"]=="Inserted")
 		{
-			//Let insert the log timesdf
-			$insertlog = $processData->insertMedlogtableInfo($accountnumber,$patientid,$adminDate,$admintimes,$provinitials,$provsignature);
-			if(!empty($insertlog) && $insertlog["results"]=="Inserted")
+			//Let insert the log timesdf but first let json decode the times 
+			//var_dump($admintimes);
+		
+			$insttimes = array();
+			foreach($admintimes as $stime)
 			{
-				$msg =array("code"=>"200-Successdfull","results"=>$insertlog["results"]);
+				if($stime !="")
+				{
+					
+					$insertlog = $processData->insertMedlogtableInfo($accountnumber,$patientid,$medicationid,$administrated_at,$stime->time,$provinitials,$providersignature);
+					//var_dump($insertlog);
+					if(!empty($insertlog) && $insertlog["results"]=="Insert")
+					{
+						array_push($insttimes,$insertlog["results"]);
+					}
+				}
+			}
+			
+			if(!empty(array_filter($insttimes)) )
+			{
+				$msg =array("code"=>"200-Successdfull","results"=>$insttimes[0]);
 				print(json_encode($msg,JSON_PRETTY_PRINT));
 			}
 		}
@@ -266,18 +312,54 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	}
 	else{
 		//we need to update the Medlogtable and then the times table 
-		$updtmedlogtbl = $processData->UpdateMedLog($accountnumber,$patientid,$medicationid,$administeredat,$medadmintimes,$status,$ctime=date('Y-m-d H:i:s'));
-		if(!empty($updtmedlogtbl) && $updtmedlogtbl=="Updated")
+		//var_dump("Okay, it exist now lets figure out how to update the information");
+		$insttimes = array();
+		$jtime = json_encode($admintimes);
+		$updatelog = $processData->UpdateMedLog($accountnumber,$patientid,$medicationid,$administrated_at,$jtime,$status,$time);
+		//var_dump($updatelog);
+		if(!empty($updatelog) && $updatelog["result"]=="Updated")
 		{
-			//$accountNumber,$patientID
-		}
+			//we need to get the logtimes entryid's to ensure we are updating the correct rows versus having all the rows be updated with the same values
+			$getrowinfo = $processData->getmedtimeEntries($administrated_at,$accountnumber,$patientid);
+			//var_dump($getrowinfo);
+			if($getrowinfo !='' && $getrowinfo["count"] ==count($admintimes))
+			{
+
+			    $i=-1;
+				foreach($admintimes as $stime)
+				{
+					$i++;
+					//var_dump($stime->time);
+					if($stime !="")
+					{
+						$logentry = $getrowinfo["results"][$i]["logid"];
+						//var_dump($logentry);
+						$updatetimelog = $processData->updateMedlogtimetableInfo($logentry,$accountnumber,$patientid,$medicationid,$administrated_at,$stime->time,$provinitials,$providersignature);
+						//var_dump($updatetimelog);
+						if(!empty($updatetimelog) && $updatetimelog["results"]=="Updated")
+						{
+							array_push($insttimes,$updatetimelog["results"]);
+						}
+					}
+				}
+			}
+
+		} 
+			
+			
+			if(!empty(array_filter($insttimes)) )
+			{
+				$msg =array("code"=>"200-Successfull","results"=>$insttimes[0]);
+				print(json_encode($msg,JSON_PRETTY_PRINT));
+			}
+		
 		//we need to update the database 
-		$updatelog = $processData->updateMedlogtasbleInfo($accountnumber,$patientid,$adminData,$admintimes,$provinitials,$provsignature);
-		if(!empty($updatelog) && $updatelog["results"]=="Updated")
+		//$updatelog = $processData->updateMedlogtasbleInfo($accountnumber,$patientid,$adminData,$admintimes,$provinitials,$provsignature);
+		/*if(!empty($updatelog) && $updatelog["results"]=="Updated")
 		{
 			$msg = array("code"=>"200-Successfull","results"=>$udpatedlog["results"]);
 			print(json_encode($msg,JSON_PRETTY_PRINT));
-		}
+		} */
 	}
   }
   /*Keyon 5/16/25 Added Method to Get PatientAssigned Pharmacy */
@@ -291,20 +373,55 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 		print(json_encode($findpharm,JSON_PRETTY_PRINT));
 	 }
   }
+  /*--------keyon add Final Signoff for MedicationAdmin------*/
+  elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="MedSignOff")
+  {
+	/*-----Array with multiple Medication Objects nested inside with the information that we need to update our logging tables Medicationlog and <logtimes------*/ 
+	/* @Medication object 
+	     @ medication Table values or update values 
+		 @timeobjects - Times, dose, and status
+		 @date object : time, status, dosage,early reason , temp status, locked,[signedoff]-nurse,date
+		 @tabsavailable 
+
+	 ** Note: I'm not going to process the possible Medication Objects here but will pass them to the processClass file that will then parse and update tables 
+	*/
+	//var_dump($mmdata->MedicationAdmin->signoffObj);
+	$accountnumber = $mmdata->MedicationAdmin->accountnumber;
+	$npinumber = $mmdata->MedicationAdmin->npinumber;
+    $patientid = $mmdata->MedicationAdmin->patientid;
+	$ordernumber = $mmdata->MedicationAdmin->ordernumber;
+	$signoffobj = $mmdata->MedicationAdmin->signoffObj;
+	$licensenumber = $mmdata->MedicationAdmin->proflicensenumber;
+	//$medtimes = json_decode($signoffobj);
+	$tabsavail = $signoffobj->medicatabsAvailable;
+	//var_dump($medtimes);
+	$updatemedinfo = $processData->processMedTimes($accountnumber,$patientid,$signoffobj);
+	//var_dump($updatemedinfo);
+	if(is_array($updatemedinfo) && !empty($updatemedinfo))
+	{
+		print(json_encode($updatemedinfo));
+	}
+
+  }
   //keyon add on Local Site - Attemp to Grab active medication to pour into the Medication App 
   elseif(isset($mmdata->MedicationAdmin ) && $mmdata->MedicationAdmin->API_Meth=="GetPatientMeds")
   {
+
     $accountnumber = $mmdata->MedicationAdmin->accountId;
     $npinumber = $mmdata->MedicationAdmin->providerid;
     $patientid = $mmdata->MedicationAdmin->pid;
     //$providerid = $mmdata->MedicationAdmin->providerid;
-
+   
     $findactivemedorders = $processData->findpatientactiveMedOrders($accountnumber,$npinumber,$patientid);
-   // var_dump($findactivemedorders);
-	if($findactivemedorders["records"][0]["order_number"] !="")
+    //var_dump($findactivemedorders);
+	if(count($findactivemedorders["records"]) >=1)
     {
       print(json_encode($findactivemedorders,JSON_PRETTY_PRINT));
     }
+	else{
+		$msgar = array("code"=>"323-Empty","results"=>"No Records found");
+		print(json_encode($findactivemedorders,JSON_PRETTY_PRINT));
+	}
   }
   elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="InsetPrescription")
   {

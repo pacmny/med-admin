@@ -149,7 +149,7 @@
                         :style="{ backgroundColor: option.color }"
                         :selected="med.status === option.value"
                       >
-                        {{ option.label }}
+                      {{ option.label }} 
                       </option>
                     </select>
                   </td>
@@ -594,6 +594,7 @@ function toggleCollapse() {
 // UI Toggles & Selected Data
 const showAddForm = ref(false)
 const selectedMedicationForTime = ref<Medication | null>(null)
+const selectedMedStatusForTime = ref<string>('');
 const selectedFrequency = ref('')
 const selectedDosage = ref('1')
 const timeInputs = ref<string[]>([])
@@ -893,6 +894,15 @@ async function loadMedications() {
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
           medications.value = response.data.records;
+          let cur = new Date();
+     /*let tstdt = new Date(med.administrated_at);
+     console.log("Test medDt:"+" "+ med.administrated_at);
+     *If you use Dates from the database it will set the Date column to that date and you can't administered past med | So this means that you can only view today 
+     * of each day to administer the meds. Keep this in mind for adjustments 
+     * 
+     */
+     dateList.value.push(normalizeToMidnight(cur)); //setting this to today's date so that populateMedicationTable can load the times into the slots
+          populateMedicationTable();
           //let try and set the localStorage Engine medication array/JSON value to allow the app to sort later on | Try but can remove later 
           localStorage.setItem('medications', JSON.stringify(medications.value));
           errorMessage.value = ""; // Clear any previous error messages     
@@ -912,7 +922,13 @@ async function loadMedications() {
 }
 watch(medications, (newVal) => {
   localStorage.setItem('medications', JSON.stringify(newVal));
-  medications.value = newVal;
+  if(newVal.length >0)
+  {
+    medications.value = newVal;
+    //populateMedicationTable()
+  }
+  //medications.value = newVal;
+  
 }, { deep: true })
 
 const props = withDefaults(defineProps<{ medications?: Medication[] }>(), {
@@ -970,9 +986,13 @@ function toggleSelectDropdown(medication: Medication) {
     showErrorModal.value = true
     return
   }
-  selectedMedicationForTime.value = medication
+  selectedMedicationForTime.value = medication;
   selectedFrequency.value = medication.med_frequency || ''
   selectedDosage.value = medication.med_amount || '1'
+  if(!selectedMedStatusForTime.value ) //if this is empty lets set the status to Active 
+  {
+    selectedMedStatusForTime.value="pending";
+  }
   if (medication.administrationTimes && medication.administrationTimes !== 'As needed') {
     //need to see whats here 
     console.log("curious");
@@ -990,6 +1010,7 @@ async function handleSave() {
     showTimeModal.value = false
     return
   }
+  console.log(selectedMedicationForTime.value);
   if (!selectedMedicationForTime.value.prn && timeInputs.value.length > 0) {
     if (timeInputs.value.some(t => !t)) {
       errorMessage.value = "Please select all required times."
@@ -1001,7 +1022,11 @@ async function handleSave() {
   const med = selectedMedicationForTime.value
   med.frequency = selectedFrequency.value
   med.dosage = selectedDosage.value
-
+  const medname =med.medname;//setting this so that I can grab the actual MedId that's needed to lo
+  med.status="Active";
+  const medstatus = med.status;
+  console.log(medname);
+  console.log(medstatus);
   if (med.prn) {
     med.administrationTimes = 'As needed'
     med.dates = {}
@@ -1066,26 +1091,35 @@ async function handleSave() {
     }
      console.log("Log newTimeArray - to send to axios");
      console.log(newTimeArray);
-     let todaydt = new Date();
+     console.log("Med Dates");
+     console.log(med.dates);
+     let todaydt = formatDate(new Date());
+     console.log(todaydt);
      let content = {
         MedicationAdmin:{
-        API_Meth: "InsertUpdateMedLogTimes",
+        API_Meth:"InsertUpdateMedLogTimes",
         pid: "709081242",
         accountId: "904575107",
         providerid:"123456789",
         slotedtimes:newTimeArray,
-        adminDate:todaydt
+        adminDate:todaydt,
+        medname:medname,
+        ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+        status:medstatus,
         }
       };
     
         axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
-          if(response.data && response.data.results=="Inserted")
+          if(response.data && response.data.results=="Insert")
           {
-            alert("Medication Times Updated Successfully");
+            alert("Medication Times Added Successfully");
           }
-         
+          if(response.data && response.data.results=="Updated")
+          {
+            alert("Medication Times Updated Successfully.");
+          }
              
          }) 
          .catch(error => {       
@@ -1115,7 +1149,7 @@ function handleCancel() {
 onMounted(() => {
   loadMedications()
   initializeDateRangePicker()
-  populateMedicationTable()
+  //populateMedicationTable()
 })
 
 // ---------- DATE RANGE PICKER ----------
@@ -1135,6 +1169,7 @@ function initializeDateRangePicker() {
   }
 }
 function updateDateRange(startDate: Date, endDate: Date) {
+  /*Function sets up the dateList array with start and end date from calendar*/
   if (!startDate || !endDate) {
     alert("Please select both a start and an end date.")
     return
@@ -1151,29 +1186,98 @@ function updateDateRange(startDate: Date, endDate: Date) {
 // ---------- POPULATE & STATUS ----------
 function populateMedicationTable() {
   console.log("keyon figure it out");
-  console.log(medications.value);
+  console.log(medications);
+const length = ref<number>(0);
   medications.value.forEach(med => {
+      const yrmedtimeArray = JSON.parse(med.yearmedtime);
+    console.log(yrmedtimeArray);
+    if(Array.isArray(yrmedtimeArray) && yrmedtimeArray !=null){
+     
+     //lets try and put todays date in the dateList 
+    // let cur = new Date();
+     /*let tstdt = new Date(med.administrated_at);
+     console.log("Test medDt:"+" "+ med.administrated_at);
+     *If you use Dates from the database it will set the Date column to that date and you can't administered past med | So this means that you can only view today 
+     * of each day to administer the meds. Keep this in mind for adjustments 
+     * 
+     */
+    // dateList.value.push(normalizeToMidnight(cur));
+    /*
+    * I commented out the dateList value push here because the Date Rande Update could conflict with date that was loaded on page load. This is done when 
+    * Patients meds are loaded 
+    * */
+      length.value = yrmedtimeArray.length;
+      console.log("const length:" +" "+ length.value)
+      console.log(yrmedtimeArray.length);
+     let newadmintimes =[''];
+     for(var i = 0; i < length.value; i++)
+      {
+        console.log("Times Looped:"+" "+i);
+       
+        newadmintimes.push(yrmedtimeArray[i].time)
+      };
+      //lets assign the new time array to the administrationTimes variable (medication)
+      //console.log(newadmintimes);
+     newadmintimes = newadmintimes.filter(item => item);//filter our falsy values 
+      med.administrationTimes = newadmintimes.join(',');
+      console.log("med.AdministrationTimes value");
+      console.log(med.administrationTimes);
+    }
+    
+    
     if (med.prn) return
-    if (!med.administrationTimes || med.administrationTimes === 'As needed') return
-
+    if (!med.administrationTimes || med.administrationTimes === 'As needed')
+    {
+     console.log("returned no admin time dates");
+       return;
+    } 
+    //alert("WHjat");
+    console.log("Check TImes");
+    console.log(med.administrationTimes);
+    //lets parse yearmedtime if it there 
+   // let adtimes = JSON.parse(med.yearmedtime);
     if (!med.dates) {
       med.dates = {}
     }
-
+  
+   //lets see whats in the datelist 
+   console.log("Lets see whats in the dateList.value variable");
+   console.log(dateList.value); //Its not running because dateList is empty 
+   console.log("I want to see whats in the med.date before we start assigning new values");
+   console.log(med.dates);
+   const acttakentimes = med.takentimes.split(',');
+   console.log(acttakentimes);
+   
     dateList.value.forEach(d => {
+     
       const dStr = formatDateToYYYYMMDD(d)
       if (med.discontinuedDate && normalizeToMidnight(d).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
         return
       }
       if (!med.dates![dStr]) {
-        const splitted = med.administrationTimes.split(',').map(t => t.trim())
-        const dosageNum = parseInt(med.med_amount || '1', 10)
+        const splitted =med.administrationTimes.split(',').map(t => t.trim()); //med.administrationTimes
+        const medtakenstats = med.temporaryStatus.split(',');
+       
+        let lockedstatus =false;
+        medtakenstats.value = medtakenstats[0];
+       console.log("Taken:"+" "+medtakenstats.value);
+        if(medtakenstats.value=="taken")
+        {
+          lockedstatus =true;
+        }
+        const dosageNum = parseInt(med.med_amount || '1', 10);
         med.dates![dStr] = splitted.map(t => ({
-          time: t,
-          status: med.status,
-          dosage: dosageNum
-        }))
-      }
+          time: t+" (taken at"+" "+acttakentimes[0]+")",
+          status: medtakenstats.value,//med.temporaryStatus,
+          dosage: dosageNum,
+          earlyReason: med.earlyReason,
+          locked:lockedstatus,
+          temporaryStatus:medtakenstats.value,
+        }));
+        console.log("Supposed to be here");
+        console.log(med.dates[dStr]);
+      } 
+      
     })
   })
 
@@ -1188,7 +1292,16 @@ function populateMedicationTable() {
             if (!medicationStatus.value[dateStr][timeObj.time]) {
               medicationStatus.value[dateStr][timeObj.time] = {}
             }
-            medicationStatus.value[dateStr][timeObj.time][idx] = 'pending'
+           // alert( medicationStatus.value[dateStr][timeObj.time][idx]);
+           if(med.earlyReason !="")
+           {
+            medicationStatus.value[dateStr][timeObj.time][idex] = med.earlyReason;
+           }
+           else{
+               medicationStatus.value[dateStr][timeObj.time][idx] = 'pending'
+           }
+            //medicationStatus.value[dateStr][timeObj.time][idx] = 'pending'
+           
           })
         }
       })
@@ -1379,7 +1492,7 @@ function handleTimeActionSelected({ action }: { action: string }) {
         pendingTransactions.value.push({ medication, timeObj, dateObj })
       }
     }
-    if (action === 'later') {
+    if (action === 'later') { //removing from pending transaction array
       const existingIndex = pendingTransactions.value.findIndex(
         item => item.timeObj === timeObj && item.medication === medication
       )
@@ -1644,15 +1757,66 @@ function finalSignOff() {
       const dose = (typeof timeObj.dosage === 'number')
         ? timeObj.dosage
         : parseInt(medication.dosage || '1', 10)
-      medication.tabsAvailable = Math.max(0, medication.tabsAvailable - dose)
+      medication.tabsAvailable = Math.max(0, medication.total - dose);//medication.tabsAvailable
       const formatted = formatTime12Hour(now)
       timeObj.time = timeObj.time + " (taken at " + formatted + ")"
     }
   })
+  console.log("We need to Send Information to process signofff. Figure it out here");
+  console.log(pendingTransactions.value);
+  medFinalSignOff(pendingTransactions.value);
   pendingTransactions.value = []
   showSignOffPopup.value = false
 }
 
+//--------FinalSignOff Async Axios Call ------//
+async function medFinalSignOff(pendingTrans:object)
+{
+  let content = {
+    MedicationAdmin: {
+      API_Meth:"MedSignOff",
+      accountnumber:"904575107", 
+      npinumber:"123456789",
+      proflicensenumber:"609382", //insurance test
+      patientid:"709081242",
+      ordernumber:'36', 
+      signoffObj:pendingTrans
+    }
+  }
+  axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+         .then(response => {        
+          console.log('Meds signed off successfully:', response.data);  
+          if(response.data && response.data.message =="Updated")
+         {
+           let returnmsg="";
+           returnmsg="Medication Signed off Successfully";
+           alert(returnmsg);
+           showAddForm.value = false;
+           loadMedications();
+           return ;
+
+         }
+         else{
+           //now lets add the information to the Appropriate tables 
+           let returnmsg="";
+           returnmsg="Medications Sign Off was unsuccessfull";
+
+           return returnmsg;
+           //alert("Meciation Settings Not Updated Successfully, Please try again later");
+         }
+              
+         }) 
+         .catch(error => {       
+           if (axios.isAxiosError(error)) {  
+             console.error('Error posting data:', error.response?.data || error.message);     
+          //  errorMessage = error.response?.data?.message || 'An error occurred while posting data.';  
+           } 
+            else {          
+              console.log('Unexpected error:', error);         
+            //  errorMessage = 'An unexpected error occurred. Please try again.'; 
+            }    
+            });   
+}
 // ---------- PRN SIGN-OFF ----------
 function openPrnSignOffPopup(med: Medication, timeObj: any) {
   if (timeObj.dosage == null || timeObj.dosage === '') {

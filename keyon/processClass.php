@@ -2,12 +2,14 @@
 class ProcessData{
     private  $webhookURL="http://10.10.3.7/pacmny-be/web/index.php/fora/query";
 	//private $sqlightPath = "eventsdb.db";
-	
+
+	private $sclass=null; 
     
-public function init()
+public function __construct()
 {
 	//Initialize Class so that its operational 
-	
+		require_once("SqlClass.php");
+		$this->sclass = new SQLData();
 	
 
 } 
@@ -141,34 +143,135 @@ public function ImportPatients($filepath,$fhandle)
 	}
 	//var_dump($dbdata);
 }
+public function processMedTimes($accountnumber,$patientid,$signoffobj)
+{
+	if(!empty($signoffobj))
+	{
+		//var_dump($signoffobj);
+		//capture the medicationID first and then as we loop through - cross check the ID to ensure we are getting the correct medname (coould be multiple med obj's)
+		$today = date('Y-m-d');
+		$finaladmintimes = array();
+		$earlyreason="";
+		foreach($signoffobj as $s)
+		{
+			//var_dump($s);
+			$medid = $s->medication->medentryid;
+			if($s->medication->medentryid ==$medid)
+			$medname = $s->medication->medname;//just in case 
+			$admintimes = explode(",",$s->medication->administrationTimes);
+			$timeslot = explode("(",$s->timeObj->time);
+			$acttimeslot = explode(" ",$timeslot[1]);
+			$takentime = new DateTime($acttimeslot[2]);
+			$takentime = $takentime->format("H:i:s");
+			$finltimeslot = trim($timeslot[0]);
+			$finlslotreason = "(".$timeslot[1];
+			$status = $s->timeObj->status;
+			$signoffdate = new DateTime($s->timeObj->signedOff->date);
+			$signoffdate = $signoffdate->format("H:i:s");
+			$signoffnurse = $s->timeObj->signedOff->nurse;
+			$expinit = explode(" ", $signoffnurse);
+			$signoffinit = substr($expinit[0],0,1) ." ". substr($expinit[1],0,1);
+			//lets do the math to get the remaining amount of tabslets (if plausible) from the total number of tablets
+			$remainingtablets = (int)$s->medication->total - (int)$s->medication->med_amount;
+			if($s->timeObj->earlyReason)
+			{
+				$earlyreason = $s->timeObj->earlyReason;
+			}
+
+			var_dump($admintimes);
+			var_dump($medname);
+			var_dump($finltimeslot);
+			var_dump($finlslotreason);
+			var_dump($takentime);
+			var_dump($status);
+			var_dump($signoffdate);
+			var_dump($signoffnurse);
+			var_dump($earlyreason);
+			var_dump($remainingtablets );
+			 /* Lets Update each Administration Record Now */
+			 $updaterec = $this->sclass->UpdateMedLogandLogtimes($accountnumber,$patientid,$medid,$finltimeslot,$finlslotreason,$takentime,$status,$signoffdate,$signoffnurse,$signoffinit,$earlyreason);
+			var_dump($updaterec);
+			 if(!empty($updaterec["results"]) && is_array($updaterec) && $updaterec["results"]=="Updated")
+			 {
+				//now lets update the medication table (column - available) to keep the remainin tabs Available 
+				$updatetabremaining = $this->sclass->updateRemainingTabs($accountnumber,$patientid,$medid,$remainingtablets);
+				if(!empty($updatetabremaining) && is_array($updatetabremaining) && $updatetabremaining["results"]=="Updated")
+				{
+					return $updatetabremaining;
+				}
+				
+			 }
+
+			/*if(count($admintimes) >0)
+			{
+				for($i=0; $i < count($admintimes); $i++)
+				{
+					array_push($finaladmintimes,$admintimes[$i]);
+				}
+			}
+			else{
+				if(count($admintimes) ==1)
+				{
+					array_push($finaladmintimes,$admintimes[$i]);
+				}
+			}*/
+			//$finaladmintimes has scope variable that you pass to slclass 
+			
+
+
+		}
+		var_dump($finaladmintimes);
+	}
+}
+public function GetPatientInfoByPatientId($accountnumber,$patientid)
+{
+	
+	$getpatinfo = $this->sclass->getPatientInfoByPatId($accountnumber,$patientid);
+	return $getpatinfo;
+}
 public function InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,
 $providername,$providerid,$medicationid,$administrated_at,$time,$status,$yearmedtime,$notes,$providersignature,$provinitials)
 {
-	require_once("SqlClass.php");
-	$sclass = new SQLData();
-	$insertMeds = $sclass->InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,$providername,$providerid,$medicationid,$administrated_at,
+	
+	$insertMeds = $this->sclass->InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,$providername,$providerid,$medicationid,$administrated_at,
 	$time,$status,$yearmedtime,$notes,$providersignature,$provinitials);
 	return $insertMeds;
 }
 public function UpdateMedLog($accountnumber,$patientid,$medicationid,$administeredat,$medadmintimes,$status,$ctime)
 {
-	require_once("SqlClass.php");
-	$sclass = new SQLData();
-	$findpharm = $sclass->UpdateMedLog($accountnumber,$patientid,$medicationid,$administeredat,$medadmintimes,$status,$ctime);
+	
+	$findpharm = $this->sclass->UpdateMedLog($accountnumber,$patientid,$medicationid,$administeredat,$medadmintimes,$status,$ctime);
 	return $findpharm;
 }
-public function checkMedlogtablenfo($accountnumber,$patientid,$adminDate)
+public function checkMedlogtablenfo($accountnumber,$patientid,$adminDate,$medid)
 {
-	require_once("SqlClass.php");
-	$sclass = new SQLData();
-	$check = $sclass->checkMedlogtablenfo($accountnumber,$patientid,$adminDate);
+	
+	$check = $this->sclass->checkMedlogtablenfo($accountnumber,$patientid,$adminDate,$medid);
 	return $check;
 }
 public function SearchMedLog($accountnumber,$patientid,$medicationid,$ordernumber,$administeredat)
 {
+	
+	$findpharm = $this->sclass->SearchMedLog($accountnumber,$patientid,$medicationid,$ordernumber,$administeredat);
+	return $findpharm;
+}
+public function getmedtimeEntries($adminDate,$accountnumber,$patientid)
+{
+	$getlogtimes = $this->sclass->getmedtimeEntries($adminDate,$accountnumber,$patientid);
+	return $getlogtimes;
+}
+public function updateMedlogtimetableInfo($logentry,$accountnumber,$patientid,$medicationid,$adminData,$stime,$provinitials,$provsignature)
+{
 	require_once("SqlClass.php");
 	$sclass = new SQLData();
-	$findpharm = $sclass->SearchMedLog($accountnumber,$patientid,$medicationid,$ordernumber,$administeredat);
+	$updtlogtimes = $sclass->updateMedlogtableInfo($logentry,$accountnumber,$patientid,$medicationid,$adminData,$stime,$provinitials,$provsignature);
+	return $updtlogtimes;
+}
+public function updateMedlogtasbleInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
+{
+	require_once("SqlClass.php");
+	$sclass = new SQLData();
+	$findpharm = $sclass->getMedlogtbleInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature);
 	return $findpharm;
 }
 public function getMedlogtbleInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
@@ -178,11 +281,11 @@ public function getMedlogtbleInfo($accountnumber,$patientid,$medid,$adminDate,$a
 	$findpharm = $sclass->getMedlogtbleInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature);
 	return $findpharm;
 }
-public function insertMedlogtableInfo($accountnumber,$patientid,$adminDate,$admintimes,$provinitials,$provsignature)
+public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
 {
 	require_once("SqlClass.php");
 	$sclass = new SQLData();
-	$findpharm = $sclass->insertMedlogtableInfo($accountnumber,$patientid,$adminDate,$admintimes,$provinitials,$provsignature);
+	$findpharm = $sclass->insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature);
 	return $findpharm;
 }
 public function findPharmacy($accountnumber,$pharmacyname,$npinumber)

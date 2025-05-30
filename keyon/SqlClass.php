@@ -19,6 +19,11 @@ class SQLData{
        $this->con =$con;
       // return $con;
     }
+    public function getPatientInfobyPatId($accountnumber,$patientid)
+    {
+        $getpatinfo = $this->GetPatientAssignmentByAccntNPatientId($accountnumber,$patientid);
+        return $getpatinfo;
+    }
     public function InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,
     $providername,$providerid,$medicationid,$administrated_at,$time,$status,$yearmedtime,$notes,$providersignature,$provinitials)
     {
@@ -27,7 +32,7 @@ class SQLData{
          VALUE(:accnt,:patid,:patname,:ordnumber,:providname,:provid,:medid,:admin_at,:tme,:stat,:yrmedtime,:notes,:provsig,:provinit)";
 
        $stmnt = $this->con->prepare($sql);
-        $stmnt->bindParam("::accnt",$accountnumber);
+        $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid); //status para,
         $stmnt->bindParam(":patname",$patientname);
         $stmnt->bindParam(":ordnumber",$patientname); //jso data should be updated here 
@@ -39,8 +44,8 @@ class SQLData{
          $stmnt->bindParam(":stat",$status);
         $stmnt->bindParam(":yrmedtime",$yearmedtime);
         $stmnt->bindParam(":notes",$notes);
-        $stmnt->bindParam(":provsig",$patientid);
-        $stmnt->bindParam(":provinit",$medicationid); 
+        $stmnt->bindParam(":provsig",$providersignature);
+        $stmnt->bindParam(":provinit",$provinitials); 
         try{
             if($stmnt->execute())
             {
@@ -60,7 +65,7 @@ class SQLData{
     public function UpdateMedLog($accountnumber,$patientid,$medicationid,$administeredat,$medadmintimes,$status,$ctime)
     {
         
-        $sql="UPDATE medicationlog SET administrated_at=:admindate, status=:stat, yearmedtime=:medtime, time=:tme
+        $sql="UPDATE medicationlog SET administrated_at=:admindate, yearmedtime=:medtime, status=:stat, time=:tme
         WHERE accountnumber=:accnt AND patientid=:patid AND medicationid=:medid";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":admindate",$administeredat);
@@ -85,13 +90,15 @@ class SQLData{
         }
        
     }
-    public function checkMedlogtablenfo($accountnumber,$patientid,$adminDate)
+    public function checkMedlogtablenfo($accountnumber,$patientid,$adminDate,$medid)
     {
-        $sql="SELECT * FROM `medicationlog` WHERE accountnumber=:accnt AND patientid=:patid AND administrated_at=:admindate";
+        $sql="SELECT * FROM `medicationlog` WHERE accountnumber=:accnt AND patientid=:patid AND administrated_at=:admindate AND medicationid=:medid";
+       
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid);
         $stmnt->bindParam(":admindate",$adminDate);
+        $stmnt->bindParam(":medid",$medid);
         try{
             if($stmnt->execute())
             {
@@ -167,11 +174,79 @@ class SQLData{
             }
         }
     }
-    public function updateMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
+    public function getmedtimeEntries($adminDate,$accountnumber,$patientid)
+    {
+        $sql="SELECT * FROM medlogtimes WHERE accountnumber=:accnt AND patientid=:patid AND administerdate=:admindt";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":admindt",$adminDate);
+        try{
+            if($stmnt->execute())
+            {
+                $records = $stmnt->fetchAll();
+                $msgar = array("status"=>"200-Successfull","results"=>$records,"count"=>count($records));
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-SQL error","error"=>$e->__toString());
+            return $msgar;
+        }
+    }
+    public function updateRemainingTabs($accountnumber,$patientid,$medid,$remainingtablets)
+    {
+        $sql="UPDATE `medications` SET available=:tabsavailable WHERE accountnumber=:accnt AND patient_id=:patid AND medentryid=:mid";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":tabsavailable",$remainingtablets);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":mid",$medid);
+        try{
+
+            if($stmnt->execute())
+            {
+                $msgar = array("code"=>"200 Successfull","results"=>"Updated");
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-Sql error","error"=>$e->__toString());
+            return $msgar;
+        }
+    }
+    public function UpdateMedLogandLogtimes($accountnumber,$patientid,$medid,$finltimeslot,$finlslotreason,$takentime,$status,$signoffdate,$signoffnurse,$signoffinit,$earlyreason)
+    {
+        $sql="UPDATE `medlogtimes` SET `takentime`=:taktime, `status`=:stat, `reason`=:earlyreas, `provsignoffsignature`=:provsignoff,`provsignoffinitials`=:provsignoffinit
+        WHERE accountnumber=:accnt AND patientid=:patid AND medid=:mid";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":taktime",$takentime);
+        $stmnt->bindParam(":stat",$status);
+        $stmnt->bindParam(":earlyreas",$earlyreason);
+        $stmnt->bindParam(":provsignoff",$signoffnurse);
+        $stmnt->bindParam(":provsignoffinit",$signoffinit);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":mid",$medid);
+        try{
+            if($stmnt->execute())
+            {
+                $msgar = array("code"=>"200-SQL","results"=>"Updated");
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar =array("code"=>"700-SQL error","error"=>$e->__toString());
+            return $msgar;
+        }
+    }
+    public function updateMedlogtableInfo($logentry,$accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
     {
         $sql="UPDATE `medlogtimes` SET `accountnumber`=:accnt, `patientid`=:patid, `medid`=:med, `administerdate`=:adminDt, `time`=:admintimes, `providinitials`=:provinit, `provsignature`=:provsig
-        WHERE accountnumber=:accnt AND patientid=:patid 
-        VALUES (:accnt,:patid,:med,:adminDt,:admintimes,:provinit,:provsig)";
+        WHERE accountnumber=:accnt AND patientid=:patid AND logid=:lid ";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid);
@@ -180,25 +255,27 @@ class SQLData{
         $stmnt->bindParam(":admintimes",$admintimes);
         $stmnt->bindParam(":provinit",$provinitials);
         $stmnt->bindParam(":provsig",$provsignature);
+        $stmnt->bindParam(":lid",$logentry);
         try{
 
             if($stmnt->execute())
             {
-                $records = $stmnt->fetchAll();
-                $count = count($eecords);
-                $msg = array("code"=>"200-Succuessfull","results"=>$records,"count"=>$count);
+                $updtmsg = "Updated";
+                $msg = array("code"=>"200-Succuessfull","results"=>$updtmsg);
                 return $msg;
             }
         }
         catch(PDOException $e)
         {
             $msg = array("code"=>"700-SQL Error","error"=>$e->__toString());
+           // var_dump($msg);
             return $msg;
         }
 
     }
     public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
     {
+       
         $sql="INSERT INTO `medlogtimes`(`accountnumber`, `patientid`, `medid`, `administerdate`, `time`, `providinitials`, `provsignature`) 
         VALUES (:accnt,:patid,:med,:adminDt,:admintimes,:provinit,:provsig)";
         $stmnt = $this->con->prepare($sql);
@@ -213,9 +290,9 @@ class SQLData{
 
             if($stmnt->execute())
             {
-                $records = $stmnt->fetchAll();
-                $count = count($eecords);
-                $msg = array("code"=>"200-Succuessfull","results"=>$records,"count"=>$count);
+                $response ="Insert";
+              
+                $msg = array("code"=>"200-Succuessfull","results"=>$response);
                 return $msg;
             }
         }
@@ -2320,12 +2397,42 @@ class SQLData{
     //end new sql syntax
     public function findpatientactiveMedOrders($accountnumber,$npinumber,$patientid)
     {
-       
-      $sql="SELECT * FROM medications 
+       /*
+       SELECT * FROM medications 
       LEFT JOIN orders ON  orders.ordernumber = medications.order_number
       LEFT JOIN patientPharmacy ON patientpharmacy.ordernumber = orders.ordernumber
       LEFT JOIN medicationlog ON medicationlog.ordernumber = patientpharmacy.ordernumber
       WHERE orders.accountnumber=:accnt AND orders.patientid=:patid and orders.npinumber=:npi AND orders.status='Active' AND additional_settings='Administered' ";
+
+      @Adusted last 2 item that we can look at later 
+      LEFT JOIN medicationlog ON medicationlog.patientid = orders.patientid
+        LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid
+        ----Problem---
+        Due to multiple times being in the medlogtimes with the same foreign keys - when I add it to the LEFT joiont statement it products multiple Medication results in order to bring back
+        multiple medlog times shoud the frequency be more than 1 
+      */
+     /* $sql="SELECT * FROM medications 
+      LEFT JOIN orders ON  orders.ordernumber = medications.order_number
+      LEFT JOIN medicationlog ON medicationlog.medicationid = medications.medentryid
+      LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid
+      WHERE orders.accountnumber=:accnt AND orders.patientid=:patid and orders.npinumber=:npi AND orders.status='Active' AND additional_settings='Administered' ";
+     */
+    $sql="SELECT medications.*,
+    orders.*,
+    medicationlog.*,
+      GROUP_CONCAT(medlogtimes.time ORDER BY medlogtimes.time
+      SEPARATOR ', ') AS times,
+      GROUP_CONCAT(medlogtimes.takentime ORDER BY medlogtimes.takentime SEPARATOR ', ') AS takentimes, 
+      GROUP_CONCAT(medlogtimes.reason ORDER BY medlogtimes.reason SEPARATOR ', ') AS earlyReason,   
+      GROUP_CONCAT(medlogtimes.status ORDER BY medlogtimes.status SEPARATOR ', ') AS temporaryStatus
+      FROM 
+      medications
+      LEFT JOIN orders ON  orders.ordernumber = medications.order_number
+      LEFT JOIN medicationlog ON medicationlog.medicationid = medications.medentryid
+      LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid
+      WHERE orders.accountnumber=:accnt AND orders.patientid=:patid and orders.npinumber=:npi AND orders.status='Active' AND additional_settings='Administered'
+      GROUP BY
+      medications.medentryid,  orders.orderid,medicationlog.phid,orders.ordernumber, medicationlog.medicationid";
       $stmnt = $this->con->prepare($sql);
       $stmnt->bindParam(":accnt",$accountnumber);
       $stmnt->bindParam(":npi",$npinumber);
