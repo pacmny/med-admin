@@ -159,7 +159,7 @@
                     <div class="tabs-counter">
                       <input
                         type="number"
-                        v-model="med.total"
+                        v-model="med.available"
                         @change="handleTabsChange(med, $event.target.value)"
                         class="tabs-input"
                       />
@@ -1245,9 +1245,17 @@ const length = ref<number>(0);
    console.log(dateList.value); //Its not running because dateList is empty 
    console.log("I want to see whats in the med.date before we start assigning new values");
    console.log(med.dates);
-   const acttakentimes = med.takentimes.split(',');
+   let acttakentimes = [];
+   if(med.takentimes !="" && med.takentimes !=null)
+   {
+    acttakentimes =med.takentimes.split(',');
+   } 
+   else{
+    acttakentimes=[];
+   }
+  
    console.log(acttakentimes);
-   
+   let medtakenstats;
     dateList.value.forEach(d => {
      
       const dStr = formatDateToYYYYMMDD(d)
@@ -1256,8 +1264,15 @@ const length = ref<number>(0);
       }
       if (!med.dates![dStr]) {
         const splitted =med.administrationTimes.split(',').map(t => t.trim()); //med.administrationTimes
-        const medtakenstats = med.temporaryStatus.split(',');
+        if(med.temporaryStatus !="" && med.temporaryStatus !=null)
+        {
+            medtakenstats = med.temporaryStatus.split(',');
+        }
+        else{
+          medtakenstats =[];
+        }
        
+        alert(splitted);
         let lockedstatus =false;
         medtakenstats.value = medtakenstats[0];
        console.log("Taken:"+" "+medtakenstats.value);
@@ -1267,16 +1282,19 @@ const length = ref<number>(0);
         }
         const dosageNum = parseInt(med.med_amount || '1', 10);
         med.dates![dStr] = splitted.map(t => ({
-          time: t+" (taken at"+" "+acttakentimes[0]+")",
+          time:t +" (taken at"+" "+acttakentimes[0]+")",
           status: medtakenstats.value,//med.temporaryStatus,
           dosage: dosageNum,
           earlyReason: med.earlyReason,
           locked:lockedstatus,
-          temporaryStatus:medtakenstats.value,
+          temporaryStatus:medtakenstats.value
         }));
         console.log("Supposed to be here");
         console.log(med.dates[dStr]);
       } 
+      else{
+        alert(med.dates![dStr]);
+      }
       
     })
   })
