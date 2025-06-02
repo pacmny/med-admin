@@ -548,6 +548,11 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$holdobj = $mmdata->MedicationAdmin->holdobjec;
 	$ordernumber = $mmdata->MedicationAdmin->ordernumber;
 	var_dump($holdobj);
+	$medname = $mmdata->MedicationAdmin->medname;
+	$dtrange = $mmdata->MedicationAdmin->dateRange;//should be an array 
+	$hldtimes = $mmdata->MedicationAdmin->times;//should be an array also 
+	$reason = $mmdata->MedicationAdmin->reason; //Reason we held the medication 
+	$holdtype = $mmdata->MedicationAdmin->type; //Hold type 
   }
   elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="InsertAdminMecationInfo")
   {
