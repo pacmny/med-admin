@@ -51,7 +51,7 @@ function closeDetails(event: MouseEvent) {
   <div class="expandable-container">
     <div class="content-preview">
       <div class="medication-name">
-        {{ medication.medname }}
+        {{ medication.name }}
       </div>
       <button 
         class="more-button"
@@ -83,15 +83,15 @@ function closeDetails(event: MouseEvent) {
               </div>
               <div class="detail-row">
                 <span class="detail-label">Diagnosis:</span>
-                <span class="detail-value">{{ medication.diagnose_code || 'N/A' }}</span>
+                <span class="detail-value">{{ medication.diagnosis || 'N/A' }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Dosage:</span>
-                <span class="detail-value">{{ medication.med_amount || 'N/A' }}</span>
+                <span class="detail-value">{{ medication.dosage || 'N/A' }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Frequency:</span>
-                <span class="detail-value">{{ medication.med_frequency || 'N/A' }}</span>
+                <span class="detail-value">{{ medication.frequency || 'N/A' }}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Route:</span>
@@ -103,7 +103,7 @@ function closeDetails(event: MouseEvent) {
               </div>
               <div class="detail-row">
                 <span class="detail-label">Number of Tablets/Quantity:</span>
-                <span class="detail-value">{{ medication.med_amount || 0 }} units</span>
+                <span class="detail-value">{{ medication.tabsAvailable || 0 }} units</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">DEA Number:</span>
