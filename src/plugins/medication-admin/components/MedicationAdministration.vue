@@ -1234,8 +1234,6 @@ const length = ref<number>(0);
     //alert("WHjat");
     console.log("Check TImes");
     console.log(med.administrationTimes);
-    //lets parse yearmedtime if it there 
-   // let adtimes = JSON.parse(med.yearmedtime);
     if (!med.dates) {
       med.dates = {}
     }
@@ -1272,7 +1270,7 @@ const length = ref<number>(0);
           medtakenstats =[];
         }
        
-        alert(splitted);
+       // alert(splitted);
         let lockedstatus =false;
         medtakenstats.value = medtakenstats[0];
        console.log("Taken:"+" "+medtakenstats.value);
@@ -1313,7 +1311,7 @@ const length = ref<number>(0);
            // alert( medicationStatus.value[dateStr][timeObj.time][idx]);
            if(med.earlyReason !="")
            {
-            medicationStatus.value[dateStr][timeObj.time][idex] = med.earlyReason;
+            medicationStatus.value[dateStr][timeObj.time][idx] = med.earlyReason;
            }
            else{
                medicationStatus.value[dateStr][timeObj.time][idx] = 'pending'
@@ -1330,7 +1328,7 @@ function handleStatusChange(event: Event, medIndex: number) {
   const select = event.target as HTMLSelectElement
   const status = select.value
   medications.value[medIndex].status = status
-
+//alert("Its here");
   if (status === 'hold' || status === 'new' || status === 'discontinue' || status === 'change') {
     selectedMedicationForHold.value = medications.value[medIndex]
     selectedStatusOption.value = status as 'hold' | 'new' | 'discontinue' | 'change'
@@ -1405,6 +1403,8 @@ function handleHoldSubmit(data: {
     reason: data.reason,
     type: data.holdType
   }
+  console.log("Med Hold Status that is to be sent over for process");
+  console.log(medication.holdInfo);
   showHoldSelector.value = false
   selectedMedicationForHold.value = null
 }

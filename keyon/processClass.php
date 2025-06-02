@@ -290,9 +290,8 @@ public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDat
 }
 public function findPharmacy($accountnumber,$pharmacyname,$npinumber)
 {
-	require_once("SqlClass.php");
-	$sclass = new SQLData();
-	$findpharm = $sclass->findPharmacy($accountnumber,$pharmacyname,$npinumber);
+	
+	$findpharm = $this->sclass->findPharmacy($accountnumber,$pharmacyname,$npinumber);
 	return $findpharm;
 }
 public function InsertPharmacy($accountnumber,$pharmacyname,$pharmnpi,$pharmaddr,$pharmacyOffice,$pharmacyCell,$pharmdeanumber,$pharmacyEmail)
@@ -302,11 +301,10 @@ public function InsertPharmacy($accountnumber,$pharmacyname,$pharmnpi,$pharmaddr
 	$insertpharm = $sclass->InsertPharmacy($accountnumber,$pharmacyname,$pharmnpi,$pharmaddr,$pharmacyOffice,$pharmacyCell,$pharmdeanumber,$pharmacyEmail);
 	return $insertpharm;
 }
-public function logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $provnpi, $pharmacyname,$pharmdeanumber,$pharmnpi,$assigndt,$notes)
+public function logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $provnpi, $pharmacyname,$pharmaddr,$pharmdeanumber,$pharmnpi,$assigndt,$notes)
 {
-	require_once("SqlClass.php");
-	$sclass = new SQLData();
-	$logprov = $sclass->logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $provnpi, $pharmacyname,$pharmdeanumber,$pharmnpi,$assigndt,$notes);
+	
+	$logprov = $this->sclass->logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $provnpi, $pharmacyname,$pharmaddr,$pharmdeanumber,$pharmnpi,$assigndt,$notes);
 	return $logprov;
 }
 public function lookupPatientPharmacy($accountnumber,$patientid)
@@ -319,9 +317,9 @@ public function lookupPatientPharmacy($accountnumber,$patientid)
 public function logpaProvider($accountnumber,$subaccountnumber,$firstname,$lastname,$npinumber,$provemail,$deanumber,$taxonomy,
 $ordernumber,$patientid,$addr1,$phone,$fax,$proffisionalicense)
 {
-	require_once("SqlClass.php");
-	$sclass = new SQLData();
-	$logprov = $sclass->logpaProvider($accountnumber,$subaccountnumber,$firstname,$lastname,$npinumber,$provemail,$deanumber,$taxonomy,
+	//require_once("SqlClass.php");
+	//$sclass = new SQLData();
+	$logprov = $this->sclass->logpaProvider($accountnumber,$subaccountnumber,$firstname,$lastname,$npinumber,$provemail,$deanumber,$taxonomy,
 	$ordernumber,$patientid,$addr1,$phone,$fax,$proffisionalicense);
 	return $logprov;
 }

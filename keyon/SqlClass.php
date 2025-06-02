@@ -387,16 +387,17 @@ class SQLData{
          }
     }
     /*5/13 Adding Patient Pharmacy Information */
-    public function logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $provnpi, $pharmacyname,$pharmdeanumber,$pharmnpi,$assigndt,$notes)
+    public function logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $provnpi, $pharmacyname,$pharmaddr, $pharmdeanumber,$pharmnpi,$assigndt,$notes)
     {
-        $sql="INSERT INTO `patpharmacy`(`accountnumber`, `subaccountnumber`, `patientid`, `provnpi`, `pharmacyname`, `pharmdea`, `npinumber`, `assigned_date`, `notes`)
-         VALUES (:accnt,:accnt,:patid,:provnpi,:pharmname,:pharmdea,:npinum,:assigndt,:notes)";
+        $sql="INSERT INTO `patpharmacy`(`accountnumber`, `subaccountnumber`, `patientid`, `provnpi`, `pharmacyname`, `pharmaddress`, `pharmdea`, `npinumber`, `assigned_date`, `notes`)
+         VALUES (:accnt,:accnt,:patid,:provnpi,:pharmname,:phrmaddr,:pharmdea,:npinum,:assigndt,:notes)";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":subaccnt",$subaccountnumber);
         $stmnt->bindParam(":patid",$patientid);
         $stmnt->bindParam(":provnpi",$provnpi);
         $stmnt->bindParam(":pharmname",$pharmacyname);
+        $stmnt->bindParam(":phrmaddr",$pharmaddr);
         $stmnt->bindParam(":pharmdea",$pharmdeanumber);
         $stmnt->bindParam(":npinum",$pharmnpi);
         $stmnt->bindParam(":assigndt",$assigndt);
@@ -487,7 +488,7 @@ class SQLData{
     /*5/9/2025 Adding Administration Medication Function */
     public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype)
     {
-        $shorthand="tylenole";
+        $shorthand=$medname;
         $status="pending";
         $writer="System";// Laster we need to go back and pass in the writer | Should be an Office Admin, Nurse and or Provider vs System
         $sql="INSERT INTO medications (accountnumber,order_number,patient_id,ndcnumber,rxnorns,prn,additional_settings,total,`route`,diagnose_code,med_frequency,alt_route,med_amount,med_doseuom,medname,med_startdate,shorthand,

@@ -736,6 +736,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 								$logProviderInfo = $processData->logpaProvider($accountnumber,$subaccountnumber,$firstname,$lastname,$npinumber,$provemail,$deanumber,$taxonomy,
 								$ordernumber,$patientid,$addr1,$phone,$fax,$licensenumber);
 								
+								//var_dump($logProviderInfo);debug
 								//check to see if the successfull result is there 
 								if($logProviderInfo["results"]=="Inserted")
 								{
@@ -751,14 +752,17 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 									$notes="Notes go here";
 									//lets check to see if Pharmacy exist and if not lets add it to our overarching Pharmacy table 
 									$doesphrmexist = $processData->findPharmacy($accountnumber,$pharmacyname,$npinumber);
-									//var_dump($doesphrmexist); debug
+									
+									//var_dump($doesphrmexist); //debug
 									if($doesphrmexist["count"] < 1) //pharmacy doesn't exist, lets put it into the table 
 									{
 										$insertpharm = $processData->InsertPharmacy($accountnumber,$pharmacyname,$pharmnpi,$pharmaddr,$pharmacyOffice,$pharmacyCell,$pharmdeanumber,$pharmacyEmail);
-										//var_dump($insertpharm); debug
+										//var_dump($insertpharm); //debug
 										if($insertpharm["results"]=="Inserted")
 										{
-											$insertpharm  = $processData->logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $npinumber, $pharmacyname,$pharmdeanumber,$pharmnpi,$assigndt,$notes);
+											$insertpharm  = $processData->logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $npinumber, $pharmacyname,$pharmaddr,$pharmdeanumber,$pharmnpi,$assigndt,$notes);
+											//var_dump("Log Patient Pharmacy Information"); debug
+											//var_dump($insertpharm); debuig
 											if($insertpharm["results"]=="Inserted")
 											{
 												//now send successf payload back.
@@ -771,7 +775,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 									else{
 										//Pharmacy Alreay exist and now we just need to log that information 
 										$insertpharm  = $processData->logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $npinumber, $pharmacyname,$pharmdeanumber,$pharmnpi,$assigndt,$notes);
-										//var_dump($insertpharm);debug
+										//var_dump($insertpharm);//debug
 										if($insertpharm["results"]=="Inserted")
 										{
 											//now send successf payload back.
@@ -782,6 +786,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 									
 								}
 								else{
+									var_dump("provider issue");
 									var_dump($logProviderInfo);//should show the errors 
 								}
 								//var_dump($logProviderInfo);exit();
