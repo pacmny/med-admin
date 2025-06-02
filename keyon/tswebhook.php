@@ -540,6 +540,15 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	}
 	
   }
+  elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="HoldMedication")
+  {
+	$accountnumber = $mmdata->MedicationAdmin->accountnumber;
+	$npi = $mmdata->MedicationAdmin->npinumber;
+	$patientid = $mmdata->MedicationAdmin->patientid;
+	$holdobj = $mmdata->MedicationAdmin->holdobjec;
+	$ordernumber = $mmdata->MedicationAdmin->ordernumber;
+	var_dump($holdobj);
+  }
   elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="InsertAdminMecationInfo")
   {
 	  //Medication Paramaters 
@@ -606,7 +615,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 
 		print(json_encode($updateMedinformation,JSON_PRETTY_PRINT));
 	 }
-	 elseif(is_array($checkifmedExist) && $checkifmedExist["count"] <="0" && $medsettings=="")
+	 elseif(is_array($checkifmedExist) && $checkifmedExist["count"] <=0 && $medsettings=="")
 	 {
 		/*Mecication Does not exist and we should be ready to update 
 		*We are going to update each seaction in seperate functions 
@@ -799,25 +808,27 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 						
 					}
 					else{
-						//Roll back transaction and then send payload error 
+						/*Roll back transaction and then send payload error || You can send an Admin or Email notification since this section isn't a crictical 
+						requirement*/
 						var_dump($insertPrescription);
 						var_dump("Insertion of the Prescription didn't work successfully, Roll back transaction");
 					}
 				}
 				else{
-					//return error and possibly need to roll back the entire transaction . So roll back the transaction and then send payload on Error
-					var_dump("medicsation wasn't inserted successfully");
+					/*return error and possibly need to roll back the entire transaction . So roll back the transaction and then send payload on Error
+					*Orders and Medications will need to be deleted from DB by account, order and patient id */
+					var_dump("medicsation wasn't inserted successfully, We need to roll things back");
 				}
 			}
 			else{
-				//We need to send the user and the system a return message letting them know that the entire mediation didn't get added successfully
+				//We need to send the user and the system a return message letting them know that the entire Order  didn't get added successfully
 			}
 		}
 		//set the order variables needed for the orders template 
 		
 	
 
-	 }
+	}
 	 else{
 		//var_dump($checkifmedExist);
 		var_dump("Okaaay");
@@ -827,9 +838,9 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	 var_dump($checkifmedExist);
 	 $insertMedication = $processData->InsertAdminAppMedication($accountnumber,$ordernumber,$medname,$ndcnumber,$rx,$diagnois,$dosage,$freq,$route,$prn,$quantity);
 	 if($insertMedication !="" && is_array($insertMedication))
-	{
-		print(json_encode($insertMedication,JSON_PRETTY_PRINT));
-	}
+		{
+			print(json_encode($insertMedication,JSON_PRETTY_PRINT));
+		}
 	
   }
   elseif(isset($mmdata->NursyInfo) && $mmdata->NursyInfo->API_Meth=="DischargePatientFromCard")

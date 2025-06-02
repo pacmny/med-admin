@@ -83,6 +83,9 @@
       auto-apply
       text-input
       class="status-datepicker"
+      multi-dates
+      :format="'yyyy-mm-dd'"
+      :show-time="false"
     />
 
     <!-- Reason input -->
@@ -149,8 +152,9 @@ const emit = defineEmits<{
 const timeSelection = ref<'all' | 'specific'>('all')
 
 // Single date
-const selectedDate = ref<Date | null>(null)
-
+//const selectedDate = ref<Date | null>(null)
+//multiple dates 
+const selectedDate = ref<Date[]>([]); // Use an array to hold multiple dates
 // Times user checked if timeSelection='specific'
 const selectedTimes = ref<string[]>([])
 
@@ -182,7 +186,7 @@ function handleSubmit() {
   if (!isValid.value || !selectedDate.value) return
 
   // Single day => wrap in [start,end] for the parent
-  const dateRange: [Date, Date] = [ selectedDate.value, selectedDate.value ]
+  const dateRange: [Date, Date] = [ selectedDate.value[0], selectedDate.value[1] ]
 
   emit('submit', {
     dateRange,
@@ -193,7 +197,7 @@ function handleSubmit() {
   })
 
   // Reset
-  selectedDate.value = null
+  selectedDate.value = [];//null
   selectedTimes.value = []
   reasonValue.value = ''
   timeSelection.value = 'all'

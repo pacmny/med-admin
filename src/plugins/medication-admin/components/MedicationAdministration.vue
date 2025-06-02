@@ -1361,6 +1361,8 @@ function handleHoldSubmit(data: {
 }) {
   if (!selectedMedicationForHold.value) return
   const medication = selectedMedicationForHold.value
+  console.log("HandleHoldSubmit Med");
+  console.log(medication);
   const discDate = normalizeToMidnight(data.dateRange[0])
 
   if (data.statusOption === 'discontinue') {
@@ -1398,10 +1400,24 @@ function handleHoldSubmit(data: {
   }
 
   medication.holdInfo = {
+    medname: medication.medname,
     dateRange: data.dateRange,
     times: data.times,
     reason: data.reason,
     type: data.holdType
+  }
+  let ask = confirm("Are you sure you want to hold this medication?");
+  if(ask==true)
+  {
+    alert("Lets process");
+    holdMedication(medication.holdInfo);
+    //send to backend 
+    //we are going to assume everything went well and are going to go ahead and close the showHolder Selector and the SelectedMedicationfor Hold comp
+  }
+  else{
+    //do nothing but lets go ahead and still close the modalss 
+    showHoldSelector.value = false
+    selectedMedicationForHold.value = null
   }
   console.log("Med Hold Status that is to be sent over for process");
   console.log(medication.holdInfo);
@@ -1786,7 +1802,53 @@ function finalSignOff() {
   pendingTransactions.value = []
   showSignOffPopup.value = false
 }
+//-------Hold Medication Axios Call --------//
+async function holdMedication(medholddata:object)
+{
+   let content = {
+    MedicationAdmin:{
+      API_Meth:"HoldMedication",
+      accountnumber:"904575107",
+      npinumber:"123456789",
+      patientid:"709081242",
+      ordernumber:"36",
+      holdobjec:medholddata
+    }
+   }
+   axios.post('https://medadministration:8890/keyon/tswebhook.php',content)
+   .then(response => {
+    console.log(response.data);
+    if(response.data && response.data.message =="Updated")
+         {
+           let returnmsg="";
+           returnmsg="Medication Held Successfully";
+           alert(returnmsg);
+           //showAddForm.value = false;
+           loadMedications();
+           return ;
 
+         }
+         else{
+           //now lets add the information to the Appropriate tables 
+           let returnmsg="";
+           returnmsg="Medications Sign Off was unsuccessfull";
+
+           return returnmsg;
+           //alert("Meciation Settings Not Updated Successfully, Please try again later");
+         }
+   })
+   .catch(error => {
+    if (axios.isAxiosError(error)) {  
+             console.error('Error posting data:', error.response?.data || error.message);     
+          //  errorMessage = error.response?.data?.message || 'An error occurred while posting data.';  
+           } 
+            else {          
+              console.log('Unexpected error:', error);         
+            //  errorMessage = 'An unexpected error occurred. Please try again.'; 
+            }    
+   });
+   
+}
 //--------FinalSignOff Async Axios Call ------//
 async function medFinalSignOff(pendingTrans:object)
 {
