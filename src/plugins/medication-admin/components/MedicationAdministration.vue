@@ -125,7 +125,12 @@
                   :data-med-index="medIndex"
                 >
                   <!-- Medication Info -->
-                  <td class="sticky-column-1">
+                  <td class="sticky-column-1" :style="{
+                              backgroundColor:
+                                med.temporaryStatus ==='hold'
+                                  ? '#fff3cd'
+                                  : '#f8f9fa'
+                            }">
                     <ExpandableDetails
                       :medication="med"
                       @update="handleMedicationUpdate"
@@ -205,7 +210,10 @@
                                   ? '#b3f0b3'
                                   : timeObj.locked && timeObj.status === 'refused'
                                   ? '#f9b3b3'
+                                  : timeObj.locked && timeObj.status ==='hold'
+                                  ? '#fff3cd'
                                   : 'transparent'
+                                  
                             }"
                           >
                             {{ timeObj.time }}
@@ -240,6 +248,8 @@
                                   ? '#b3f0b3'
                                   : timeObj.locked && timeObj.status === 'refused'
                                   ? '#f9b3b3'
+                                  : timeObj.locked && timeObj.status ==='hold'
+                                  ? '#fff3cd'
                                   : 'transparent'
                             }"
                           >
@@ -699,20 +709,7 @@ async function loadpastProv()
     console.error("Error Posting to Past Provider enpoint:",error);
   }
 }
-//axios goes here 
-async function loadMedications2() {
-     try{
-      let content = {
-        API_Meth: "GetPatientMeds",
-        pid: "70894333",
-        accountId: "9048544",
-      };
-      const res = await axios.post('https://api.example.com/submit', content);    
-       response = res.data; // Handle the response     
-       } catch (error) {  
-      console.error('Error posting data:', error);     
-     }
-    }
+
 function extractBaseTime(rawTime: string): string {
   return rawTime.split('(')[0].trim()
 }
@@ -1278,6 +1275,10 @@ const length = ref<number>(0);
         {
           lockedstatus =true;
         }
+        if(medtakenstats.value=="hold")
+        {
+          lockedstatus = true;
+        }
         const dosageNum = parseInt(med.med_amount || '1', 10);
         med.dates![dStr] = splitted.map(t => ({
           time:t +" (taken at"+" "+acttakentimes[0]+")",
@@ -1291,7 +1292,7 @@ const length = ref<number>(0);
         console.log(med.dates[dStr]);
       } 
       else{
-        alert(med.dates![dStr]);
+        console.log(med.dates![dStr]);
       }
       
     })
@@ -1401,15 +1402,16 @@ function handleHoldSubmit(data: {
 
   medication.holdInfo = {
     medname: medication.medname,
+    medentryid:medication.medentryid,
     dateRange: data.dateRange,
     times: data.times,
     reason: data.reason,
-    type: data.holdType
+    type: data.holdType,
+    status:data.statusOption
   }
   let ask = confirm("Are you sure you want to hold this medication?");
   if(ask==true)
   {
-    alert("Lets process");
     holdMedication(medication.holdInfo);
     //send to backend 
     //we are going to assume everything went well and are going to go ahead and close the showHolder Selector and the SelectedMedicationfor Hold comp
@@ -1818,31 +1820,32 @@ async function holdMedication(medholddata:object)
    axios.post('https://medadministration:8890/keyon/tswebhook.php',content)
    .then(response => {
     console.log(response.data);
-    if(response.data && response.data.message =="Updated")
+    if(response.data && response.data.result =="Updated")
          {
            let returnmsg="";
            returnmsg="Medication Held Successfully";
            alert(returnmsg);
            //showAddForm.value = false;
            loadMedications();
+           populateMedicationTable();
            return ;
 
          }
-         else{
+         else if(response.data && response.data.message){
            //now lets add the information to the Appropriate tables 
-           let returnmsg="";
-           returnmsg="Medications Sign Off was unsuccessfull";
-
-           return returnmsg;
+           
+           alert(response.data.message);
            //alert("Meciation Settings Not Updated Successfully, Please try again later");
          }
    })
    .catch(error => {
     if (axios.isAxiosError(error)) {  
+           alert("Code:340 - System issue. Please contact system support");
              console.error('Error posting data:', error.response?.data || error.message);     
           //  errorMessage = error.response?.data?.message || 'An error occurred while posting data.';  
            } 
-            else {          
+            else {       
+              alert("Opps, we hit an unexpectant snag, please contact your system administrator if this error presist.");   
               console.log('Unexpected error:', error);         
             //  errorMessage = 'An unexpected error occurred. Please try again.'; 
             }    

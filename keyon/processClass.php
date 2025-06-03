@@ -143,6 +143,21 @@ public function ImportPatients($filepath,$fhandle)
 	}
 	//var_dump($dbdata);
 }
+public function holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid)
+{
+	$updatestat = $this->sclass->holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid);
+	return $updatestat;
+}
+public function HoldOrderByOrdnumPatId($accountnumber,$pid,$ordernum,$status)
+{
+	$holdorder = $this->sclass->HoldOrderByOrdnumPatId($accountnumber,$pid,$ordernum,$status);
+	return $holdorder;
+}
+public function changedMedicationStatusByAPMID($patientid,$accountnumber,$medname,$medentryid,$medchangestat,$meadchangereason,$medtimes,$dtrange)
+{
+	$updateMedStatus = $this->sclass->changedMedicationStatusByAPMID($patientid,$accountnumber,$medname,$medentryid,$medchangestat,$meadchangereason,$medtimes,$dtrange);
+	return $updateMedStatus;
+}
 public function processMedTimes($accountnumber,$patientid,$signoffobj)
 {
 	if(!empty($signoffobj))

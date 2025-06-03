@@ -195,6 +195,83 @@ class SQLData{
             return $msgar;
         }
     }
+    public function holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid)
+    {
+       
+        $sql="UPDATE `medicationlog` SET status=:medchngstatus WHERE accountnumber=:accnt AND patientid=:patid AND medicationid=:mid";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":medchngstatus",$medchangestat);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":mid",$medentryid);
+        try{
+
+            if($stmnt->execute())
+            {
+                $msgar = array("code"=>"200 Successfull","results"=>"Updated");
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-Sql error","error"=>$e->__toString(),"message"=>"Sorry, we're not able to hold this medication (med log tbl) at this time due to system failaure. Please contact 
+            you system administrator should this error persist");
+            return $msgar;
+        }
+    }
+    public function HoldOrderByOrdnumPatId($accountnumber,$pid,$ordernum,$status)
+    {
+       // var_dump($pid." ".$medentryid." ".$ordernum." ".$dcdate." ".$transtype);
+        $sql="UPDATE orders SET status=:chngstatus WHERE patientid=:patid and accountnumber=:accnt AND ordernumber=:ordnum";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":chngstatus",$status);
+        $stmnt->bindParam(":patid",$pid);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":ordnum",$ordernum);
+        try{
+            if($stmnt->execute())
+            {
+                $result = "Updated";
+                $msgar = array("code"=>"200 Successfully","result"=>$result);
+               //var_dump($msgar);
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msar = array("error"=>$e->__toString(),"message"=>"Sorry, the app is experiencing technical difficulties and please notify you're administrator should the problem persist.");
+            return $msar;
+        }
+    }
+    public function changedMedicationStatusByAPMID($patientid,$accountnumber,$medname,$medentryid,$medchangestat,$medchangereason,$medtimes,$dtrange)
+    {
+        $todaydt = new DateTime();
+        $formatdate = $todaydt->format('Y-m-d H:i:s');
+        $sql="UPDATE `medications` SET medchangetype=:medchngstatus,dt_medchanged=:medDtchange,status=:medchngstatus,medchangreason=:changereason,medholddates=:changedates,medstatustimes=:medtimes WHERE accountnumber=:accnt AND patient_id=:patid AND medentryid=:mid";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":medchngstatus",$medchangestat);
+        $stmnt->bindParam(":medDtchange",$formatdate);
+        $stmnt->bindParam(":changereason",$medchangereason);
+        $stmnt->bindParam(":changedates",$dtrange);
+        $stmnt->bindParam(":medtimes",$medtimes);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":mid",$medentryid);
+        try{
+
+            if($stmnt->execute())
+            {
+                $msgar = array("code"=>"200 Successfull","results"=>"Updated");
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-Sql error","error"=>$e->__toString(),"message"=>"Sorry, we're not able to hold this medication at this time due to system failaure. Please contact 
+            you system administrator should this error persist");
+            return $msgar;
+        }
+    }
     public function updateRemainingTabs($accountnumber,$patientid,$medid,$remainingtablets)
     {
         $sql="UPDATE `medications` SET available=:tabsavailable WHERE accountnumber=:accnt AND patient_id=:patid AND medentryid=:mid";

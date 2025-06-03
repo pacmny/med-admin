@@ -547,12 +547,46 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$patientid = $mmdata->MedicationAdmin->patientid;
 	$holdobj = $mmdata->MedicationAdmin->holdobjec;
 	$ordernumber = $mmdata->MedicationAdmin->ordernumber;
-	var_dump($holdobj);
-	$medname = $mmdata->MedicationAdmin->medname;
-	$dtrange = $mmdata->MedicationAdmin->dateRange;//should be an array 
-	$hldtimes = $mmdata->MedicationAdmin->times;//should be an array also 
-	$reason = $mmdata->MedicationAdmin->reason; //Reason we held the medication 
-	$holdtype = $mmdata->MedicationAdmin->type; //Hold type 
+	//var_dump($holdobj);
+	$medname = $mmdata->MedicationAdmin->holdobjec->medname;
+	$dtrange = json_encode($mmdata->MedicationAdmin->holdobjec->dateRange);//should be an array 
+	$medtimes = json_encode($mmdata->MedicationAdmin->holdobjec->times);//should be an array also 
+	$meadchangereason = $mmdata->MedicationAdmin->holdobjec->reason; //Reason we held the medication 
+	$medchangedates = $mmdata->MedicationAdmin->holdobjec->
+	$holdtype = $mmdata->MedicationAdmin->holdobjec->type; //Hold ty
+	$medentryid = $mmdata->MedicationAdmin->holdobjec->medentryid;
+	$medchangestat = $mmdata->MedicationAdmin->holdobjec->status;
+	//find the medication id of the active medication by name 
+	$findmedid = $processData->changedMedicationStatusByAPMID($patientid,$accountnumber,$medname,$medentryid,$medchangestat,$meadchangereason,$medtimes,$dtrange);
+	//var_dump($findmedid);
+	if(!empty($findmedid) && $findmedid["results"]=="Updated")
+	{
+		//Now lets update the automated framework (orders,)
+		$holdorder = $processData->HoldOrderByOrdnumPatId($accountnumber,$patientid,$ordernumber,$medchangestat);
+		
+		if(!empty($holdorder) && $holdorder["results"]=="Updated")
+		{
+			//now update the medicationlog table 
+			$updatemedlog = $processData->holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid);
+			
+			if(!empty($updatemedlog) && $updatemedlog["results"]=="Updated")
+			{
+				print(json_encode($updatemedlog,JSON_PRETTY_PRINT));
+			}
+			else{
+				print(json_encode($updatemedlog,JSON_PRETTY_PRINT));
+			}
+			
+		}
+		else{
+			print(json_encode($holdorder,JSON_PRETTY_PRINT));
+		}
+		//print(json_encode($findmedid,JSON_PRETTY_PRINT));
+	}
+	else{
+		//I need to send an error back to the front-end in this section
+		print(json_encode($findmedid,JSON_PRETTY_PRINT)); //should pass the error message to the front-end
+	}
   }
   elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="InsertAdminMecationInfo")
   {
