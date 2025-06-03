@@ -595,376 +595,6 @@
     </div>
   </transition>
 </template>
-
-<script setup lang="ts">
-import { ref, computed, watch, defineProps, defineEmits } from 'vue'
-
-interface MedicationFormData {
-  medicationName: string;
-  ndcNumber: string;
-  rxNorm: string;
-  diagnosis: string;
-  dosage: string;
-  unitType: string;
-  frequency: string;
-  route: string;
-  duration: string;
-  fluidType: string;
-  prn: boolean;
-  quantity: number;
-
-  totalVolume: string;
-  totalVolumeUnit: string;
-  rate: string;
-  howLong: string;
-  startTime: string;
-  endTime: string;
-  via: string;
-
-  sqInjectionSite: string;
-  idInjectionSite: string;
-  imInjectionSite: string;
-
-  rxNumber: string;
-  filledDate: string;
-  refills: number;
-  startDate: string;
-  endDate: string;
-  refillReminderDate: string;
-  expirationDate: string;
-
-  providerName: string;
-  providerDea: string;
-  providerNpi: string;
-  licenseNumber: string;
-  providerAddress: string;
-  providerOffice: string;
-  providerCell: string;
-  providerEmail: string;
-
-  pharmacyName: string;
-  pharmacyDea: string;
-  pharmacyNpi: string;
-  pharmacyAddress: string;
-  pharmacyOffice: string;
-  pharmacyCell: string;
-  pharmacyEmail: string;
-
-  nurseSignature: string;
-}
-
-const props = defineProps<{
-  show: boolean;
-  existingMedication?: Partial<MedicationFormData> | null;
-}>()
-
-const emit = defineEmits<{
-  (e: 'close'): void;
-  (e: 'save', payload: MedicationFormData & { isEdit: boolean }): void;
-}>()
-
-const dosageOptions = [
-  "Actuation","Ampule","Application","Applicator","Auto-Injector","Bar","Capful","Caplet","Capsule",
-  "Cartridge","Centimeter","Disk","Dropperful","Each","Film","Fluid Ounce","Gallon","Gram","Gum","Implant",
-  "Inch","Inhalation","Injection","Insert","Liter","Lollipop","Lozenge","Metric Drop","Microgram",
-  "Milliequivalent","Milligram","Milliliter","Nebule","Ounce","Package","Packet","Pad","Patch","Pellet",
-  "Pill","Pint","Pre-filled Pen Syringe","Puff","Pump","Ring","Sachet","Scoopful","Sponge","Spray","Stick",
-  "Strip","Suppository","Swab","Syringe","Tablet","Troche","Unit","Vial","Wafer"
-]
-
-const formData = ref<MedicationFormData>({
-  medicationName: '',
-  ndcNumber: '',
-  rxNorm: '',
-  diagnosis: '',
-  dosage: '',
-  unitType: '',
-  frequency: '',
-  route: '',
-  duration: '',
-  fluidType: '',
-  prn: false,
-  quantity: 0,
-
-  totalVolume: '',
-  totalVolumeUnit: 'ml',
-  rate: '',
-  howLong: '',
-  startTime: '',
-  endTime: '',
-  via: '',
-
-  sqInjectionSite: '',
-  idInjectionSite: '',
-  imInjectionSite: '',
-
-  rxNumber: '',
-  filledDate: '',
-  refills: 0,
-  startDate: '',
-  endDate: '',
-  refillReminderDate: '',
-  expirationDate: '',
-
-  providerName: '',
-  providerDea: '',
-  providerNpi: '',
-  licenseNumber: '',
-  providerAddress: '',
-  providerOffice: '',
-  providerCell: '',
-  providerEmail: '',
-
-  pharmacyName: '',
-  pharmacyDea: '',
-  pharmacyNpi: '',
-  pharmacyAddress: '',
-  pharmacyOffice: '',
-  pharmacyCell: '',
-  pharmacyEmail: '',
-
-  nurseSignature: ''
-})
-
-const tabs = [
-  { value: 'medInfo',          label: 'Medication Information' },
-  { value: 'prescriptionInfo', label: 'Prescription Information' },
-  { value: 'providerInfo',     label: 'Provider Information' },
-  { value: 'pharmacyInfo',     label: 'Pharmacy Information' }
-]
-const activeTab = ref('medInfo')
-const isEditMode = computed(() => !!props.existingMedication)
-
-// Require name, dosage, frequency, and route
-const isFormValid = computed(() =>
-  formData.value.medicationName.trim() !== '' &&
-  formData.value.dosage.trim() !== '' &&
-  formData.value.frequency !== '' &&
-  formData.value.route !== ''
-)
-
-watch(() => props.existingMedication, (newVal) => {
-  if (newVal) {
-    formData.value = { ...formData.value, ...newVal }
-  } else {
-    resetForm()
-  }
-}, { immediate: true })
-
-watch(() => props.show, (visible) => {
-  if (!visible) resetForm()
-})
-
-function resetForm() {
-  formData.value = {
-    medicationName: '',
-    ndcNumber: '',
-    rxNorm: '',
-    diagnosis: '',
-    dosage: '',
-    unitType: '',
-    frequency: '',
-    route: '',
-    duration: '',
-    fluidType: '',
-    prn: false,
-    quantity: 0,
-
-    totalVolume: '',
-    totalVolumeUnit: 'ml',
-    rate: '',
-    howLong: '',
-    startTime: '',
-    endTime: '',
-    via: '',
-
-    sqInjectionSite: '',
-    idInjectionSite: '',
-    imInjectionSite: '',
-
-    rxNumber: '',
-    filledDate: '',
-    refills: 0,
-    startDate: '',
-    endDate: '',
-    refillReminderDate: '',
-    expirationDate: '',
-
-    providerName: '',
-    providerDea: '',
-    providerNpi: '',
-    licenseNumber: '',
-    providerAddress: '',
-    providerOffice: '',
-    providerCell: '',
-    providerEmail: '',
-
-    pharmacyName: '',
-    pharmacyDea: '',
-    pharmacyNpi: '',
-    pharmacyAddress: '',
-    pharmacyOffice: '',
-    pharmacyCell: '',
-    pharmacyEmail: '',
-
-    nurseSignature: ''
-  }
-}
-
-function handleSave() {
-  emit('save', {
-    ...formData.value,
-    isEdit: isEditMode.value
-  })
-  resetForm()
-}
-
-function handleCancel() {
-  emit('close')
-  resetForm()
-}
-
-watch(
-  [() => formData.value.totalVolume, () => formData.value.rate, () => formData.value.totalVolumeUnit],
-  () => {
-    const vol = parseFloat(formData.value.totalVolume) || 0
-    let numericRate = parseFloat(formData.value.rate) || 0
-    if (!numericRate) {
-      const match = formData.value.rate.match(/(\d+(\.\d+)?)/)
-      if (match) numericRate = parseFloat(match[1])
-    }
-    const finalVolumeInMl =
-      formData.value.totalVolumeUnit === 'liter' ? vol * 1000 : vol
-    let hours = numericRate > 0 ? finalVolumeInMl / numericRate : 0
-    formData.value.howLong = hours > 0 ? hours.toFixed(2) : ''
-  }
-)
-
-watch(
-  [() => formData.value.howLong, () => formData.value.startTime],
-  () => {
-    if (!formData.value.howLong || !formData.value.startTime) {
-      formData.value.endTime = ''
-      return
-    }
-    const [startH, startM] = formData.value.startTime.split(':').map(Number)
-    const hoursFloat = parseFloat(formData.value.howLong)
-    if (isNaN(hoursFloat) || isNaN(startH)) {
-      formData.value.endTime = ''
-      return
-    }
-    const totalMinutes = Math.round(hoursFloat * 60)
-    let newH = startH
-    let newM = startM + totalMinutes
-    newH += Math.floor(newM / 60)
-    newM = newM % 60
-    const hh = String(newH % 24).padStart(2, '0')
-    const mm = String(newM).padStart(2, '0')
-    formData.value.endTime = `${hh}:${mm}`
-  }
-)
-</script>
-
-<style scoped>
-.fade-enter-active, .fade-leave-active {
-  transition: opacity 0.2s;
-}
-.fade-enter, .fade-leave-to {
-  opacity: 0;
-}
-
-.modal-overlay {
-  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-  background-color: rgba(0,0,0,0.5);
-  display: flex; justify-content: center; align-items: center;
-  z-index: 1000;
-}
-.modal-content {
-  background-color: #fff;
-  width: 80%; max-width: 800px;
-  border-radius: 8px;
-  padding: 2rem;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
-  max-height: 80%;
-  overflow: scroll;
-}
-.modal-title {
-  margin-top: 0; text-align: center; margin-bottom: 1rem;
-}
-
-.tabs {
-  display: flex; margin-bottom: 1rem; border-bottom: 1px solid #ccc;
-}
-.tab-button {
-  flex: 1; text-align: center; background: none; border: none;
-  padding: 0.75rem; cursor: pointer; font-weight: 500; transition: background-color 0.2s;
-}
-.tab-button:hover { background-color: #f2f2f2; }
-.tab-button.active {
-  background-color: #e6f4f4;
-  border-bottom: 3px solid #0c8687;
-}
-
-.tab-panel { margin: 1rem 0; }
-.section-title {
-  margin: 1rem 0; font-size: 1.1rem;
-  border-bottom: 2px solid #0c8687;
-  color: #333; padding-bottom: 0.5rem;
-}
-
-.form-group {
-  margin-bottom: 1rem; display: flex; flex-direction: column;
-}
-.form-group label { font-weight: 500; margin-bottom: 0.3rem; }
-.required { color: red; }
-.form-group input, .form-group select {
-  padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px;
-}
-.checkbox-group {
-  display: flex; align-items: center; gap: 0.5rem;
-}
-.form-row { display: flex; gap: 1rem; }
-.form-row .form-group { flex: 1; }
-
-.dosage-group { display: flex; flex-direction: column; }
-.dosage-row {
-  display: flex; gap: 0.5rem; align-items: center;
-}
-.dosage-input { flex: 0 0 80px; }
-.dosage-select { flex: 1; }
-
-.volume-rate-row { display: flex; gap: 1rem; }
-.volume-group { display: flex; flex-direction: column; }
-.volume-row {
-  display: flex; gap: 0.5rem; align-items: center;
-}
-.volume-dropdown { width: 70px; }
-
-.form-actions {
-  display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;
-}
-.btn-cancel, .btn-save {
-  padding: 0.6rem 1.2rem; border-radius: 4px; border: none; cursor: pointer; font-weight: 500;
-}
-.btn-cancel {
-  background-color: #6c757d; color: #fff;
-}
-.btn-cancel:hover {
-  background-color: #5a6268;
-}
-.btn-save {
-  background-color: #0c8687; color: #fff;
-}
-.btn-save:hover {
-  background-color: #0a7273;
-}
-.btn-save:disabled {
-  background-color: #b2d8d8;
-  cursor: not-allowed;
-}
-</style>
-
-
 <!-- BACKEND SCRIPT MERGED -->
 <script setup lang="ts">
 import { ref, defineProps, defineEmits } from 'vue'
@@ -1348,3 +978,101 @@ function loadPastProviders()
   emit('loadprov');
 }
 </script>
+<style scoped>
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.2s;
+}
+.fade-enter, .fade-leave-to {
+  opacity: 0;
+}
+
+.modal-overlay {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background-color: rgba(0,0,0,0.5);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 1000;
+}
+.modal-content {
+  background-color: #fff;
+  width: 80%; max-width: 800px;
+  border-radius: 8px;
+  padding: 2rem;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  max-height: 80%;
+  overflow: scroll;
+}
+.modal-title {
+  margin-top: 0; text-align: center; margin-bottom: 1rem;
+}
+
+.tabs {
+  display: flex; margin-bottom: 1rem; border-bottom: 1px solid #ccc;
+}
+.tab-button {
+  flex: 1; text-align: center; background: none; border: none;
+  padding: 0.75rem; cursor: pointer; font-weight: 500; transition: background-color 0.2s;
+}
+.tab-button:hover { background-color: #f2f2f2; }
+.tab-button.active {
+  background-color: #e6f4f4;
+  border-bottom: 3px solid #0c8687;
+}
+
+.tab-panel { margin: 1rem 0; }
+.section-title {
+  margin: 1rem 0; font-size: 1.1rem;
+  border-bottom: 2px solid #0c8687;
+  color: #333; padding-bottom: 0.5rem;
+}
+
+.form-group {
+  margin-bottom: 1rem; display: flex; flex-direction: column;
+}
+.form-group label { font-weight: 500; margin-bottom: 0.3rem; }
+.required { color: red; }
+.form-group input, .form-group select {
+  padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 4px;
+}
+.checkbox-group {
+  display: flex; align-items: center; gap: 0.5rem;
+}
+.form-row { display: flex; gap: 1rem; }
+.form-row .form-group { flex: 1; }
+
+.dosage-group { display: flex; flex-direction: column; }
+.dosage-row {
+  display: flex; gap: 0.5rem; align-items: center;
+}
+.dosage-input { flex: 0 0 80px; }
+.dosage-select { flex: 1; }
+
+.volume-rate-row { display: flex; gap: 1rem; }
+.volume-group { display: flex; flex-direction: column; }
+.volume-row {
+  display: flex; gap: 0.5rem; align-items: center;
+}
+.volume-dropdown { width: 70px; }
+
+.form-actions {
+  display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;
+}
+.btn-cancel, .btn-save {
+  padding: 0.6rem 1.2rem; border-radius: 4px; border: none; cursor: pointer; font-weight: 500;
+}
+.btn-cancel {
+  background-color: #6c757d; color: #fff;
+}
+.btn-cancel:hover {
+  background-color: #5a6268;
+}
+.btn-save {
+  background-color: #0c8687; color: #fff;
+}
+.btn-save:hover {
+  background-color: #0a7273;
+}
+.btn-save:disabled {
+  background-color: #b2d8d8;
+  cursor: not-allowed;
+}
+</style>
