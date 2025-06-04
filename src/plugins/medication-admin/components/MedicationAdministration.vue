@@ -264,7 +264,7 @@
                             :key="timeObj.time"
                             class="time-entry"
                             :class="[timeObj.status, timeObj.temporaryStatus, { discontinued: timeObj.status === 'discontinue' }]"
-                            @click="!timeObj.locked && openActionPopup(dateObj, timeObj, med)"
+                            @click="!timeObj.locked && handleTimeClick(dateObj, timeObj, med)"
                             :style="{
                               backgroundColor:
                                 timeObj.locked && timeObj.status === 'taken'
@@ -316,6 +316,13 @@
                             >
                               ℹ️
                             </span>
+
+                            <BarcodeScanner
+    v-if="scannerContext && scannerContext.timeObj === timeObj"
+    @scanned="onBarcodeScanned"
+    @close="scannerContext = null"
+    :active="true"
+  />
                           </div>
                         </template>
                       </template>
@@ -574,6 +581,8 @@
         </div>
       </div>
     </div>
+   
+
   </div>
 </template>
 <script setup lang="ts">
@@ -584,6 +593,7 @@ import 'flatpickr/dist/flatpickr.css'
 import flatpickr from 'flatpickr'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
+import BarcodeScanner from './barcode-scanner/BarcodeScanner.vue'
 
 /** How many future days to populate scheduled times. */
 const FUTURE_DAYS_TO_POPULATE = 365
@@ -689,6 +699,9 @@ const collapsed = ref(true)
 function toggleCollapse() {
   collapsed.value = !collapsed.value
 }
+
+const showBarcodeScanner = ref(false)
+const scannerContext = ref<{ med: Medication, timeObj: any, dateObj: Date } | null>(null)
 
 // Add/edit med
 const showAddForm = ref(false)
@@ -1495,6 +1508,28 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   }
 
   return slots
+}
+
+function onBarcodeScanned(barcode: string) {
+  if (scannerContext.value) {
+    scannerContext.value.timeObj.temporaryStatus = 'taken'
+    alert('Scanned barcode: ' + barcode)
+  }
+  scannerContext.value = null
+}
+
+function handleTimeClick(dateObj: Date, timeObj: any, med: Medication) {
+  const now = new Date()
+  const isToday =
+    dateObj.getFullYear() === now.getFullYear() &&
+    dateObj.getMonth() === now.getMonth() &&
+    dateObj.getDate() === now.getDate()
+  if (isToday) {
+    scannerContext.value = { med, timeObj, dateObj }
+    // showBarcodeScanner.value = true
+  } else {
+    openActionPopup(dateObj, timeObj, med)
+  }
 }
 
 function openActionPopup(dateObj: Date, timeObj: any, medication: Medication) {
