@@ -575,12 +575,10 @@
       </div>
     </div>
   </transition>
-  <BarcodeScanner />
 </template>
 
 <script setup lang="ts">
 import { ref, computed, watch, defineProps, defineEmits } from 'vue'
-import BarcodeScanner from "./barcode-scanner/BarcodeScanner.vue"
 
 interface MedicationFormData {
   medicationName: string;
