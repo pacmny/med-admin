@@ -96,6 +96,14 @@
       class="status-reason"
     />
 
+    <!-- Nurse Signature input -->
+    <input
+      v-model="nurseSignature"
+      type="text"
+      placeholder="Enter Nurse Signature"
+      class="nurse-signature"
+    />
+
     <!-- Submit/Cancel -->
     <div class="action-buttons">
       <button
@@ -161,6 +169,9 @@ const selectedTimes = ref<string[]>([])
 // Reason
 const reasonValue = ref('')
 
+// Nurse signature
+const nurseSignature = ref('')
+
 // Dynamic placeholder text
 const reasonPlaceholder = computed(() => {
   if (props.statusOption === 'new') {
@@ -171,9 +182,9 @@ const reasonPlaceholder = computed(() => {
   return 'Enter reason for hold'
 })
 
-// Form is valid if we have a date + reason, and times if "specific"
+// Form is valid if we have a date, reason, nurse signature, and times (if "specific")
 const isValid = computed(() => {
-  if (!selectedDate.value || !reasonValue.value.trim()) {
+  if (!selectedDate.value || !reasonValue.value.trim() || !nurseSignature.value.trim()) {
     return false
   }
   if (timeSelection.value === 'specific' && selectedTimes.value.length === 0) {
@@ -193,13 +204,15 @@ function handleSubmit() {
     times: (timeSelection.value === 'specific') ? selectedTimes.value : null,
     reason: reasonValue.value.trim(),
     holdType: timeSelection.value,
-    statusOption: props.statusOption
+    statusOption: props.statusOption,
+    nurseSignature: nurseSignature.value.trim()
   })
 
   // Reset
   selectedDate.value = [];//null
   selectedTimes.value = []
   reasonValue.value = ''
+  nurseSignature.value = ''
   timeSelection.value = 'all'
 }
 </script>
@@ -281,8 +294,9 @@ function handleSubmit() {
   width: 100%;
 }
 
-/* Reason input */
-.status-reason {
+/* Reason + Nurse signature */
+.status-reason,
+.nurse-signature {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid #ddd;
@@ -290,7 +304,8 @@ function handleSubmit() {
   font-size: 14px;
   margin-top: -4px;
 }
-.status-reason:focus {
+.status-reason:focus,
+.nurse-signature:focus {
   outline: none;
   border-color: #0C8687;
   box-shadow: 0 0 0 2px rgba(12, 134, 135, 0.1);

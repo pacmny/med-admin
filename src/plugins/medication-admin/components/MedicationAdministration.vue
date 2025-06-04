@@ -103,7 +103,7 @@
                   <th class="sticky-header-1">Medication Details</th>
                   <!-- Hide these columns if collapsed -->
                   <th v-if="!collapsed" class="sticky-header-2">Status</th>
-                  <th v-if="!collapsed" class="sticky-header-3">Tabs Available</th>
+                  <th v-if="!collapsed" class="sticky-header-3">Amount Available</th>
                   <th v-if="!collapsed" class="sticky-header-4">Frequency</th>
                   <th v-if="!collapsed" class="sticky-header-5">Dosage</th>
                   <th v-if="!collapsed" class="sticky-header-6">Select Time and Dosage</th>
@@ -124,21 +124,24 @@
                   :class="getRowStatusClass(med)"
                   :data-med-index="medIndex"
                 >
-                  <!-- Medication Info -->
-                  <td class="sticky-column-1" :style="{
-                              backgroundColor:
-                                med.temporaryStatus ==='hold'
-                                  ? '#fff3cd'
-                                  : '#f8f9fa'
-                            }">
-                    <ExpandableDetails
-                      :medication="med"
-                      @update="handleMedicationUpdate"
+                  <!-- Medication Info: clickable name => edit 
+                       PLUS the new tooltip icon showing the nurse/time from Add New Medication -->
+                  <td class="sticky-column-1">
+                    <span
+                      class="medication-link"
+                      @click="openMedicationForm(med)"
                     >
-                      <template #preview>
-                        {{ med.medname }}
-                      </template>
-                    </ExpandableDetails>
+                      {{ med.name }}
+                    </span>
+                    <!-- Tooltip icon for nurse/time from Add New Medication -->
+                    <span
+                      v-if="getAddMedicationTooltip(med)"
+                      class="tooltip-icon"
+                      :title="getAddMedicationTooltip(med)"
+                      style="margin-left: 4px;"
+                    >
+                      ℹ️
+                    </span>
                   </td>
 
                   <!-- Status (hidden if collapsed) -->
@@ -169,11 +172,28 @@
                         class="tabs-input"
                       />
                     </div>
+                    <!-- Dosage type dropdown (unitType) -->
+                    <div class="unit-dropdown">
+                      <select v-model="med.unitType" class="unit-select">
+                        <option value="" disabled>Select Dosage Type</option>
+                        <option
+                          v-for="option in unitOptions"
+                          :key="option"
+                          :value="option"
+                        >
+                          {{ option }}
+                        </option>
+                      </select>
+                    </div>
                   </td>
 
                   <!-- Frequency & Dosage (hidden if collapsed) -->
-                  <td v-if="!collapsed" class="sticky-column-4">{{ med.med_frequency || 'Not set' }}</td>
-                  <td v-if="!collapsed" class="sticky-column-5">{{ med.med_amount || 'Not set' }}</td>
+                  <td v-if="!collapsed" class="sticky-column-4">
+                    {{ med.frequency || 'Not set' }}
+                  </td>
+                  <td v-if="!collapsed" class="sticky-column-5">
+                    {{ med.med_amount || 'Not set' }}
+                  </td>
 
                   <!-- "Select Time and Dosage" Button (hidden if collapsed) -->
                   <td v-if="!collapsed" class="select-time-dosage sticky-column-6">
@@ -351,7 +371,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Dosage (tabs per admin time):</label>
+          <label>Dosage ({{selectedMedicationForTime.unitType || 'unit'}} per admin time):</label>
           <input
             type="number"
             v-model="selectedDosage"
@@ -536,7 +556,7 @@ import { useRouter } from 'vue-router'
 import 'flatpickr/dist/flatpickr.css'
 import flatpickr from 'flatpickr'
 import axios from 'axios'
-import ExpandableDetails from './ExpandableDetails.vue'
+//import ExpandableDetails from './ExpandableDetails.vue'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
 
@@ -592,6 +612,16 @@ const pastProvloaded = ref<boolean>(false);
 // Sorting
 const sortBy = ref<string>('')
 
+const unitOptions = [
+  "Actuation", "Ampule", "Application", "Applicator", "Auto-Injector", "Bar",
+  "Capful", "Caplet", "Capsule", "Cartridge", "Centimeter", "Disk", "Dropperful",
+  "Each", "Film", "Fluid Ounce", "Gallon", "Gram", "Gum", "Implant", "Inch",
+  "Inhalation", "Injection", "Insert", "Liter", "Lollipop", "Lozenge", "Metric Drop",
+  "Microgram", "Milliequivalent", "Milligram", "Milliliter", "Nebule", "Ounce",
+  "Package", "Packet", "Pad", "Patch", "Pellet", "Pill", "Pint", "Pre-filled Pen Syringe",
+  "Puff", "Pump", "Ring", "Sachet", "Scoopful", "Sponge", "Spray", "Stick", "Strip",
+  "Suppository", "Swab", "Syringe", "Tablet", "Troche", "Unit", "Vial", "Wafer"
+]
 // Default pinned date
 const currentDate = ref(new Date())
 
@@ -767,6 +797,9 @@ const routeCategories = [
   'Oral/Sublingual',
   'IVI Intravaginal',
   'SQ/IM/IV/ID',
+  'IM (Intramuscular)',  
+  'IV (Intravenous)',  
+  'ID (Intradermal)',
   'NAS Intranasal',
   'TD Transdermal',
   'TOP Topical',
@@ -785,6 +818,21 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
     grouped[diag].push(med)
   })
   return grouped
+}
+function isMedicationVisible(med: Medication): boolean {
+  if (!med.discontinuedDate) {
+    return true
+  }
+  // If there's no date range, always show
+  if (dateList.value.length === 0) {
+    return true
+  }
+  // If the earliest day is strictly after the discontinuedDate => skip
+  const earliestDay = normalizeToMidnight(dateList.value[0])
+  if (earliestDay.getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
+    return false
+  }
+  return true
 }
 const groupedMedications = computed(() => {
   let sortedMeds = [...medications.value]
@@ -826,7 +874,10 @@ const groupedMedications = computed(() => {
       })
     })
   } else if (sortBy.value === 'prn') {
+
     const prnMeds = sortedMeds.filter(med => med.prn)
+
+
     if (prnMeds.length > 0) {
       groups['PRN Medications'] = prnMeds
     }
@@ -858,8 +909,13 @@ const groupedMedications = computed(() => {
   })
   return groups
 })
+function getAddMedicationTooltip(med: Medication) {
+  if (!med.addedByNurse || !med.addedTimestamp) return ''
+  const addedTime = new Date(med.addedTimestamp).toLocaleString()
+  return `Nurse: ${med.addedByNurse}\nAdded On: ${addedTime}`
+}
+// ---------- ALL COLUMNS ----------//
 
-// ---------- ALL COLUMNS ----------
 const allColumns = computed(() => {
   if (dateList.value.length > 0) {
     const cols = dateList.value.map(d => normalizeToMidnight(d))
@@ -870,7 +926,7 @@ const allColumns = computed(() => {
   }
 })
 
-// ---------- LOAD & WATCH ----------
+// ---------- LOAD & WATCH ----------//
 async function loadMedications() {
  /* const savedMedications = localStorage.getItem('medications')
   let errorMessage=""
@@ -1074,7 +1130,7 @@ async function handleSave() {
           if (idx === -1) {
             med.dates[ds].push({ ...t })
           } else {
-            if (!med.dates[ds][idx].locked && med.dates[ds][idx].status !== 'discontinue') {
+            if (!med.dates[ds][idx].locked && med.dates[ds][idx].status !== 'discontinue' && med.dates[ds][idx].status !=='hold') {
               med.dates[ds][idx] = { ...t }
             }
           }
@@ -1135,7 +1191,6 @@ async function handleSave() {
   selectedMedicationForTime.value = null
   timeInputs.value = []
 }
-
 function handleCancel() {
   showTimeModal.value = false
   selectedMedicationForTime.value = null
@@ -1329,7 +1384,6 @@ function handleStatusChange(event: Event, medIndex: number) {
   const select = event.target as HTMLSelectElement
   const status = select.value
   medications.value[medIndex].status = status
-//alert("Its here");
   if (status === 'hold' || status === 'new' || status === 'discontinue' || status === 'change') {
     selectedMedicationForHold.value = medications.value[medIndex]
     selectedStatusOption.value = status as 'hold' | 'new' | 'discontinue' | 'change'
@@ -1339,7 +1393,7 @@ function handleStatusChange(event: Event, medIndex: number) {
   emit('statusChange', medications.value[medIndex], status)
 }
 
-// ---------- HOLD SUBMIT ----------
+// ---------- HOLD SUBMIT ----------//
 const holdTimes = computed(() => {
   if (!selectedMedicationForHold.value) return []
   const timesSet = new Set<string>()
@@ -1994,6 +2048,16 @@ function hideTooltip() {}
 </script>
 
 <style scoped>
+/* Make the medication name clickable */
+.medication-link {
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.medication-link:hover {
+  color: #0056b3;
+}
+
 /* Status Filter & Buttons */
 .status-filter {
   margin-bottom: 1.5rem;
@@ -2036,6 +2100,17 @@ function hideTooltip() {}
   align-items: center;
   gap: 1rem;
   margin-bottom: 1rem;
+}
+.add-manually-btn {
+  background-color: #0c8687;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.add-manually-btn:hover {
+  background-color: #0a7273;
 }
 .sign-off-button {
   margin-left: auto;
@@ -2092,6 +2167,7 @@ function hideTooltip() {}
   top: 0;
   z-index: 10;
   /* Ensures it spans the table width if desired */
+  
   display: block;
 }
 
@@ -2179,10 +2255,18 @@ function hideTooltip() {}
   border: 1px solid #ddd;
   border-radius: 4px;
 }
+.unit-dropdown {
+  display: inline-block;
+}
+.unit-select {
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
 
-/* Select Time and Dosage Button */
+/* Select Time and Dosage */
 .select-time-dosage {
-  /* background-color: #d4edda; */
   padding: 8px;
 }
 .select-button {
@@ -2241,8 +2325,11 @@ function hideTooltip() {}
 .time-entry.discontinue {
   background-color: #f8d7da !important;
 }
+.time-entry.hold {
+  background-color: #fff3cd;
+  color: #000;
+}
 
-/* Icons for immediate statuses */
 .icon-immediate {
   font-weight: bold;
   font-size: 1rem;
@@ -2279,7 +2366,7 @@ function hideTooltip() {}
   padding: 2rem;
   margin-top:0;
   overflow-y:scroll;
-  height:420px;
+  height:720px;
 }
 
 /* Button Rows */
@@ -2380,5 +2467,37 @@ function hideTooltip() {}
 .cancel-button {
   background-color: #6c757d;
   color: white;
+}
+
+/* Signature styling (was Sign-Off) */
+.status-time-header {
+  font-weight: bold;
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+}
+.taken-time {
+  color: #28a745;
+}
+.refused-time {
+  color: #dc3545;
+}
+.sign-off-item {
+  display: flex;
+  align-items: center;
+  margin-left: 1.5rem;
+  margin-bottom: 8px;
+}
+.taken-icon {
+  color: #28a745;
+  margin-right: 0.4rem;
+  font-size: 1.1rem;
+}
+.refused-icon {
+  color: #dc3545;
+  margin-right: 0.4rem;
+  font-size: 1.1rem;
+}
+.sign-off-med {
+  font-weight: 500;
 }
 </style>

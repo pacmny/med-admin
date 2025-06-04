@@ -37,7 +37,11 @@ const showPopupDialog = ref(false);
 
 onMounted(() => {
   initializeDateRangePicker();
+<<<<<<< HEAD
   populateMedicationTable()
+=======
+  populateMedicationTable();
+>>>>>>> may20
 });
 
 const formatDateToYYYYMMDD = (date: Date): string => {
@@ -201,7 +205,11 @@ const closePopup = () => {
                     </div>
                   </div>
                 </template>
+<<<<<<< HEAD
               </ExpandableDetails> 
+=======
+              </ExpandableDetails>
+>>>>>>> may20
             </td>
             <td>
               <select class="status-dropdown" @change="(e) => handleStatusChange(e, medIndex)">
@@ -244,7 +252,10 @@ const closePopup = () => {
           </tr>
         </tbody>
       </table>
+<<<<<<< HEAD
      
+=======
+>>>>>>> may20
     </div>
 
     <Teleport to="body">
@@ -370,7 +381,11 @@ const closePopup = () => {
 }
 
 .schedule-table td:nth-child(3) {
+<<<<<<< HEAD
   width: 100px;
+=======
+  /* width: 100px; */
+>>>>>>> may20
 }
 
 .schedule-table td[data-date] {

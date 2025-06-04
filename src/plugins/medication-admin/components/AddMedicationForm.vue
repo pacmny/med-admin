@@ -20,8 +20,12 @@
         <!-- TAB 1: Medication Information -->
         <div v-if="activeTab === 'medInfo'" class="tab-panel">
           <h3 class="section-title">Medication Information</h3>
+
+          <!-- Medication Name (required) -->
           <div class="form-group">
-            <label>Medication Name</label>
+            <label>
+              Medication Name <span class="required">*</span>
+            </label>
             <input
               type="text"
               v-model="formData.medicationName"
@@ -83,10 +87,72 @@
               <label>Frequency</label>
               <select v-model="formData.frequency">
                 <option value="">Select frequency</option>
-                <option>1 times daily</option>
+                <option>1 time daily</option>
                 <option>2 times daily</option>
+                <option>2 times daily, as needed (PRN)</option>
+                <option>3 times a day</option>
+                <option>3 times a day, as needed for headache (PRN)</option>
+                <option>3 times daily</option>
+                <option>3 times daily, as needed (PRN)</option>
+                <option>4 times a day</option>
+                <option>4 times daily</option>
+                <option>4 times daily, as needed (PRN)</option>
+                <option>as directed</option>
+                <option>as needed</option>
+                <option>as one dose on the first day then take one tablet daily thereafter</option>
+                <option>at bedtime</option>
+                <option>at bedtime, as needed (PRN)</option>
+                <option>at bedtime as needed for sleep (PRN)</option>
+                <option>before every meal</option>
+                <option>bi-weekly</option>
+                <option>constant infusion</option>
+                <option>daily</option>
+                <option>daily, as needed (PRN)</option>
+                <option>daily as directed</option>
+                <option>every day</option>
+                <option>every month</option>
+                <option>every other day</option>
+                <option>every morning</option>
+                <option>every evening</option>
+                <option>every hour</option>
+                <option>every hour, as needed (PRN)</option>
+                <option>every 2 hours</option>
+                <option>every 2 hours, as needed (PRN)</option>
+                <option>every 3 hours</option>
+                <option>every 3 hours, as needed (PRN)</option>
                 <option>every 4 hours</option>
+                <option>every 4 hours, as needed (PRN)</option>
+                <option>every 4 to 6 hours, as needed for pain (PRN)</option>
+                <option>every 4 to 6 minutes</option>
+                <option>every 4 to 8 hours</option>
                 <option>every 6 hours</option>
+                <option>every 6 hours, as needed for pain (PRN)</option>
+                <option>every 6 hours, as needed for cough (PRN)</option>
+                <option>every 8 hours</option>
+                <option>every 8 hours, as needed (PRN)</option>
+                <option>every 12 hours</option>
+                <option>every 12 hours, as needed (PRN)</option>
+                <option>every 24 hours</option>
+                <option>every 24 hours, as needed (PRN)</option>
+                <option>every Monday, Wednesday, Friday, Sunday</option>
+                <option>every Tuesday, Thursday, Saturday</option>
+                <option>before breakfast, lunch, dinner</option>
+                <option>after breakfast, lunch, dinner</option>
+                <option>Friday</option>
+                <option>Monday</option>
+                <option>once a week</option>
+                <option>one time dose</option>
+                <option>Saturday</option>
+                <option>Sunday</option>
+                <option>three times a week</option>
+                <option>Thursday</option>
+                <option>Tuesday</option>
+                <option>twice daily</option>
+                <option>twice daily, as needed for nausea (PRN)</option>
+                <option>two times a week</option>
+                <option>use as directed per instructions in pack</option>
+                <option>Wednesday</option>
+                <option>weekly</option>
                 <!-- Add as many as needed -->
               </select>
             </div>
@@ -96,12 +162,60 @@
             <div class="form-group">
               <label>Route</label>
               <select v-model="formData.route">
-                <option>Oral/Sublingual</option>
-                <option>IVI Intravaginal</option>
-                <option>SQ/IM/IV/ID</option>
-                <option>TOP Topical</option>
+                <option value="Oral/Sublingual">Oral/Sublingual</option>
+                <option value="IVI Intravaginal">IVI Intravaginal</option>
+                <option value="SQ (Subcutaneous)">SQ (Subcutaneous)</option>
+                <option value="IM (Intramuscular)">IM (Intramuscular)</option>
+                <option value="IV (Intravenous)">IV (Intravenous)</option>
+                <option value="ID (Intradermal)">ID (Intradermal)</option>
+                <option value="TOP Topical">TOP Topical</option>
+                <option value="Neb/INH">Neb/INH</option>
+                <option value="NAS Intranasal">NAS Intranasal</option>
+                <option value="TD Transdermal">TD Transdermal</option>
+                <option value="Urethral">Urethral</option>
+                <option value="Rectally">Rectally</option>
+                <option value="Optic">Optic</option>
+                <option value="Otic">Otic</option>
                 <!-- etc. -->
               </select>
+              <div class="form-group">
+              <label>Duration</label>
+              <select v-model="formData.duration">
+                <option value="">Select Duration</option>
+                <option value="7">7 days</option>
+                <option value="14">14 days</option>
+                <option value="30">30 days</option>
+                <option value="60">60 days</option>
+                <option value="90">90 days</option>
+              </select>
+            </div>
+             <!-- NDC, RX Norm, Diagnosis in one row -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>NDC Number</label>
+                <input
+                  type="text"
+                  v-model="formData.ndcNumber"
+                  placeholder="NDC Number"
+                />
+              </div>
+              <div class="form-group">
+                <label>RX Norm</label>
+                <input
+                  type="text"
+                  v-model="formData.rxNorm"
+                  placeholder="RX Norm"
+                />
+              </div>
+              <div class="form-group">
+                <label>Diagnosis</label>
+                <input
+                  type="text"
+                  v-model="formData.diagnosis"
+                  placeholder="Diagnosis"
+                />
+              </div>
+            </div>
             </div>
             <div class="form-group checkbox-group">
               <input
@@ -112,7 +226,114 @@
               <label for="prnCheck">PRN (As Needed)</label>
             </div>
           </div>
+          <!-- IV Administration -->
+          <div v-if="formData.route === 'IV (Intravenous)'">
+            <h4>IV Administration</h4>
 
+            <!-- Fluid Type & VIA row -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fluid Type</label>
+                <select v-model="formData.fluidType">
+                  <option value="">Select fluid type</option>
+                  <option>0.9% Normal Saline</option>
+                  <option>D5W (5% Dextrose in Water)</option>
+                  <option>Lactated Ringers (LR)</option>
+                  <option>Half Normal Saline (0.45% NaCl)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>VIA</label>
+                <select v-model="formData.via">
+                  <option value="">Select an option</option>
+                  <option>Peripheral IV - Left Arm</option>
+                  <option>Peripheral IV - Right Arm</option>
+                  <option>PICC Line - Left</option>
+                  <option>PICC Line - Right</option>
+                  <option>Mid Line - Left</option>
+                  <option>Mid Line - Right</option>
+                  <option>Central Line - Left</option>
+                  <option>Central Line - Right</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Volume + Rate row -->
+            <div class="form-row volume-rate-row">
+              <div class="form-group volume-group">
+                <label>Total Volume</label>
+                <div class="volume-row">
+                  <input
+                    list="volumeOptions"
+                    v-model="formData.totalVolume"
+                    class="volume-dropdown"
+                    placeholder="e.g. 100"
+                  />
+                  <datalist id="volumeOptions">
+                    <option value="10"></option>
+                    <option value="100"></option>
+                    <option value="250"></option>
+                    <option value="500"></option>
+                    <option value="1000"></option>
+                  </datalist>
+                  <select
+                    class="volume-dropdown"
+                    v-model="formData.totalVolumeUnit"
+                  >
+                    <option value="ml">ml</option>
+                    <option value="liter">liter</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Rate</label>
+                <input
+                  type="text"
+                  v-model="formData.rate"
+                  placeholder="50 (ml/hr)"
+                />
+              </div>
+              <div class="form-group">
+                <label>How Long (hrs)</label>
+                <input
+                  type="text"
+                  :value="formData.howLong"
+                  disabled
+                  placeholder="Computed"
+                />
+              </div>
+            </div>
+
+            <!-- Start/End Time row -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Start Time</label>
+                <input
+                  type="time"
+                  v-model="formData.startTime"
+                  placeholder="HH:MM"
+                />
+              </div>
+              <div class="form-group">
+                <label>End Time</label>
+                <input
+                  type="time"
+                  :value="formData.endTime"
+                  disabled
+                />
+              </div>
+            </div>
+
+            <!-- PRN for IV -->
+            <div class="form-group checkbox-group">
+              <input
+                type="checkbox"
+                id="prnCheck-iv"
+                v-model="formData.prn"
+              />
+              <label for="prnCheck-iv">PRN (As Needed)</label>
+            </div>
+          </div>
           <div class="form-group">
             <label>Number of Tablets/Quantity</label>
             <input
@@ -171,7 +392,6 @@
               />
             </div>
           </div>
-
           <div class="form-row">
             <div class="form-group">
               <label>Refill Reminder Date</label>
@@ -390,10 +610,24 @@ interface MedicationFormData {
   diagnosis: string;
   diagdescription:string;
   dosage: string;
+  unitType: string;
   frequency: string;
+  duration: string;
+  fluidType: string;
   route: string;
   prn: boolean;
   quantity: number;
+  totalVolume: string;
+  totalVolumeUnit: string;
+  rate: string;
+  howLong: string;
+  startTime: string;
+  endTime: string;
+  via: string;
+
+  sqInjectionSite: string;
+  idInjectionSite: string;
+  imInjectionSite: string;
 
   rxNumber: string;
   filledDate: string;
@@ -430,7 +664,14 @@ const props = defineProps<{
   pastProvloaded:boolean;
   pastProvar: PastProvarItem[];
 }>()
-
+const dosageOptions = [
+  "Actuation","Ampule","Application","Applicator","Auto-Injector","Bar","Capful","Caplet","Capsule",
+  "Cartridge","Centimeter","Disk","Dropperful","Each","Film","Fluid Ounce","Gallon","Gram","Gum","Implant",
+  "Inch","Inhalation","Injection","Insert","Liter","Lollipop","Lozenge","Metric Drop","Microgram",
+  "Milliequivalent","Milligram","Milliliter","Nebule","Ounce","Package","Packet","Pad","Patch","Pellet",
+  "Pill","Pint","Pre-filled Pen Syringe","Puff","Pump","Ring","Sachet","Scoopful","Sponge","Spray","Stick",
+  "Strip","Suppository","Swab","Syringe","Tablet","Troche","Unit","Vial","Wafer"
+]
 /**
  * Emits:
  *  close  -> for closing/canceling the modal
@@ -885,7 +1126,12 @@ function loadPastProviders()
 .form-row .form-group {
   flex: 1;
 }
-
+.volume-rate-row { display: flex; gap: 1rem; }
+.volume-group { display: flex; flex-direction: column; }
+.volume-row {
+  display: flex; gap: 0.5rem; align-items: center;
+}
+.volume-dropdown { width: 70px; }
 /* Bottom action buttons */
 .form-actions {
   display: flex;
@@ -914,5 +1160,9 @@ function loadPastProviders()
 }
 .btn-save:hover {
   background-color: #0a7273;
+}
+.btn-save:disabled {
+  background-color: #b2d8d8;
+  cursor: not-allowed;
 }
 </style>

@@ -9,7 +9,11 @@ const props = withDefaults(defineProps<MedicationAdminProps>(), {
   medications: () => [
     {
       name: "Tylenol 50mg PO DAILY Give 3 TAB 50 mg every six hours",
+<<<<<<< HEAD
       times: ["09:00", "15:30", "21:40"]
+=======
+      times: ["09:00", "15:30", "21:45"]
+>>>>>>> may20
     },
     {
       name: "Paxil 100 mg PO DAILY Give 1 TAB 100 mg daily",

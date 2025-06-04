@@ -50,7 +50,11 @@ h2 {
 }
 
 .schedule-table td:nth-child(3) {
+<<<<<<< HEAD
     width: 100px;
+=======
+    /* width: 100px; */
+>>>>>>> may20
 }
 
 .schedule-table td[data-date] {

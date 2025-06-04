@@ -2,6 +2,7 @@ export interface TimeStatus {
   time: string;
   completed: boolean;
 }
+<<<<<<< HEAD
 export interface PastProvarItem {
   [key:number]: string | number;
   /*npinumber:string;
@@ -18,14 +19,29 @@ export interface Medication {
   quantity?:number;
   available?:number;
   med_frequency?: string;
+=======
+
+export interface Medication {
+  name: string;
+  times: TimeStatus[];
+  tabsAvailable?: number;
+  frequency?: string;
+>>>>>>> may20
   dosage?: string;
   administrationTimes?: string;
   route?: string;
   dosageForm?: string;
+<<<<<<< HEAD
   diagnose_code?: string;
   med_startdate?: Date;
   med_enddate?: Date;
   ndcnumber?: string;
+=======
+  diagnosis?: string;
+  startDate?: Date;
+  endDate?: Date;
+  ndc?: string;
+>>>>>>> may20
   pharmacy?: string;
   pharmacyNpi?: string;
   pharmacyAddress?: string;
@@ -33,7 +49,11 @@ export interface Medication {
   pharmacyDea?: string;
   prescriberInfo?: string;
   prescriberDeaNpi?: string;
+<<<<<<< HEAD
   rxnorns?: string;
+=======
+  rxNumber?: string;
+>>>>>>> may20
   scriptFillDate?: string;
   refills?: number;
   refillReminderDate?: Date;

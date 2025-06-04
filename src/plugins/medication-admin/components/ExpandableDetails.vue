@@ -51,7 +51,11 @@ function closeDetails(event: MouseEvent) {
   <div class="expandable-container">
     <div class="content-preview">
       <div class="medication-name">
+<<<<<<< HEAD
         {{ medication.medname }}
+=======
+        {{ medication.name }}
+>>>>>>> may20
       </div>
       <button 
         class="more-button"
@@ -83,6 +87,7 @@ function closeDetails(event: MouseEvent) {
               </div>
               <div class="detail-row">
                 <span class="detail-label">Diagnosis:</span>
+<<<<<<< HEAD
                 <span class="detail-value">{{ medication.diagnose_code || 'N/A' }}</span>
               </div>
               <div class="detail-row">
@@ -92,6 +97,17 @@ function closeDetails(event: MouseEvent) {
               <div class="detail-row">
                 <span class="detail-label">Frequency:</span>
                 <span class="detail-value">{{ medication.med_frequency || 'N/A' }}</span>
+=======
+                <span class="detail-value">{{ medication.diagnosis || 'N/A' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Dosage:</span>
+                <span class="detail-value">{{ medication.dosage || 'N/A' }}</span>
+              </div>
+              <div class="detail-row">
+                <span class="detail-label">Frequency:</span>
+                <span class="detail-value">{{ medication.frequency || 'N/A' }}</span>
+>>>>>>> may20
               </div>
               <div class="detail-row">
                 <span class="detail-label">Route:</span>
@@ -103,7 +119,11 @@ function closeDetails(event: MouseEvent) {
               </div>
               <div class="detail-row">
                 <span class="detail-label">Number of Tablets/Quantity:</span>
+<<<<<<< HEAD
                 <span class="detail-value">{{ medication.med_amount || 0 }} units</span>
+=======
+                <span class="detail-value">{{ medication.tabsAvailable || 0 }} units</span>
+>>>>>>> may20
               </div>
               <div class="detail-row">
                 <span class="detail-label">DEA Number:</span>
