@@ -7,6 +7,8 @@
           ? 'New Medication'
           : statusOption === 'discontinue'
             ? 'Discontinue Medication'
+          : statusOption === 'change'
+            ? 'Change Current Medication'
             : 'Hold Medication' 
       }}
     </h2>
@@ -167,6 +169,8 @@ const reasonPlaceholder = computed(() => {
     return 'Enter reason for new'
   } else if (props.statusOption === 'discontinue') {
     return 'Enter reason for discontinue'
+  } else if (props.statusOption === 'change') {
+    return 'Enter reason for Change'
   }
   return 'Enter reason for hold'
 })

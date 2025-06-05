@@ -324,7 +324,7 @@
       <div class="modal-content">
         <HoldTimeSelector
           v-if="selectedMedicationForHold"
-          :status-option="selectedStatusOption"
+          :statusOption="selectedStatusOption"
           :medication-times="holdTimes"
           @submit="handleHoldSubmit"
           @cancel="showHoldSelector = false"
@@ -339,12 +339,13 @@
         <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
         <div class="form-group">
           <label>Frequency:</label>
-          <select v-model="selectedFrequency" class="form-select">
+          <select v-model="selectedFrequency" class="form-select" @change="checkMedActiveStatus(selectedMedicationForTime)">
             <option value="">Select frequency</option>
             <option
               v-for="option in frequencyOptions"
               :key="option"
               :value="option"
+              
             >
               {{ option }}
             </option>
@@ -357,6 +358,7 @@
             v-model="selectedDosage"
             min="1"
             step="1"
+            @change="checkMedActiveStatus(selectedMedStatusForTime)"
           />
         </div>
         <div v-if="timeInputs.length > 0" class="form-group">
@@ -649,6 +651,7 @@ const showPrnSignOffPopup = ref(false)
 const prnSignOffMedication = ref<Medication | null>(null)
 const prnSignOffTimeObj = ref<any>(null)
 const prnNurseSignature = ref('')
+const changeActiveMed = ref<boolean>(false);
 
 let medval= {};
 // FREQUENCY OPTIONS
@@ -741,7 +744,19 @@ function formatDateToYYYYMMDD(d: Date): string {
     String(d.getDate()).padStart(2, '0')
   )
 }
-
+// ---- Adding checkMedActiveStatus to check lock status and Trigger Hold Modal -----//
+function checkMedActiveStatus(obj:object)
+{
+  
+  console.log(obj.temporaryStatus);
+  let tempstatus = obj.temporaryStatus.split(",");
+  
+  if(tempstatus[0]=="taken" || tempstatus[0]=="hold")
+  {
+    changeActiveMed.value =true;
+   
+  }
+}
 // ---------- STATUS & SORT ----------
 const statusOptions = [
   { value: 'active', label: 'Active', color: '#d4edda' },
@@ -1092,19 +1107,29 @@ async function handleSave() {
      console.log(med.dates);
      let todaydt = formatDate(new Date());
      console.log(todaydt);
-     let content = {
-        MedicationAdmin:{
-        API_Meth:"InsertUpdateMedLogTimes",
-        pid: "709081242",
-        accountId: "904575107",
-        providerid:"123456789",
-        slotedtimes:newTimeArray,
-        adminDate:todaydt,
-        medname:medname,
-        ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
-        status:medstatus,
-        }
-      };
+     const changeorder = ref<boolean>(false)
+     //lets check to see if this med (normally setting the log time and date) is currenly logged and ative. If so the change will require a change order 
+     alert(changeActiveMed.value);
+     if(changeActiveMed.value==true)
+     {
+      changeorder.value = changeActiveMed.value;
+      let confirmCO = confirm("You are changing Dose or Frequency of an active Medication and a New Order is required. Do you want to proceed?");
+       if(confirmCO==true)
+       {
+          let content = {
+          MedicationAdmin:{
+          API_Meth:"InsertUpdateMedLogTimes",
+          pid: "709081242",
+          accountId: "904575107",
+          providerid:"123456789",
+          slotedtimes:newTimeArray,
+          adminDate:todaydt,
+          medname:medname,
+          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          status:medstatus,
+          changeorder:changeorder.value
+          }
+        };
     
         axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
          .then(response => {        
@@ -1128,7 +1153,13 @@ async function handleSave() {
               console.log('Unexpected error:', error);         
               
             }    
-            });   
+            }); 
+       }
+       else{
+          //don't do anything because they didn't confirm 
+       }
+     }
+       
   }
 
   showTimeModal.value = false
@@ -1327,6 +1358,8 @@ const length = ref<number>(0);
 }
 function handleStatusChange(event: Event, medIndex: number) {
   const select = event.target as HTMLSelectElement
+  console.log("Really want to see whats in the select");
+  console.log(select);
   const status = select.value
   medications.value[medIndex].status = status
 //alert("Its here");
@@ -1807,6 +1840,7 @@ function finalSignOff() {
 //-------Hold Medication Axios Call --------//
 async function holdMedication(medholddata:object)
 {
+  console.log(medholddata);return;
    let content = {
     MedicationAdmin:{
       API_Meth:"HoldMedication",
