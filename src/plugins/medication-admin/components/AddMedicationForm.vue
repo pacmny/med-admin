@@ -191,13 +191,26 @@
 
           <!-- NDC, RX Norm, Diagnosis in one row -->
           <div class="form-row">
-            <div class="form-group">
+            <div class="form-group" style="position: relative;">
               <label>NDC Number</label>
-              <input
-                type="text"
-                v-model="formData.ndcNumber"
-                placeholder="NDC Number"
-              />
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <input
+                  type="text"
+                  v-model="formData.ndcNumber"
+                  placeholder="NDC Number"
+                />
+                <button type="button" class="camera-btn" @click="showScanner = true" title="Scan Barcode">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="16" y="3" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="16" y="16" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="3" y="16" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="8" y="8" width="8" height="8" rx="2" stroke="#0c8687" stroke-width="2"/></svg>
+                </button>
+                <button type="button" class="verify-btn" :disabled="!formData.ndcNumber" @click="fetchMedicationDetailsFromAPI(formData.ndcNumber)">Verify</button>
+              </div>
+              <!-- Barcode Scanner Modal -->
+              <div v-if="showScanner" class="modal-overlay">
+                <div class="modal-content" style="max-width: 420px;">
+                  <BarcodeScanner @scanned="onBarcodeScanned" @close="showScanner = false" />
+                  <button class="btn-cancel" style="margin-top: 1rem;" @click="showScanner = false">Close</button>
+                </div>
+              </div>
             </div>
             <div class="form-group">
               <label>RX Norm</label>
@@ -594,7 +607,6 @@
       </div>
     </div>
   </transition>
-  <BarcodeScanner />
 </template>
 
 <script setup lang="ts">
@@ -865,6 +877,32 @@ watch(
     formData.value.endTime = `${hh}:${mm}`
   }
 )
+
+const showScanner = ref(false)
+async function fetchMedicationDetailsFromAPI(ndc) {
+  try {
+    // Remove dashes if present, as openFDA expects 10- or 11-digit NDCs without dashes
+    const cleanNdc = ndc.replace(/-/g, '');
+    const response = await fetch(`https://api.fda.gov/drug/ndc.json?search=product_ndc:${cleanNdc}`);
+    if (!response.ok) throw new Error('API request failed');
+    const data = await response.json();
+    if (data.results && data.results.length > 0) {
+      const med = data.results[0];
+      // Example: autofill medication name and show info
+      formData.value.medicationName = med.brand_name || med.generic_name || '';
+      alert(`Medication found: ${med.brand_name || med.generic_name || 'Unknown'}\nLabeler: ${med.labeler_name || 'Unknown'}`);
+    } else {
+      alert('No medication details found for this NDC.');
+    }
+  } catch (err) {
+    alert('Error fetching medication details: ' + (err.message || err));
+  }
+}
+function onBarcodeScanned(barcode) {
+  formData.value.ndcNumber = barcode;
+  showScanner.value = false;
+  fetchMedicationDetailsFromAPI(barcode);
+}
 </script>
 
 <style scoped>
@@ -963,5 +1001,37 @@ watch(
 .btn-save:disabled {
   background-color: #b2d8d8;
   cursor: not-allowed;
+}
+
+.camera-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.2rem;
+  display: flex;
+  align-items: center;
+  transition: background 0.2s;
+}
+.camera-btn:hover {
+  background: #e6f4f4;
+  border-radius: 4px;
+}
+
+.verify-btn {
+  background: #0c8687;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.3rem 0.9rem;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.verify-btn:disabled {
+  background: #b2d8d8;
+  cursor: not-allowed;
+}
+.verify-btn:hover:not(:disabled) {
+  background: #0a7273;
 }
 </style>
