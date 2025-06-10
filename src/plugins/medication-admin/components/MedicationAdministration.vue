@@ -1,33 +1,56 @@
 <template>
   <div id="app">
-    <h2>Administration</h2>
-
+    
     <div class="table-container">
       <!-- Status Filter -->
-      <div class="status-filter">
-        <h3>Filter by Status:</h3>
-        <div class="status-buttons">
-          <button
-            class="status-button"
-            :class="{ active: selectedStatus === null }"
-            @click="handleStatusFilter(null)"
-          >
-            Show All
-          </button>
-          <button
-            v-for="option in statusOptions"
-            :key="option.value"
-            class="status-button"
-            :class="{ active: selectedStatus === option.value }"
-            :style="{ backgroundColor: option.color }"
-            @click="handleStatusFilter(option.value)"
-          >
-            {{ option.label }}
-          </button>
+       <template v-if="!isMobile">
+        <div class="status-filter">
+          <h3>Filter by Status:</h3>
+          <div class="status-buttons">
+            <button
+              class="status-button"
+              :class="{ active: selectedStatus === null }"
+              @click="handleStatusFilter(null)"
+            >
+              Show All
+            </button>
+            <button
+              v-for="option in statusOptions"
+              :key="option.value"
+              class="status-button"
+              :class="{ active: selectedStatus === option.value }"
+              :style="{ backgroundColor: option.color }"
+              @click="handleStatusFilter(option.value)"
+            >
+              {{ option.label }}
+            </button>
+          </div>
         </div>
-      </div>
+      </template>
+      <template v-else>
+  <!-- MOBILE: Filter-by-Status dropdown -->
+        <div class="mobile-filter-dropdown">
+          <label for="mobileFilter">Filter by Status:</label>
+          <select
+            id="mobileFilter"
+            @change="e => handleStatusFilter(e.target.value === '' ? null : e.target.value)"
+            class="mobile-filter-select"
+          >
+            <option value="">Show All</option>
+            <option value="active">Active</option>
+            <option value="discontinue">Discontinue</option>
+            <option value="hold">Hold</option>
+            <option value="new">New</option>
+            <option value="pending">Pending</option>
+            <option value="change">Change</option>
+            <option value="completed">Completed</option>
+            <option value="partial">Partial</option>
+          </select>
+        </div>
+      </template>
 
       <!-- Date Range and Add Form -->
+       <template v-if="!isMobile">
       <div class="date-range-selector">
         <label for="date-range-picker">Select Date Range:</label>
         <input type="text" id="date-range-picker" placeholder="Select date range" />
@@ -35,63 +58,141 @@
           Add Manually
         </button>
       </div>
+      </template>
+
+      <template v-else>
+  <!-- add a wrapper so desktop never gets these styles -->
+  <div class="mobile-toolbar">
+    <div class="date-range-selector">
+      <button class="add-manually-btn" @click="onAddMedication">
+        Add Manually
+      </button>
+      <button
+        class="sort-button sign-off-button"
+        @click="showSignOffPopup = true"
+      >
+        Signature
+      </button>
+      <input
+        type="text"
+        id="date-range-picker"
+        placeholder="Date Range"
+      />
+    </div>
+
+    <!-- … your filter/sort dropdowns and date chips … -->
+  </div>
+</template>
+
+
+            <template v-if="isMobile">
+        <!-- … your mobile filter & sort dropdowns … -->
+
+        <!-- MOBILE: Selected-Dates Scroll -->
+        <div class="mobile-date-scroll">
+          <div
+            v-for="date in selectedDates"
+            :key="date"
+            class="mobile-date-box"
+            @click="selectDate(date)"
+          >
+            {{ date }}
+          </div>
+        </div>
+        </template>
 
       <!-- Sorting Controls + Signature Button + Expand/Collapse -->
-      <div class="sort-controls">
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'medication' }"
-          @click="handleSort('medication')"
-        >
-          Sort by Medication
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'time' }"
-          @click="handleSort('time')"
-        >
-          Sort by Time
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'diagnosis' }"
-          @click="handleSort('diagnosis')"
-        >
-          Sort by Diagnosis
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'route' }"
-          @click="handleSort('route')"
-        >
-          Sort by Route
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'prn' }"
-          @click="handleSort('prn')"
-        >
-          Sort by PRN
-        </button>
+      <template v-if="!isMobile">
+        <div class="sort-controls">
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'medication' }"
+            @click="handleSort('medication')"
+          >
+            Sort by Medication
+          </button>
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'time' }"
+            @click="handleSort('time')"
+          >
+            Sort by Time
+          </button>
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'diagnosis' }"
+            @click="handleSort('diagnosis')"
+          >
+            Sort by Diagnosis
+          </button>
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'route' }"
+            @click="handleSort('route')"
+          >
+            Sort by Route
+          </button>
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'prn' }"
+            @click="handleSort('prn')"
+          >
+            Sort by PRN
+          </button>
 
-        <!-- Expand/Collapse Columns -->
-        <button
-          class="sort-button"
-          @click="toggleCollapse"
-        >
-          {{ collapsed ? 'Expand' : 'Collapse' }}
-        </button>
+          <!-- Expand/Collapse Columns -->
+          <button
+            class="sort-button"
+            @click="toggleCollapse"
+          >
+            {{ collapsed ? 'Expand' : 'Collapse' }}
+          </button>
 
-        <!-- Signature Button (was "Sign Off") -->
-        <button
-          class="sort-button sign-off-button"
-          @click="showSignOffPopup = true"
-        >
-          Signature
-        </button>
-      </div>
+          <!-- Signature Button (was "Sign Off") -->
+          <button
+            class="sort-button sign-off-button"
+            @click="showSignOffPopup = true"
+          >
+            Signature
+          </button>
+        </div>
+      </template>
+      <template v-else>
+        <!-- MOBILE: Sort-by dropdown -->
+        <div class="mobile-sort-row">
+    <!-- Left: Sort dropdown -->
+    <div class="mobile-sort-col mobile-sort-col-left">
+      <label for="mobileSort">Sort by:</label>
+      <select
+        id="mobileSort"
+        v-model="selectedSort"
+        @change="onSortChange"
+        class="mobile-sort-select"
+      >
+        <option disabled value="">— Select —</option>
+        <option value="Medication">Medication</option>
+        <option value="Time">Time</option>
+        <option value="Diagnosis">Diagnosis</option>
+        <option value="Route">Route</option>
+        <option value="PRN">PRN</option>
+      </select>
+    </div>
+
+    <!-- Center: clicked‐date display -->
+    <div class="mobile-sort-col mobile-sort-col-center">
+      {{ activeDate || ' ' }}
+    </div>
+
+    <!-- Right: static text -->
+    <div class="mobile-sort-col mobile-sort-col-right">
+      Admin Time
+    </div>
+  </div>
+
+      </template>
 
       <!-- Grouped Medications -->
+       <template v-if="!isMobile">
       <template v-for="(medsInGroup, category) in groupedMedications" :key="category">
         <div v-if="medsInGroup.length > 0">
           <!-- Sticky category header -->
@@ -334,6 +435,42 @@
           </div>
         </div>
       </template>
+      </template>
+      <template v-else>
+        <div class="mobile-accordion-container">
+          <template
+            v-for="(medsInGroup, category) in groupedMedications"
+            :key="category"
+          >
+            <h3 class="category-header">{{ category }}</h3>
+            <div class="accordion">
+              <div
+                class="accordion-item"
+                v-for="med in medsInGroup"
+                :key="med.name"
+                :class="{ active: openAccordions[med.name] }"
+              >
+                <button
+                  class="accordion-button"
+                  @click="toggleAccordion(med.name)"
+                >
+                  {{ med.name }}
+                </button>
+                <div
+                  class="accordion-content"
+                  v-show="openAccordions[med.name]"
+                >
+                  <p><strong>Dosage:</strong> {{ med.dosage || 'Not set' }}</p>
+                  <p><strong>Frequency:</strong> {{ med.frequency || 'Not set' }}</p>
+                  <p><strong>Amount Available:</strong> {{ med.tabsAvailable }}</p>
+                  <p><strong>Units:</strong> {{ med.unitType || '-' }}</p>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
+
     </div>
 
     <!-- AddMedicationForm (Add + Edit) -->
@@ -587,7 +724,7 @@
 </template>
 <script setup lang="ts">
 import MedicationActionPopup from './MedicationActionPopup.vue'
-import { ref, computed, watch, onMounted, defineProps, withDefaults, defineEmits, nextTick } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, reactive, defineProps, withDefaults, defineEmits, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import 'flatpickr/dist/flatpickr.css'
 import flatpickr from 'flatpickr'
@@ -597,6 +734,7 @@ import BarcodeScanner from './barcode-scanner/BarcodeScanner.vue'
 
 /** How many future days to populate scheduled times. */
 const FUTURE_DAYS_TO_POPULATE = 365
+let fpInstance: ReturnType<typeof flatpickr> | null = null
 
 /** Medication interface */
 export interface Medication {
@@ -673,6 +811,86 @@ export interface Medication {
     earlyReason?: string
     reason?: string
   }[]
+}
+
+const isMobile = ref(window.innerWidth < 768)
+window.addEventListener('resize', () => {
+  isMobile.value = window.innerWidth < 768
+  initializeDateRangePicker()
+})
+
+// reactive map to track which med is open
+const openAccordions = reactive<Record<string, boolean>>({})
+
+// toggler
+function toggleAccordion(key: string) {
+  openAccordions[key] = !openAccordions[key]
+}
+
+const selectedSort = ref('')
+
+// when it changes, call your existing sort functions
+function onSortChange() {
+  switch (selectedSort.value) {
+    case 'Medication':
+      handleSort('medication')
+      break
+    case 'Time':
+      handleSort('time')
+      break
+    case 'Diagnosis':
+      handleSort('diagnosis')
+      break
+    case 'Route':
+      handleSort('route')
+      break
+    case 'PRN':
+      handleSort('prn')
+      break
+  }
+}
+
+      const selectedDates = ref<string[]>([])
+
+/**
+ * Call your existing updateDateRange(start, end)
+ * and also populate the mobile chips.
+ */
+function onDateRangePicked(selDates: Date[]) {
+  // first, build your full dateList via your existing logic
+  updateDateRange(selDates[0], selDates[1])
+
+  // now map each Date in dateList into "M/D" strings
+  selectedDates.value = dateList.value.map(d => {
+    const m = d.getMonth() + 1
+    const dd = d.getDate()
+    return `${m}/${dd}`
+  })
+}
+
+function initializeDateRangePicker() {
+  const el = document.getElementById('date-range-picker')
+  if (!el) return
+
+  // clean up old instance
+  if (fpInstance) fpInstance.destroy()
+
+  fpInstance = flatpickr(el, {
+    mode: 'range',
+    inline: false,
+    dateFormat: isMobile.value ? 'm/d' : 'l, M d, Y',
+    disableMobile: false,
+    maxDate: new Date().fp_incr(365),
+    onChange: (selDates) => {
+      if (selDates.length === 2) {
+        if (isMobile.value) {
+          onDateRangePicked(selDates)
+        } else {
+          updateDateRange(selDates[0], selDates[1])
+        }
+      }
+    }
+  })
 }
 
 const router = useRouter()
@@ -805,6 +1023,7 @@ function handleMedicationFormSave(payload: any) {
 // Status filter
 const selectedStatus = ref<string | null>(null)
 function handleStatusFilter(status: string | null) {
+  console.log(status)
   selectedStatus.value = selectedStatus.value === status ? null : status
 }
 
@@ -1031,28 +1250,27 @@ const allColumns = computed(() => {
   }
 })
 
+const activeDate = ref<string>('')
+
+// NEW: handler when user clicks a date box
+function selectDate(date: string) {
+  activeDate.value = date
+}
+
 onMounted(() => {
   loadMedications()
   initializeDateRangePicker()
   populateMedicationTable()
 })
 
-function initializeDateRangePicker() {
-  const dateRangePicker = document.getElementById('date-range-picker')
-  if (dateRangePicker) {
-    flatpickr(dateRangePicker, {
-      mode: "range",
-      dateFormat: "l, M d, Y",
-      maxDate: new Date().fp_incr(365),
-      onChange: (selDates) => {
-        if (selDates.length === 2) {
-          updateDateRange(selDates[0], selDates[1])
-        }
-      }
-    })
+onUnmounted(() => {
+  if (fpInstance) {
+    fpInstance.destroy()
+    fpInstance = null
   }
-}
-function updateDateRange(startDate: Date, endDate: Date) {
+})
+
+    function updateDateRange(startDate: Date, endDate: Date) {
   if (!startDate || !endDate) {
     alert("Please select both a start and an end date.")
     return
@@ -2256,4 +2474,150 @@ function hideTooltip() {}
 .sign-off-med {
   font-weight: 500;
 }
+
+.accordion {
+    margin-top: 10px;
+}
+
+.accordion-item {
+    border-bottom: 1px solid #ddd; /* Light grey border for separation */
+}
+
+.accordion-button {
+    background-color: #0055cc; /* Medium blue button */
+    color: #ffffff; /* White text for readability */
+    padding: 15px;
+    width: 100%;
+    text-align: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.3s ease;
+}
+
+.accordion-button:hover {
+    background-color: #003366; /* Dark blue on hover */
+}
+
+.accordion-content {
+    display: none; /* Hide content initially */
+    background-color: #f4f4f4; /* Light grey background for content */
+    padding: 15px;
+}
+
+.accordion-item.active .accordion-content {
+    display: block; /* Show content when item is active */
+}
+
+.mobile-date-scroll {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mobile-date-box {
+  flex: 0 0 auto;
+  background-color: #66b2b2;
+  color: white;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.5rem;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+
+@media (max-width: 767px) {
+  /* ensure we only style the mobile toolbar */
+  .mobile-toolbar .date-range-selector {
+    display: flex;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  /* each child (button or input) takes 1/3 of the width */
+  .mobile-toolbar .date-range-selector > * {
+    flex: 1;
+    box-sizing: border-box;
+  }
+
+  /* shared appearance for buttons & input */
+  .mobile-toolbar
+    .date-range-selector
+    button,
+  .mobile-toolbar
+    .date-range-selector
+    input#date-range-picker {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0;
+    font-size: 1rem;
+    text-align: center;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+
+  /* Customize each control */
+  .mobile-toolbar .add-manually-btn {
+    background-color: #008080;
+    color: #fff;
+    border: none;
+  }
+
+  .mobile-toolbar .sign-off-button {
+    background-color: #fff;
+    color: #333;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .mobile-toolbar input#date-range-picker {
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+  }
+  .mobile-toolbar input#date-range-picker::placeholder {
+    color: #888;
+  }
+
+  .mobile-sort-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.5rem 0;
+  }
+  .mobile-sort-col {
+    flex: 1;
+    box-sizing: border-box;
+  }
+  .mobile-sort-col-left {
+    text-align: left;
+  }
+  .mobile-sort-col-center {
+    text-align: center;
+  }
+  .mobile-sort-col-right {
+    text-align: right;
+  }
+
+  /* style the select to fit nicely */
+  .mobile-sort-select {
+    width: 100%;
+    padding: 0.4rem;
+    font-size: 1rem;
+    margin-top: 0.2rem;
+  }
+
+  /* ensure label + select line up */
+  .mobile-sort-col-left label {
+    font-weight: bold;
+    margin-right: 0.25rem;
+  }
+}
+
+
 </style>
