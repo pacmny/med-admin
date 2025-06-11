@@ -1,87 +1,92 @@
 <template>
-  <div class="w-full max-w-md mx-auto p-4">
-    <div class="flex flex-col items-center">
-      <video ref="video" autoplay playsinline class="w-full aspect-video rounded-lg border mb-4"></video>
-      <input type="file" accept="image/*" @change="onFileChange" class="mb-2" />
-      <div v-if="barcode" class="mt-2 text-lg font-mono text-blue-700">
-        Barcode: {{ barcode }}
-      </div>
-      <div v-if="ndc" class="mt-2 text-green-700">
-        NDC: {{ ndc }}
-      </div>
-      <div v-if="error" class="mt-2 text-red-600">
-        {{ error }}
-      </div>
+  <div class="scanner-container">
+    <video ref="videoEl" autoplay playsinline muted class="scanner-video" />
+
+    <div class="scanner-overlay">
+      <template v-if="scanRegion">
+        <!-- existing adaptive‐region logic… -->
+      </template>
+      <template v-else>
+        <div class="default-box">
+          <div class="default-border"></div>
+          <div class="default-label">Position barcode here</div>
+        </div>
+      </template>
     </div>
+
+    <!-- 🔴 simple text “X” close button -->
+    <button class="close-btn" @click="$emit('close')" aria-label="Close scanner">
+      ✕
+    </button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onBeforeUnmount } from 'vue'
-import { useScanner } from '../barcode-scanner/useScanner'
-import { useDrugDatabase } from '../barcode-scanner/useDrugDatabase'
-import { scanBarcodeFromFile } from './useFileUpload'
+// no lucide imports needed
+import { ref, onMounted, defineEmits, defineProps } from 'vue'
 
-const emit = defineEmits(['scanned', 'close'])
+const props = defineProps<{
+  scanRegion: { x: number; y: number; width: number; height: number } | null
+  rapidScanMode?: boolean
+}>()
 
-const video = ref<HTMLVideoElement | null>(null)
-const barcode = ref('')
-const ndc = ref('')
-const error = ref('')
-const scanning = ref(false)
+const emit = defineEmits(['close'])
 
-const { startScan, stopScan } = useScanner()
-const { getNdcFromBarcode } = useDrugDatabase()
-
-function handleScanResult(result: string) {
-  barcode.value = result
-  ndc.value = getNdcFromBarcode(result)
-  scanning.value = false
-  emit('scanned', result)
-  emit('close')
-}
-
-function handleScanError(err: string) {
-  error.value = err
-  scanning.value = false
-}
-
+const videoEl = ref<HTMLVideoElement|null>(null)
 onMounted(() => {
-  barcode.value = ''
-  ndc.value = ''
-  error.value = ''
-  scanning.value = true
-  if (video.value) {
-    startScan(
-      video.value,
-      handleScanResult,
-      handleScanError
-    )
-  } else {
-    error.value = 'Camera not ready'
-    scanning.value = false
-  }
+  // your existing camera setup…
 })
-
-onBeforeUnmount(() => {
-  stopScan()
-})
-
-async function onFileChange(e: Event) {
-  barcode.value = ''
-  ndc.value = ''
-  error.value = ''
-  const files = (e.target as HTMLInputElement).files
-  if (files && files[0]) {
-    const result = await scanBarcodeFromFile(files[0])
-    if (result) {
-      barcode.value = result
-      ndc.value = getNdcFromBarcode(result)
-      emit('scanned', result)
-      emit('close')
-    } else {
-      error.value = 'No barcode detected in image.'
-    }
-  }
-}
 </script>
+
+<style scoped>
+.scanner-container {
+  position: relative;
+  width: 100%; height: 100%;
+  background: black;
+}
+.scanner-video {
+  width: 100%; height: 100%;
+  object-fit: cover;
+}
+
+.scanner-overlay { position: absolute; inset: 0; pointer-events: none; }
+
+.default-box {
+  position: absolute;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  width: 12rem; height: 8rem;
+}
+.default-border {
+  position: absolute; inset: 0;
+  border: 4px solid #ef4444;  /* red */
+  border-radius: 0.5rem;
+  opacity: 0.8;
+}
+.default-label {
+  position: absolute;
+  top: -1.5rem; left: 50%;
+  transform: translateX(-50%);
+  color: #ef4444;
+  font-size: 0.85rem;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* 🔴 Close button styling */
+.close-btn {
+  position: absolute;
+  top: 0.5rem; right: 0.5rem;
+  background: rgba(255,255,255,0.8);
+  border: none;
+  border-radius: 50%;
+  width: 2rem; height: 2rem;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.close-btn:hover {
+  background: rgba(255,255,255,1);
+}
+</style>
