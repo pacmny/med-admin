@@ -423,6 +423,9 @@
     @scanned="onBarcodeScanned"
     @close="scannerContext = null"
     :active="true"
+
+    :scanRegion="scanRegion"
+  :rapidScanMode="rapidScanMode"
   />
                           </div>
                         </template>
@@ -436,40 +439,112 @@
         </div>
       </template>
       </template>
-      <template v-else>
-        <div class="mobile-accordion-container">
-          <template
-            v-for="(medsInGroup, category) in groupedMedications"
-            :key="category"
+     <template v-else>
+  <div class="mobile-accordion-container">
+    <template
+      v-for="(medsInGroup, category) in groupedMedications"
+      :key="category"
+    >
+      <h3 class="category-header">{{ category }}</h3>
+      <div class="accordion">
+        <div
+          class="accordion-item"
+          v-for="med in medsInGroup"
+          :key="med.name"
+          :class="{ active: openAccordions[med.name] }"
+        >
+          <button
+            class="accordion-button"
+            @click="toggleAccordion(med.name)"
           >
-            <h3 class="category-header">{{ category }}</h3>
-            <div class="accordion">
-              <div
-                class="accordion-item"
-                v-for="med in medsInGroup"
-                :key="med.name"
-                :class="{ active: openAccordions[med.name] }"
-              >
-                <button
-                  class="accordion-button"
-                  @click="toggleAccordion(med.name)"
-                >
-                  {{ med.name }}
-                </button>
-                <div
-                  class="accordion-content"
-                  v-show="openAccordions[med.name]"
-                >
-                  <p><strong>Dosage:</strong> {{ med.dosage || 'Not set' }}</p>
-                  <p><strong>Frequency:</strong> {{ med.frequency || 'Not set' }}</p>
-                  <p><strong>Amount Available:</strong> {{ med.tabsAvailable }}</p>
-                  <p><strong>Units:</strong> {{ med.unitType || '-' }}</p>
-                </div>
-              </div>
+            {{ med.name }}
+          </button>
+
+          <div
+            class="accordion-content"
+            v-show="openAccordions[med.name]"
+          >
+            <!-- Dosage + Unit as text -->
+
+            <!-- Administration times for the current date -->
+<!-- inside your <div class="accordion-content"> -->
+<div class="mobile-times">
+  <span
+    v-for="timeObj in getTimesForDate(med, findDateObj(activeDate))"
+    :key="timeObj.time + timeObj.status"
+    class="time-bubble"
+    @click="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
+  >
+    {{ timeObj.time }}
+  </span>
+</div>
+<BarcodeScanner
+  v-if="scannerContext && scannerContext.timeObj === currentTimeObj(med)"
+  :active="true"
+  @scanned="onBarcodeScanned"
+  @close="scannerContext = null"
+
+  :scanRegion="scanRegion"
+  :rapidScanMode="rapidScanMode"
+/>
+
+
+            <div class="detail-row">
+              <span class="label">Dosage</span>
+              <span class="value">{{ med.dosage || '–' }} {{ med.unitType || '' }}</span>
             </div>
-          </template>
+
+            <!-- Frequency -->
+            <div class="detail-row">
+              <span class="label">Frequency</span>
+              <span class="value">{{ med.frequency || 'Not set' }}</span>
+            </div>
+
+            <!-- Available (smaller input) -->
+            <div class="detail-row">
+              <span class="label">Available</span>
+              <input
+                type="number"
+                v-model="med.tabsAvailable"
+                class="available-input"
+                readonly
+              />
+            </div>
+
+            <!-- Select Time & Dosage -->
+            <div class="detail-row">
+              <button
+                class="select-btn"
+                @click="toggleSelectDropdown(med)"
+              >
+                Select Time & Dosage
+              </button>
+            </div>
+
+            <!-- Status Dropdown -->
+            <div class="detail-row">
+              <span class="label">Status</span>
+              <select
+                v-model="med.status"
+                class="status-select"
+              >
+                <option
+                  v-for="opt in statusOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
+          </div>
         </div>
-      </template>
+      </div>
+    </template>
+  </div>
+</template>
+
+
 
     </div>
 
@@ -732,9 +807,13 @@ import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
 import BarcodeScanner from './barcode-scanner/BarcodeScanner.vue'
 
+
 /** How many future days to populate scheduled times. */
 const FUTURE_DAYS_TO_POPULATE = 365
 let fpInstance: ReturnType<typeof flatpickr> | null = null
+
+const scanRegion = ref<any>(null)
+const rapidScanMode = ref(false)
 
 /** Medication interface */
 export interface Medication {
@@ -892,6 +971,16 @@ function initializeDateRangePicker() {
     }
   })
 }
+
+// in your <script setup>
+function currentTimeObj(med: Medication) {
+  // if the scannerContext.med matches this med, return its timeObj
+  if (scannerContext.value?.med === med) {
+    return scannerContext.value.timeObj
+  }
+  return null
+}
+
 
 const router = useRouter()
 const medications = ref<Medication[]>([])
@@ -1379,6 +1468,20 @@ watch(selectedFrequency, (newFreq) => {
   )
 })
 
+watch(selectedDates, dates => {
+  if (dates.length && !activeDate.value) {
+    activeDate.value = dates[0]
+  }
+})
+
+// helper to convert "M/D" back into the real Date object
+function findDateObj(dateStr: string): Date {
+  const found = dateList.value.find(d => {
+    return `${d.getMonth() + 1}/${d.getDate()}` === dateStr
+  })
+  return found ?? normalizeToMidnight(new Date())
+}
+
 function handleSave() {
   if (!selectedMedicationForTime.value) {
     showTimeModal.value = false
@@ -1708,25 +1811,30 @@ function getTimesForDate(med: Medication, dateObj: Date) {
 
   // For "partial" specific-time discontinuation:
   if (med.discontinuedTimes && med.discontinuedTimes[dateStr]) {
-    // Let’s skip those times, *unless* the date is the same as when they were first discontinued
-    // But we do not actually know which "first day" might apply, so we rely on the slot's status.
-    // By default we set them to 'discontinue' on that day so they appear in red.
     const timesToSkip = med.discontinuedTimes[dateStr]
-    // Skip any slot that does *not* have status=discontinue
-    // but is in timesToSkip. Because if we actually changed it to 'discontinue',
-    // it should remain in the array (so user sees it in red).
     slots = slots.filter(s => {
       if (timesToSkip.includes(s.time)) {
-        // If we *did not* manually set s.status='discontinue', we skip it.
-        // If s.status === 'discontinue', keep it so it shows red.
         return s.status === 'discontinue'
       }
       return true
     })
   }
 
+  // ─── Sort chronologically by the base "HH:MM" of each time string ───
+  slots.sort((a, b) => {
+    // extractBaseTime strips any "(…)" suffix and returns "HH:MM"
+    const tA = extractBaseTime(a.time)
+    const tB = extractBaseTime(b.time)
+    const [hA, mA] = tA.split(':').map(Number)
+    const [hB, mB] = tB.split(':').map(Number)
+    const msA = hA * 3600_000 + mA * 60_000
+    const msB = hB * 3600_000 + mB * 60_000
+    return msA - msB
+  })
+
   return slots
 }
+
 
 function onBarcodeScanned(barcode: string) {
   if (scannerContext.value) {
@@ -1749,6 +1857,8 @@ function handleTimeClick(dateObj: Date, timeObj: any, med: Medication) {
     openActionPopup(dateObj, timeObj, med)
   }
 }
+
+
 
 function openActionPopup(dateObj: Date, timeObj: any, medication: Medication) {
   if (timeObj.locked) return
@@ -2617,7 +2727,90 @@ function hideTooltip() {}
     font-weight: bold;
     margin-right: 0.25rem;
   }
+
+  .mobile-accordion-container .detail-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
 }
+
+  /* 2) Labels take just the space they need */
+  .mobile-accordion-container .detail-row .label {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .detail-row .label {
+  flex: 0 0 auto;
+  font-weight: 500;
+  width: 4.5rem;
+}
+
+.detail-row .value {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+  /* 3) The controls (inputs, selects, buttons) then flow in */
+  .mobile-accordion-container .dosage-input,
+  .mobile-accordion-container .available-input,
+  .mobile-accordion-container .unit-select,
+  .mobile-accordion-container .status-select,
+  .mobile-accordion-container .select-btn {
+    flex: 0 0 auto;   /* shrink to fit their content */
+    margin: 0;        /* no auto-margins pushing them right */
+  }
+
+  .select-btn {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  border-radius: 4px;
+}
+
+  .available-input {
+  width: 3rem;
+  padding: 0.25rem;
+  text-align: center;
+}
+
+.dosage-input {
+  display: none !important;
+}
+
+  /* 4) If you still want a bit of breathing room on the right edge */
+  .mobile-accordion-container .accordion-content {
+    padding-right: 1rem;
+  }
+}
+
+/* Match the date‐range scrollbar for the time‐bubbles strip */
+.mobile-times {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem 0;
+}
+
+/* WebKit scrollbar */
+.mobile-times::-webkit-scrollbar {
+  height: 6px;
+}
+.mobile-times::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+}
+.mobile-times::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 3px;
+}
+
+/* Ensure each bubble stays its size */
+.time-bubble {
+  flex: 0 0 auto;
+}
+
 
 
 </style>
