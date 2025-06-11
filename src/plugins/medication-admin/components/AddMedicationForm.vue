@@ -25,7 +25,9 @@
           <h3 class="section-title">Medication Information</h3>
 
           <!-- Medication Name (required) -->
-          <div class="form-group">
+          
+          
+          <div class="form-group autocomplete">
             <label>
               Medication Name <span class="required">*</span>
             </label>
@@ -35,8 +37,35 @@
               placeholder="Medication Name"
               required
               aria-required="true"
+              class="autocomplete-input"
+              @focus="showSuggestions = searchResults.length > 0"
+              @input="debouncedFetch"
             />
+            <ul v-if="showSuggestions" class="suggestions-list">
+              <li
+                v-for="item in searchResults"
+                :key="item.packaging[0].package_ndc"
+                class="suggestion-item"
+                @mousedown.prevent="selectResult(item)"
+              >
+                <div class="suggestion-header">
+                  <strong>
+                    {{ searchMode === 'brand' && item.brand_name
+                        ? item.brand_name
+                        : item.generic_name
+                    }}
+                  </strong>
+                  <span class="suggestion-ingredients">
+                    ({{ formatIngredients(item.active_ingredients) }})
+                  </span>
+                </div>
+                <div class="suggestion-ndc">
+                  {{ item.packaging[0].package_ndc }}
+                </div>
+              </li>
+            </ul>
           </div>
+
 
           <!-- Dosage + Frequency row -->
           <div class="form-row">
@@ -667,6 +696,154 @@ interface MedicationFormData {
   nurseSignature: string;
 }
 
+interface ActiveIngredient {
+  name: string
+  strength: string
+}
+
+interface FdaResult {
+  generic_name: string
+  brand_name?: string
+  active_ingredients?: ActiveIngredient[]
+  packaging: Array<{
+    description: string
+    package_ndc: string
+  }>
+  dosage_form: string
+  route: string[]
+}
+
+// Map of keywords ? exactly your <option> values
+  const routeMap: Record<string, string> = {
+  oral:                'Oral/Sublingual',
+  sublingual:          'Oral/Sublingual',
+  vaginal:             'IVI Intravaginal',
+  intravaginal:        'IVI Intravaginal',
+  subcutaneous:        'SQ (Subcutaneous)',
+  sq:                  'SQ (Subcutaneous)',
+  sc:                  'SQ (Subcutaneous)',
+  intramuscular:       'IM (Intramuscular)',
+  im:                  'IM (Intramuscular)',
+  intravenous:         'IV (Intravenous)',
+  iv:                  'IV (Intravenous)',
+  id:                  'ID (Intradermal)',
+  intradermal:         'ID (Intradermal)',
+  topical:             'TOP Topical',
+  neb:                 'Neb/INH',
+  inh:                 'Neb/INH',
+  intranasal:          'NAS Intranasal',
+  nasal:               'NAS Intranasal',
+  transdermal:         'TD Transdermal',
+  urethral:            'Urethral',
+  rectal:              'Rectally',
+  optic:               'Optic',
+  otic:                'Otic',
+};
+
+// 1) state
+const searchResults = ref<FdaResult[]>([])
+const showSuggestions = ref(false)
+const searchMode      = ref<'brand' | 'generic'>('brand')
+let debounceTimer: number
+
+function formatIngredients(ings?: ActiveIngredient[]): string {
+  if (!ings || ings.length === 0) return ''
+  return ings
+    .map((i) => `${i.name}: ${i.strength}`)
+    .join(', ')
+}
+
+// 2) fetch & parse
+async function fetchSuggestions() {
+  const q = formData.value.medicationName.trim()
+  if (!q) {
+    searchResults.value = []
+    showSuggestions.value = false
+    return
+  }
+
+  try {
+    // 1) brand_name search
+    searchMode.value = 'brand'
+    let resp = await fetch(
+      `https://api.fda.gov/drug/ndc.json?search=brand_name:${encodeURIComponent(q)}*&limit=10`
+    )
+    let data = await resp.json()
+
+    // 2) fallback to generic_name if no brand results
+    if (!Array.isArray(data.results) || data.results.length === 0) {
+      searchMode.value = 'generic'
+      resp = await fetch(
+        `https://api.fda.gov/drug/ndc.json?search=generic_name:${encodeURIComponent(q)}*&limit=10`
+      )
+      data = await resp.json()
+    }
+
+    // 3) store up to 10 entries
+    searchResults.value = Array.isArray(data.results)
+      ? (data.results as FdaResult[]).slice(0, 10)
+      : []
+    showSuggestions.value = searchResults.value.length > 0
+  } catch (err) {
+    console.error('FDA lookup error', err)
+    searchResults.value = []
+    showSuggestions.value = false
+  }
+}
+
+// 3) debounce wrapper
+function debouncedFetch() {
+  clearTimeout(debounceTimer)
+  debounceTimer = window.setTimeout(fetchSuggestions, 300)
+}
+
+function normalizeRoute(apiRoute: string): string {
+  const r = apiRoute.toLowerCase();
+  for (const key in routeMap) {
+    if (r.includes(key)) {
+      return routeMap[key];
+    }
+  }
+  return '';
+}
+
+function selectResult(item: FdaResult) {
+  // Determine display name (brand vs generic)
+  const baseName =
+    searchMode.value === 'brand' && item.brand_name
+      ? item.brand_name
+      : item.generic_name;
+
+  // Format ingredients string
+  const ingStr = formatIngredients(item.active_ingredients);
+  const displayName = ingStr
+    ? `${baseName} (${ingStr})`
+    : baseName;
+
+  // Populate the Medication Name input
+  formData.value.medicationName = displayName;
+
+  // NDC
+  formData.value.ndcNumber = item.packaging[0].package_ndc;
+
+  // Dosage form ? unitType (capitalized)
+  const rawDf = item.dosage_form || '';
+  const dfBase = rawDf.split(',')[0].trim().toLowerCase();
+  formData.value.unitType = dfBase.charAt(0).toUpperCase() + dfBase.slice(1);
+
+  // Route mapping
+  const candidate =
+    Array.isArray(item.route) && item.route.length
+      ? item.route[0]
+      : '';
+  formData.value.route = normalizeRoute(candidate);
+
+  // Hide dropdown
+  showSuggestions.value = false;
+}
+
+
+
 const props = defineProps<{
   show: boolean;
   existingMedication?: Partial<MedicationFormData> | null;
@@ -1033,5 +1210,58 @@ function onBarcodeScanned(barcode) {
 }
 .verify-btn:hover:not(:disabled) {
   background: #0a7273;
+}
+
+.autocomplete {
+  position: relative;
+}
+.autocomplete-input {
+  width: 100%;
+}
+.suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0; right: 0;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-top: none;
+  max-height: 200px;
+  overflow-y: auto;
+  z-index: 1000;
+  margin: 0; padding: 0;
+  list-style: none;
+}
+.suggestion-item {
+  padding: 8px;
+  cursor: pointer;
+  border-bottom: 1px solid #eee;
+}
+.suggestion-item:last-child {
+  border-bottom: none;
+}
+.suggestion-item:hover {
+  background: #f5f5f5;
+}
+.suggestion-item strong {
+  display: block;
+}
+.suggestion-item small {
+  color: #666;
+  font-size: 0.85em;
+  display: block;
+}
+.suggestion-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.suggestion-ingredients {
+  font-size: 0.85em;
+  color: #555;
+}
+.suggestion-ndc {
+  font-size: 0.85em;
+  color: #777;
+  margin-top: 2px;
 }
 </style>
