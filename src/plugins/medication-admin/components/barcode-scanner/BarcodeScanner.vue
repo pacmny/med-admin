@@ -76,6 +76,7 @@ let stream: MediaStream | null = null
 
 /* ---------- camera helpers ---------- */
 async function startCamera() {
+console.log("🚀 startCamera()", props.active, videoEl.value);
   if (!videoEl.value) return                           // safety
 
   try {
@@ -129,7 +130,23 @@ function handleClose() {
 </script>
 
 <style scoped>
-.scanner-container { position: relative; width:100%; height:100%; background:#000; }
+/* ADD instead: */
+.scanner-container {
+  position: absolute;
+  inset: 0;
+  background: transparent;
+}
+.scanner-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.scanner-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
 .scanner-video     { width:100%; height:100%; object-fit:cover; }
 .scanner-overlay   { position:absolute; inset:0; pointer-events:none; }
 .default-box       { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:12rem; height:8rem; }

@@ -418,13 +418,13 @@
                               ℹ️
                             </span>
 
-                            <BarcodeScanner
+                            <!-- <BarcodeScanner
 :active="scannerContext?.timeObj === timeObj"
 :scanRegion="scannerContext?.timeObj === timeObj ? scanRegion : null"
 :rapidScanMode="rapidScanMode"
 @scanned="onBarcodeScanned"
 @close="scannerContext = null"
-/>
+/> -->
 
                           </div>
                         </template>
@@ -475,15 +475,17 @@
     @click="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
   >
     {{ timeObj.time }}
-  </span>
 
-  <BarcodeScanner
+    <!-- <BarcodeScanner
 :active="scannerContext?.timeObj === timeObj"
 :scanRegion="scannerContext?.timeObj === timeObj ? scanRegion : null"
 :rapidScanMode="rapidScanMode"
 @scanned="onBarcodeScanned"
 @close="scannerContext = null"
-/>
+/> -->
+  </span>
+
+  
 
 </div>
 
@@ -798,6 +800,26 @@
    
 
   </div>
+
+  <!-- SCANNER MODAL -->
+<div
+  v-if="scannerContext"
+  class="scanner-modal-overlay"
+  @click.self="scannerContext = null"
+>
+  <div class="scanner-modal-content">
+    
+
+    <BarcodeScanner
+      :active="true"
+      :scanRegion="scanRegion"
+      :rapidScanMode="rapidScanMode"
+      @scanned="onBarcodeScanned"
+      @close="scannerContext = null"
+    />
+  </div>
+</div>
+
 </template>
 <script setup lang="ts">
 import MedicationActionPopup from './MedicationActionPopup.vue'
@@ -2833,6 +2855,60 @@ function hideTooltip() {}
 /* Ensure each bubble stays its size */
 .time-bubble {
   flex: 0 0 auto;
+}
+
+/* backdrop */
+.scanner-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+/* the “dialog” itself */
+.scanner-modal-content {
+  position: relative;
+  width: 90vw;       /* 90% of viewport width */
+  max-width: 360px;  /* but never wider than 360px */
+  height: 50vh;      /* half your screen height */
+  max-height: 50vh;  /* enforce the 50vh cap */
+  background: black;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* close button */
+.scanner-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255,255,255,0.8);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* force the scanner to fill the modal */
+.scanner-modal-content > * {
+  width: 100%;
+  height: 100%;
+}
+
+
+/* slightly larger on desktop, if you care */
+@media(min-width: 768px) {
+  .scanner-modal-content {
+    max-width: 600px;
+    height: 70vh;
+  }
 }
 
 
