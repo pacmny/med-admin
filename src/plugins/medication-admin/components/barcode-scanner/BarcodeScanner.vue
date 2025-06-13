@@ -55,12 +55,16 @@ import {
   defineEmits
 } from 'vue'
 
+import { BrowserMultiFormatReader, Result } from '@zxing/library'
+
 /* ---------- props ---------- */
 const props = defineProps<{
   active: boolean
   scanRegion?: { x: number; y: number; width: number; height: number } | null
   rapidScanMode?: boolean
 }>()
+
+const codeReader = new BrowserMultiFormatReader()
 
 /* ---------- emits ---------- */
 const emit = defineEmits<{
@@ -91,6 +95,22 @@ console.log("🚀 startCamera()", props.active, videoEl.value);
 
     videoEl.value.srcObject = stream
     await videoEl.value.play()                         // required on Chrome
+
+    // ← begin continuous decode
+codeReader.decodeFromVideoElementContinuously(
+videoEl.value,
+(result: Result | null, err: Error | null) => {
+if (result) {
+const text = result.getText()
+console.log('📦 scanned barcode:', text)     // your console.log
+emit('scanned', text)
+// stop so we don’t fire repeatedly
+stopCamera()
+codeReader.reset()
+}
+}
+)
+
   } catch (err) {
     console.error('Camera start failed:', err)
     stopCamera()
@@ -102,6 +122,9 @@ function stopCamera() {
     stream.getTracks().forEach(t => t.stop())
     stream = null
   }
+
+  codeReader.reset()
+  
   if (videoEl.value) videoEl.value.srcObject = null
 }
 
