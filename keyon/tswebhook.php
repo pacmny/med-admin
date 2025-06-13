@@ -324,7 +324,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				$getNum = $processData->GetGlobalOrderNumber(); //should brinb back the incremented order number for direct use. Its an array being returned so you have grab the array prop name
 				//go and grab all the current (about to degredate) order data - so that we can clone the order and udate just the dosage amount 
 				//var_dump($getNum);exit();
-				$newordernumber = $getNum["ordernumber"] + 1;
+				$newordernumber = $getNum["ordernumber"];
 				$cloneorder = $processData->cloneOrderInfo($accountnumber,$patientid,$ordernumber);
 				 if(!empty($cloneorder) && is_array($cloneorder))
 				 {
@@ -348,9 +348,9 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 							var_dump($insertmed);
 							if($insertmed["result"]=="Inserted")
 							{
-										/* Step 6: Now Lets go Step 5 and crate the Medlog Table and then insert the medtimes into the medtimes table */
-								$insertMedInfo = $processData->InsertMedLog( $accountnumber,$patientid,$patientname,$newordernumber,
-								$providername,$providerid,$medicationid,$administrated_at,$time,$orderstatus,json_encode($admintimes),$notes,$providersignature,$provinitials);
+										/* Step 6: Now Lets go Step 5 and crate the Medlog Table and then insert the medtimes into the medtimes table  - Side Note The Medid needs to be the new medentryid from Medications tbl*/
+								$insertMedInfo = $processData->InsertMedLog($accountnumber,$patientid,$patientname,$newordernumber,
+								$providername,$providerid,$insertmed["newEntryId"],$administrated_at,$time,$orderstatus,json_encode($admintimes),$notes,$providersignature,$provinitials);
 								var_dump("Med Log Table Result");
 								var_dump($insertMedInfo);
 								if($insertMedInfo["results"]=="Inserted" && !empty($insertMedInfo))
@@ -362,7 +362,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 										if($stime !="")
 										{
 											
-											$insertlog = $processData->insertMedlogtableInfo($accountnumber,$patientid,$medicationid,$orderdate,$stime->time,$provinitials,$providersignature);
+											$insertlog = $processData->insertMedlogtableInfo($accountnumber,$patientid,$insertmed["newEntryId"],$orderdate,$stime->time,$provinitials,$providersignature);
 											//var_dump($insertlog);
 											if(!empty($insertlog) && $insertlog["results"]=="Insert")
 											{

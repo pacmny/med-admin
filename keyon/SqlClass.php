@@ -774,6 +774,25 @@ class SQLData{
             {
                 $msg="Inserted";
                 $msgar = array("code"=>"200-Successfull","result"=>$msg);
+                
+                $sql2 = "SELECT * FROM medications WHERE order_number=:ordnumber ORDER BY med_startdate DESC LIMIT 1";
+                $stmnt2 = $this->con->prepare($sql2);
+                $stmnt2->bindParam(":ordnumber",$ordernumber);
+                try{
+
+                    if($stmnt2->execute())
+                    {
+                        $record2 = $stmnt2->fetchAll();
+                        $newmedentryid = "newEntryId"."=>".$records[0]["medentryid"];
+                        array_push($msgar,$newmedentryid);
+
+                    }
+                }
+                catch(PDOException $e)
+                {
+                    $ermsg = array("error"=>"700-SQL error","message"=>$e->__toString(),"firstsqlstatus"=$msg);
+                    return $ermsg;
+                }
                 return $msgar;
             }
         }
