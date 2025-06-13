@@ -237,6 +237,174 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
       print(json_encode($msg,JSON_PRETTY_PRINT));
      }
   }
+  /*6/10/25 ChangeOrderForMedication Function here */
+  elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="ChangeOrderForMedLogTimes")
+  {
+	/* Grab Post Variables */ 
+	 //---FRequency And Dosage param that are needed to create  a new med list----//
+	 $newfrequency = $mmdata->MedicationAdmin->frequency;
+	 $newdosage = $mmdata->MedicationAdmin->dosage;
+	$accountnumber = $mmdata->MedicationAdmin->accountId;
+	$patientid = $mmdata->MedicationAdmin->pid;
+	$adminDate = $mmdata->MedicationAdmin->adminDate; //Use this as a foriegn Key | setting this to todays date but we can changhe it later if we need to with a dynamcic variable 
+	//var_dump($adminDate);
+	$convdt = new DateTime($adminDate);
+	$administrated_at = $convdt->format('Y-m-d');
+	$providerid = $mmdata->MedicationAdmin->providerid;
+	$medname = $mmdata->MedicationAdmin->medname;
+	$ordnumber = $mmdata->MedicationAdmin->ordernumber;
+	$status = $mmdata->MedicationAdmin->status; //Medication Status 
+	$time = date('H:i:s'); //current time or time stamp
+	$admintimes = $mmdata->MedicationAdmin->slotedtimes;
+	$changereason = $mmdata->MedicationAdmin->changereason;
+	$changeorder = $mmdata->MedicationAdmin->changeorder;
+	//go get the patient information || But we should be able to have the EMR APP pass the patient name and ID over to the endpoint since The Admin App is based on the Clients Charts
+	$getpatientInfo = $processData->GetPatientInfobyPatientId($accountnumber,$patientid);
+	//var_dump($getpatientInfo);
+	$patientname = $getpatientInfo[0]["first_name"]." ".$getpatientInfo[0]["lastname"];
+	//now get the provider ID with the provider ID that's passed over | Or the app should be able to pass in the logged in provider 
+	$provider = $processData->LookUpInternalProvider($providerid);
+	$providername = $provider["provider"][0]["firstname"]." ".$provider["provider"][0]["lastname"];
+	//go get the medication ID for the active medication (parameter - medname)
+	$getmedid = $processData->DoesMedExist($accountnumber,$ordnumber,$providerid,$patientid,$medname,$status);
+	//var_dump($getmedid);
+	$medicationid = $getmedid["records"][0]["medentryid"];
+	$providersignature = $providername;
+	$initval = explode(" ",$providersignature);
+	$fname = $initval[0];
+	$lname = $initval[1];
+	$provinitials =substr($fname,0,1) ." ". substr($lname,0,1);
+	$medendDt = date('Y-m-d');
+	/* Step 1 Update the current Order status, Medication Status & Probably Medication Log Status */
+	$currentstatus="Active";
+	$changeOR = $processData->upatePrevOrder($accountnumber,$patientid,$ordnumber,$medicationid,$status,$changereason,$providername,$provinitials);
+	var_dump($changeOR);
+	if($changeOR !="" && $changeOR["results"]=="Updated")
+	{
+		/* Noting - Lets go ahead and grab the the Medication List Details from the DB and only Update Dosage, Frequency */
+		$graboldmedlist = $processData->grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$patientid);
+		var_dump("Grabbing Old Medlist informatio and dump it");
+		//var_dump($graboldmedlist);exit();
+		/*Step 2 Lets Update the Previous Medication/ Med on the Medlist and change the status | Update , med_enddate, medchangetype, dt_medchanged, medchangereason */
+		$changeMedlst = $processData->pastMedList($ordnumber,$accountnumber,$patientid,$medendDt,$status,$administrated_at,$changereason,$medicationid);
+		var_dump($changeMedlst);
+		if($changeMedlst !="" && $changeMedlst["results"]=="Updated")
+		{
+			/* Step 3 Update the MedLog tble \ Important to update the list  and keep it associated with the original Order number for historical med information */
+			$updateMedlog = $processData->updatePrevMedlogTble($accountnumber,$ordnumber,$medicationid,$patientid,$status,$changereason);
+			var_dump($updateMedlog);
+			if($updateMedlog["results"]=="Updated")
+			{
+				/* Step 4 Now, lets create a new order */
+					//var_dump("Ready to run the insert code"); debug
+				$orderdate = date('Y-m-d');  //current date 
+				$ordertime= date('Y-m-d h:i:s'); //current time
+				$ordertype="Nurse Order";
+				$abndelivered=0;
+				$ordphysicianreadback ="";
+				$physician=$providername;
+				$secphysician="";
+				$physicanNpi=$providerid;
+				$provemail=$provider["provider"][0]["email"];
+				$ordphone=$provider["provider"][0]["tel"];
+				$ordfax=$provider["provider"][0]["fax"];
+				$ordaddress=$provider["provider"][0]["addr1"];
+				$ordsendtophyscians="";
+				$ordwoundcare="";
+				$verbalorder="";
+				$verbalorderdate= date('Y-m-d');
+				$nurseSignature=$providersignature; //call the nurses table and get the nurses name
+				$orderDescrip="New Order created due to frequency and or dose change in perscription Medicative";
+				$orderstatus="Pending"; //has tp be until provider signs off on the order
+				$provsigdate="0000-00-00";
+				$note="System Generated Order - Account for Change Order";
+
+
+				/* Create An Order before we Insert Medication Infformation */ 
+				$getNum = $processData->GetGlobalOrderNumber(); //should brinb back the incremented order number for direct use. Its an array being returned so you have grab the array prop name
+				//go and grab all the current (about to degredate) order data - so that we can clone the order and udate just the dosage amount 
+				//var_dump($getNum);exit();
+				$newordernumber = $getNum["ordernumber"] + 1;
+				$cloneorder = $processData->cloneOrderInfo($accountnumber,$patientid,$ordernumber);
+				 if(!empty($cloneorder) && is_array($cloneorder))
+				 {
+					$diagnosis ="";//$graboldmedlist["results"][0]["diagnosis"];
+						$ordar = array("accountnumber"=>$accountnumber,"ordDate"=>$orderdate,"ordTime"=>$ordertime,"ordtype"=>$ordertype,"abndeliv"=>$abndelivered,"readback"=>$ordphysicianreadback,
+						"primephysician"=>$physician,"secphysician"=>$secphysician,"email"=>$provemail,"npi"=>$physicanNpi,
+						"address"=>$ordaddress,"phone"=>$ordphone,"fax"=>$ordfax,"sendtophysician"=>$ordsendtophyscians,"woundcare"=>$ordwoundcare,
+						"verbaloffer"=>$verbalorder,"verbalOrderDt"=>$verbalorderdate,"verbalOrderTime"=>$ordertime,"hasmed"=>'',
+						"hasdiag"=>$diagnosis,"hassupplies"=>'',"hasValueSign"=>'',"description"=>$orderDescrip,"status"=>$orderstatus,"ordernumber"=>$getNum["ordernumber"],"writer"=>'system',
+						"nursesigname"=>$nurseSignature,"nursesigdate"=>$orderdate,"providersignature"=>'',"provsigdate"=>$provsigdate);
+						$createOrder =  $processData->InsertOrderTemplate($patientid,$ordar);
+						var_dump($createOrder);
+						$jdata = json_decode($createOrder);
+						if($jdata->result=="Inserted")
+						{
+							var_dump("Order Created Just need to create or add to the MedList");
+							/*Step 5 We need to Add a new Medications with the updated times and frequency here */
+							$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$newordernumber,$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
+							$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$newfrequency,$newdosage,
+							$medname,$graboldmedlist["results"][0]["instruction"],$status);
+							var_dump($insertmed);
+							if($insertmed["result"]=="Inserted")
+							{
+										/* Step 6: Now Lets go Step 5 and crate the Medlog Table and then insert the medtimes into the medtimes table */
+								$insertMedInfo = $processData->InsertMedLog( $accountnumber,$patientid,$patientname,$newordernumber,
+								$providername,$providerid,$medicationid,$administrated_at,$time,$orderstatus,json_encode($admintimes),$notes,$providersignature,$provinitials);
+								var_dump("Med Log Table Result");
+								var_dump($insertMedInfo);
+								if($insertMedInfo["results"]=="Inserted" && !empty($insertMedInfo))
+								{
+									//Now we can Insert the information into the Medlogtime 
+									$insttimes = array();
+									foreach($admintimes as $stime)
+									{
+										if($stime !="")
+										{
+											
+											$insertlog = $processData->insertMedlogtableInfo($accountnumber,$patientid,$medicationid,$orderdate,$stime->time,$provinitials,$providersignature);
+											//var_dump($insertlog);
+											if(!empty($insertlog) && $insertlog["results"]=="Insert")
+											{
+												array_push($insttimes,$insertlog["results"]);
+											}
+										}
+									}
+									
+									if(!empty(array_filter($insttimes)) )
+									{
+										$msg =array("code"=>"200-Successdfull","results"=>$insttimes[0]);
+										print(json_encode($msg,JSON_PRETTY_PRINT));
+									}
+								}
+							}
+							else{
+								//roll transaction back - code to come
+								 $errormsg = array("code"=>"402 - Automated Issue with Creating New Medication || Medlist. Please try again later or contact your administrator or email suppport@pacmny.com");
+								 print(json_encode($errormsg,JSON_PRETTY_PRINT));
+							}
+						
+						}
+						else{
+							//Error Order nOt created successfully || Roll transaction back
+							$errormsg = array("code"=>"401 Automated Order Creation System Error","message"=>"Issue with creating an automated error - please condtact Administration or email issue to support@pacmy.com");
+							print(json_encode($errormsg,JSON_PRETTY_PRINT));
+						}
+				 }
+				 else{
+					//the clone didn't work, now we just need to fill in enough params to truley create a new order so we can continue processing 
+					//Roll transaction back
+					var_dump("Create new Order to keeep the party going");
+				 }
+				
+			
+			//var_dump($createOrder); debugh
+			//now send out notification via Mandrill 
+		
+			}
+		}
+	}
+  }
   /*Keyon add 5/21/25 Methods to Insert Medication log times  */
   elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="InsertUpdateMedLogTimes")
   {
@@ -272,7 +440,8 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$fname = $initval[0];
 	$lname = $initval[1];
 	$provinitials =substr($fname,0,1) ." ". substr($lname,0,1);
-	if($checkstatus["count"] <=0) //emplty
+	//var_dump($checkstatus);exit();
+	if($checkstatus["count"] <=0) //emplty so lets insert the Medlog table data
 	{
 		 
 		
@@ -311,11 +480,11 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 		
 	}
 	else{
-		//we need to update the Medlogtable and then the times table 
+		//we need to update the Medlogtable and then the times table - The only thing we are updating are the times | Anything else should have been a C.O.
 		//var_dump("Okay, it exist now lets figure out how to update the information");
 		$insttimes = array();
 		$jtime = json_encode($admintimes);
-		$updatelog = $processData->UpdateMedLog($accountnumber,$patientid,$medicationid,$administrated_at,$jtime,$status,$time);
+		$updatelog = $processData->UpdateMedLog($accountnumber,$patientid,$medicationid,$administrated_at,$jtime,$status,$time); //main thing updating admin times
 		//var_dump($updatelog);
 		if(!empty($updatelog) && $updatelog["result"]=="Updated")
 		{
@@ -341,6 +510,37 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 							array_push($insttimes,$updatetimelog["results"]);
 						}
 					}
+				}
+			}
+			/*If the getmedtimeentries come back empty | lets check to see if the dates of the last entry if different than todays date 
+			if so then lets create a new time entry*/
+			$checklastentry = $processData->checklastmedlogtime($medicationid,$accountnumber);
+			//var_dump($checklastentry);
+			if($checklastentry["records"][0] !="" && $checklastentry["count"]==1)
+			{
+				//at least one date entry to check 
+				$prevdate = $checklastentry["administerdate"];
+				$today = date("Y-m-d");
+				if($prevdate < $today)
+				{
+					//insert new intery 
+					//var_dump("Inserting New Med Log TIme");
+					foreach($admintimes as $rtime)
+					{
+						$i++;
+						
+						if($rtime !="")
+						{
+							
+							$insertnewMedtimes = $processData->insertMedlogtableInfo($accountnumber,$patientid,$medicationid,$administrated_at,$rtime->time,$provinitials,$providersignature);
+							//var_dump($insertnewMedtimes);
+							if(!empty($insertnewMedtimes) && $insertnewMedtimes["results"]=="Insert")
+							{
+								array_push($insttimes,$insertnewMedtimes["results"]);
+							}
+						}
+					}
+					
 				}
 			}
 

@@ -339,7 +339,7 @@
         <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
         <div class="form-group">
           <label>Frequency:</label>
-          <select v-model="selectedFrequency" class="form-select" @change="checkMedActiveStatus(selectedMedicationForTime)">
+          <select v-model="selectedFrequency" class="form-select" @change="checkMedActiveStatus(selectedMedicationForTime,selectedFrequency)">
             <option value="">Select frequency</option>
             <option
               v-for="option in frequencyOptions"
@@ -358,7 +358,7 @@
             v-model="selectedDosage"
             min="1"
             step="1"
-            @change="checkMedActiveStatus(selectedMedStatusForTime)"
+            @change="checkMedActiveDosageStatus(selectedMedStatusForTime,selectedDosage)"
           />
         </div>
         <div v-if="timeInputs.length > 0" class="form-group">
@@ -375,6 +375,10 @@
               required
             />
           </div>
+        </div>
+        <div v-if="ifStatusIsChange" class="fom-group">
+           <label>Enter Reason For Change:</label>
+           <input type="text" placeholder="Enter Reason for Change" v-model="Reasaon4change"/>
         </div>
         <div class="form-actions">
           <button @click="handleSave" class="btn-save">Save</button>
@@ -653,6 +657,10 @@ const prnSignOffTimeObj = ref<any>(null)
 const prnNurseSignature = ref('')
 const changeActiveMed = ref<boolean>(false);
 
+// Keyon Added variables for Time Change - Status change
+const ifStatusIsChange = ref<boolean>(false);
+const Reasaon4change = ref<string>('');
+
 let medval= {};
 // FREQUENCY OPTIONS
 const frequencyOptions = [
@@ -745,16 +753,46 @@ function formatDateToYYYYMMDD(d: Date): string {
   )
 }
 // ---- Adding checkMedActiveStatus to check lock status and Trigger Hold Modal -----//
-function checkMedActiveStatus(obj:object)
+function checkMedActiveStatus(obj:object,frequency:string)
 {
   
   console.log(obj.temporaryStatus);
-  let tempstatus = obj.temporaryStatus.split(",");
+  console.log(obj.med_frequency);
+  console.log(frequency);
+  if(obj.med_frequency != frequency)
+  {
+    //I think they are chanign the frequency and we need to alert them that its a change order
+    changeActiveMed.value=true;
+    ifStatusIsChange.value = true; //Reason for change should now be showing
+  }
+  else{
+    changeActiveMed.value = false;
+    ifStatusIsChange.value = false; //disable the Reason for change field
+  }
+ /* let tempstatus = obj.temporaryStatus.split(",");
   
-  if(tempstatus[0]=="taken" || tempstatus[0]=="hold")
+  if(tempstatus[0]=="taken" || tempstatus[0]=="hold" && tempstatus !=null)
   {
     changeActiveMed.value =true;
    
+  }
+  else{
+    changeActiveMed.value=false;
+  } */
+}
+//----Adding function for checkMedActiveDosageStatus-----//
+function checkMedActiveDosageStatus(obj:object,dosage:string)
+{
+  console.log(dosage);
+  if(obj.med_amount !=dosage)
+  {
+    //I think they are chanign the frequency and we need to alert them that its a change order
+    changeActiveMed.value=true;
+    ifStatusIsChange.value = true;
+  }
+  else{
+    changeActiveMed.value = false;
+    ifStatusIsChange.value = false;
   }
 }
 // ---------- STATUS & SORT ----------
@@ -1030,12 +1068,20 @@ async function handleSave() {
       return
     }
   }
-
+  const ismedlocked = ref<boolean>(false);
+  ismedlocked.value =  changeActiveMed.value
   const med = selectedMedicationForTime.value
   med.frequency = selectedFrequency.value
   med.dosage = selectedDosage.value
   const medname =med.medname;//setting this so that I can grab the actual MedId that's needed to lo
-  med.status="Active";
+  if(changeActiveMed.value==true)
+  {
+    med.status="Change";
+  }
+  else{
+    med.status="Active";
+  }
+  
   const medstatus = med.status;
   console.log(medname);
   console.log(medstatus);
@@ -1110,12 +1156,60 @@ async function handleSave() {
      const changeorder = ref<boolean>(false)
      //lets check to see if this med (normally setting the log time and date) is currenly logged and ative. If so the change will require a change order 
      alert(changeActiveMed.value);
-     if(changeActiveMed.value==true)
+     if(changeActiveMed.value==true )
      {
-      changeorder.value = changeActiveMed.value;
-      let confirmCO = confirm("You are changing Dose or Frequency of an active Medication and a New Order is required. Do you want to proceed?");
+      
+      let confirmCO = confirm("You are changing Dose or Frequency of an active Medication and a New Order is required. Do you want to proceed? "+
+      "If not, the administrative time will be updated");
+     
        if(confirmCO==true)
        {
+         changeorder.value = changeActiveMed.value;
+         let content = {
+          MedicationAdmin:{
+          API_Meth:"ChangeOrderForMedLogTimes",
+          pid: "709081242",
+          accountId: "904575107",
+          providerid:"123456789",
+          slotedtimes:newTimeArray,
+          adminDate:todaydt,
+          medname:medname,
+          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          status:medstatus,
+          changeorder:changeorder.value,
+          changereason:Reasaon4change.value ||'',
+          frequency:selectedFrequency.value,
+          dosage:selectedDosage.value
+          }
+        };
+    
+        axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+         .then(response => {        
+          console.log('Data posted successfully:', response.data);  
+          if(response.data && response.data.results=="Changed")
+          {
+            alert("Medication Changes made Successfully. However, meds are pending until provider signs the Pending Order.");
+          }
+          if(response.data && response.data.results=="Error")
+          {
+            alert("There was a problem updating the patient Medication Times. Please try again and if problem persist, please contact system administrator.");
+          }
+             
+         }) 
+         .catch(error => {       
+           if (axios.isAxiosError(error)) {  
+             console.error('Error posting data:', error.response?.data || error.message);     
+           // errorMessage.value = error.response?.data?.message || 'An error occurred while posting data.';  
+           } 
+            else {          
+              console.log('Unexpected error:', error);         
+              
+            }    
+            }); 
+       }
+       else{
+          //don't do anything because they didn't confirm 
+          //changeorder.value =false;
           let content = {
           MedicationAdmin:{
           API_Meth:"InsertUpdateMedLogTimes",
@@ -1127,7 +1221,8 @@ async function handleSave() {
           medname:medname,
           ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
-          changeorder:changeorder.value
+          changeorder:false,
+          changereason:Reasaon4change.value || ''
           }
         };
     
@@ -1155,11 +1250,53 @@ async function handleSave() {
             }    
             }); 
        }
-       else{
-          //don't do anything because they didn't confirm 
-       }
      }
+     else{
+         //should just send to serverside to be processed and either 1. ADDED OR 2. UPDATED
+        
+          //don't do anything because they didn't confirm 
+          //changeorder.value =false;
+          let content = {
+          MedicationAdmin:{
+          API_Meth:"InsertUpdateMedLogTimes",
+          pid: "709081242",
+          accountId: "904575107",
+          providerid:"123456789",
+          slotedtimes:newTimeArray,
+          adminDate:todaydt,
+          medname:medname,
+          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          status:medstatus,
+          changeorder:false
+          }
+        };
+    
+        axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+         .then(response => {        
+          console.log('Data posted successfully:', response.data);  
+          if(response.data && response.data.results=="Insert")
+          {
+            alert("Medication Times Added Successfully");
+          }
+          if(response.data && response.data.results=="Updated")
+          {
+            alert("Medication Times Updated Successfully.");
+          }
+             
+         }) 
+         .catch(error => {       
+           if (axios.isAxiosError(error)) {  
+             console.error('Error posting data:', error.response?.data || error.message);     
+           // errorMessage.value = error.response?.data?.message || 'An error occurred while posting data.';  
+           } 
+            else {          
+              console.log('Unexpected error:', error);         
+              
+            }    
+            }); 
        
+           }
+     
   }
 
   showTimeModal.value = false
@@ -1171,6 +1308,7 @@ function handleCancel() {
   showTimeModal.value = false
   selectedMedicationForTime.value = null
   timeInputs.value = []
+  ifStatusIsChange.value =false;
 }
 
 // ---------- ON MOUNT ----------
@@ -1363,11 +1501,25 @@ function handleStatusChange(event: Event, medIndex: number) {
   const status = select.value
   medications.value[medIndex].status = status
 //alert("Its here");
-  if (status === 'hold' || status === 'new' || status === 'discontinue' || status === 'change') {
+  if (status === 'hold' || status === 'new' || status === 'discontinue' ) { //|| status === 'change'
     selectedMedicationForHold.value = medications.value[medIndex]
-    selectedStatusOption.value = status as 'hold' | 'new' | 'discontinue' | 'change'
+    selectedStatusOption.value = status as 'hold' | 'new' | 'discontinue'   // | 'change'
     showHoldSelector.value = true
     return
+  }
+  else if(status =='change')
+  {
+    /* I'm setting the medication, frequency, and administrations times for the Select Time and Dosage modal to now show the reason of why we need a change and CO */
+    selectedMedicationForTime.value = medications.value[medIndex];
+  selectedFrequency.value = medications.value[medIndex].med_frequency || ''
+  selectedDosage.value = medications.value[medIndex].med_amount || '1'
+    showHoldSelector.value=false;//just in case its showing 
+    ifStatusIsChange.value = true; //setting this so that the reason field shows up
+    showTimeModal.value = true;
+    return 
+  }
+  else{
+
   }
   emit('statusChange', medications.value[medIndex], status)
 }

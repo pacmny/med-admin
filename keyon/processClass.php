@@ -244,6 +244,31 @@ public function GetPatientInfoByPatientId($accountnumber,$patientid)
 	$getpatinfo = $this->sclass->getPatientInfoByPatId($accountnumber,$patientid);
 	return $getpatinfo;
 }
+public function pastMedList($ordernumber,$accountnumber,$patientid,$medendDt,$status,$adminDate,$changereason,$medicationid)
+{
+	$updatemedlist = $this->sclass->pastMedList($ordernumber,$accountnumber,$patientid,$medendDt,$status,$adminDate,$changereason,$medicationid);
+	return $updatemedlist;
+}
+public function cloneOrderInfo($accountnumber,$patientid,$ordernumber)
+{
+	$cloneorder = $this->sclass->cloneOrderInfo($accountnumber,$patientid,$ordernumber);
+	return $cloneorder;
+}
+public function updatePrevMedlogTble($accountnumber, $ordernumber,$medicationid,$patientid,$status,$changereason)
+{
+	$udpateprevMedLogtbl = $this->sclass->updatePrevMedlogTble($accountnumber, $ordernumber,$medicationid,$patientid,$status,$changereason);
+	return $udpateprevMedLogtbl;
+}
+public function upatePrevOrder($accountnumber,$patientid,$ordernumber,$medicationid,$status,$changereason,$providersignature,$provinit)
+{
+	$updatePastCO = $this->sclass->upatePrevOrder($accountnumber,$patientid,$ordernumber,$medicationid,$status,$changereason,$providersignature,$provinit);
+	return $updatePastCO;
+}
+public function grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$patientid)
+{
+	$getmedlist = $this->sclass->grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$patientid);
+	return $getmedlist;
+}
 public function InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,
 $providername,$providerid,$medicationid,$administrated_at,$time,$status,$yearmedtime,$notes,$providersignature,$provinitials)
 {
@@ -295,6 +320,11 @@ public function getMedlogtbleInfo($accountnumber,$patientid,$medid,$adminDate,$a
 	$sclass = new SQLData();
 	$findpharm = $sclass->getMedlogtbleInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature);
 	return $findpharm;
+}
+public function checklastmedlogtime($medid,$accountnumber)
+{
+	$getlastime = $this->sclass->checklastmedlogtime($medid,$accountnumber);
+	return $getlastime;
 }
 public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
 {

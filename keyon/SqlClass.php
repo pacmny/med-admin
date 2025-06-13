@@ -24,7 +24,30 @@ class SQLData{
         $getpatinfo = $this->GetPatientAssignmentByAccntNPatientId($accountnumber,$patientid);
         return $getpatinfo;
     }
-    public function InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,
+    public function grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$patientid)
+    {
+        $sql="SELECT * FROM medications WHERE medentryid=:medid AND accountnumber=:accnt AND patient_id=:patid AND order_number=:ordnumber";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":medid",$medicationid);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":ordnumber",$ordnumber);
+        try{
+
+            if($stmnt->execute())
+            {
+                $records = $stmnt->fetchAll();
+                $msgar = array("code"=>"200 Succesfull","results"=>$records,"count"=>count($records));
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-SQL Error","message"=>$e->__toString());
+            return $msgar;
+        }
+    }
+    public function InsertMedLog($accountnumber,$patientid,$patientname,$ordernumber,
     $providername,$providerid,$medicationid,$administrated_at,$time,$status,$yearmedtime,$notes,$providersignature,$provinitials)
     {
        $sql="INSERT INTO `medicationlog`(`accountnumber`, `patientid`, `patientname`, `ordernumber`, `providername`, `providerid`,
@@ -35,7 +58,7 @@ class SQLData{
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid); //status para,
         $stmnt->bindParam(":patname",$patientname);
-        $stmnt->bindParam(":ordnumber",$patientname); //jso data should be updated here 
+        $stmnt->bindParam(":ordnumber",$ordernumber); //jso data should be updated here 
         $stmnt->bindParam(":providname",$providername);
         $stmnt->bindParam(":provid",$providerid);
         $stmnt->bindParam(":medid",$medicationid);
@@ -62,15 +85,131 @@ class SQLData{
           
            
     }
+    public function cloneOrderInfo($accountnumber,$patientid,$ordernumber)
+    {
+        $sql="SELECT * FROM orders WHERE ordernumber=:ordnumb AND accountnumber=:accnt AND patientid=:patid LIMIT 1";
+        $stmnt= $this->con->prepare($sql);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":ordnumb",$ordernumber);
+        $stmnt->bindParam(":patid",$patientid);
+        try{
+            if($stmnt->execute())
+            {
+                $records = $stmnt->fetchAll();
+                $msgar = array("status"=>"200-Successfull","records"=>$records);
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-Sql","status"=>"Sql statement Failed","error"=>$e->__toString());
+            return $msgar;
+        }
+    }
+    public function updatePrevMedlogTble($accountnumber,$ordernumber,$medicationid,$patientid,$status,$changereason)
+    {
+       
+        $sql="UPDATE medicationlog SET `status`=:stat,notes=:changereason WHERE medicationid=:medid AND accountnumber=:accnt AND patientid=:patid AND ordernumber=:ord";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":stat",$status);
+        $stmnt->bindParam(":changereason",$changereason);
+        $stmnt->bindParam(":medid",$medicationid);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":ord",$ordernumber);
+        try{
+            if($stmnt->execute())
+            {
+                $msg ="Updated";
+                $msgar = array("status"=>"200-Successfull","message"=>"Updated records succesfull","results"=>$msg);
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-Sql","status"=>"Sql statement Failed","error"=>$e->__toString());
+            return $msgar;
+        }
+    }
+    public function pastMedList($ordernumber,$accountnumber,$patientid,$medendDt,$status,$adminDate,$changereason,$medicationid)
+    {
+        var_dump("Dump params");
+        var_dump($adminDate);
+        var_dump($patientid);
+        var_dump($medendDt);
+        var_dump($medicationid);
+        var_dump($status);
+        var_dump($changereason);
+        var_dump($ordernumber);
+        var_dump($accountnumber);
+        $sql="UPDATE `medications` SET med_enddate=:medendDt, medchangetype=:stat, dt_medchanged=:endDt, medchangreason=:chngreason, `status`=:stat WHERE patient_id=:patid AND order_number=:ordnumb
+        AND medentryid=:meid";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":medendDt",$medendDt);
+        $stmnt->bindParam(":stat",$status);
+        $stmnt->bindParam(":endDt",$adminDate);
+        $stmnt->bindParam(":chngreason",$changereason);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":ordnumb",$ordernumber);
+        $stmnt->bindParam(":meid",$medicationid);
+       
+       
+        try{
+
+            if($stmnt->execute())
+            {
+                $msg ="Updated";
+                $msgar = array("status"=>"200 Successfull","results"=>$msg);
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-SQL Error","message"=>$e->__toString());
+            return $msgar;
+        }
+    }
+    public function upatePrevOrder($accountnumber,$patientid,$ordernumber,$medicationid,$status,$changereason,$providersignature,$provinit)
+    {
+        var_dump($ordernumber);
+        var_dump($patientid);
+        var_dump($ordernumber);
+        var_dump($status);
+       
+        $sql="UPDATE orders SET status=:stat, orderdescription=:chngnotes, providersignature=:provsig WHERE patientid=:patid AND ordernumber=:ordnumb";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":stat",$status);
+        $stmnt->bindParam(":chngnotes",$changereason);
+        $stmnt->bindParam(":provsig",$providersignature);
+       // $stmnt->bindParam(":provinitials",$provinit);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":ordnumb",$ordernumber);
+        try{
+
+            if($stmnt->execute())
+            {
+                $msg ="Updated";
+                $msgar = array("status"=>"200 Successfull","results"=>$msg);
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-SQL Error","message"=>$e->__toString());
+            return $msgar;
+        }
+    }
     public function UpdateMedLog($accountnumber,$patientid,$medicationid,$administeredat,$medadmintimes,$status,$ctime)
     {
-        
-        $sql="UPDATE medicationlog SET administrated_at=:admindate, yearmedtime=:medtime, status=:stat, time=:tme
+        /*Not going to updadte the administered_at times because it breaks the relation between the medlogtimes table | Updating times only 
+        *@administrated_at=:admindate,
+        */
+        $sql="UPDATE medicationlog SET  yearmedtime=:medtime, status=:stat, time=:tme
         WHERE accountnumber=:accnt AND patientid=:patid AND medicationid=:medid";
         $stmnt = $this->con->prepare($sql);
-        $stmnt->bindParam(":admindate",$administeredat);
+       // $stmnt->bindParam(":admindate",$administeredat);
         $stmnt->bindParam(":stat",$status); //status para,
-        $stmnt->bindParam(":medtime",$medadmintimes); //jso data should be updated here 
+        $stmnt->bindParam(":medtime",$medadmintimes); //json data should be updated here 
         $stmnt->bindParam(":tme",$ctime);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid);
@@ -92,12 +231,13 @@ class SQLData{
     }
     public function checkMedlogtablenfo($accountnumber,$patientid,$adminDate,$medid)
     {
-        $sql="SELECT * FROM `medicationlog` WHERE accountnumber=:accnt AND patientid=:patid AND administrated_at=:admindate AND medicationid=:medid";
+        //var_dump($medid);
+        $sql="SELECT * FROM `medicationlog` WHERE accountnumber=:accnt AND patientid=:patid AND medicationid=:medid";
        
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid);
-        $stmnt->bindParam(":admindate",$adminDate);
+       // $stmnt->bindParam(":admindate",$adminDate);
         $stmnt->bindParam(":medid",$medid);
         try{
             if($stmnt->execute())
@@ -176,6 +316,7 @@ class SQLData{
     }
     public function getmedtimeEntries($adminDate,$accountnumber,$patientid)
     {
+       // var_dump($adminDate);
         $sql="SELECT * FROM medlogtimes WHERE accountnumber=:accnt AND patientid=:patid AND administerdate=:admindt";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
@@ -322,8 +463,12 @@ class SQLData{
     }
     public function updateMedlogtableInfo($logentry,$accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
     {
-        $sql="UPDATE `medlogtimes` SET `accountnumber`=:accnt, `patientid`=:patid, `medid`=:med, `administerdate`=:adminDt, `time`=:admintimes, `providinitials`=:provinit, `provsignature`=:provsig
-        WHERE accountnumber=:accnt AND patientid=:patid AND logid=:lid ";
+        $sql="UPDATE `medlogtimes` SET `administerdate`=:adminDt, `time`=:admintimes, `providinitials`=:provinit, `provsignature`=:provsig
+        WHERE accountnumber=:accnt AND patientid=:patid AND logid=:lid AND `medid`=:med";
+        /*
+         $sql="UPDATE `medlogtimes` SET `accountnumber`=:accnt, `patientid`=:patid, `medid`=:med, `administerdate`=:adminDt, `time`=:admintimes, `providinitials`=:provinit, `provsignature`=:provsig
+        WHERE accountnumber=:accnt AND patientid=:patid AND logid=:lid AND `medid`=:med";
+        */
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid);
@@ -349,6 +494,31 @@ class SQLData{
             return $msg;
         }
 
+    }
+    public function checklastmedlogtime($medid,$accountnumber)
+    {
+    
+   
+        $sql="SELECT * FROM medlogtimes WHERE medid=:medid AND accountnumber=:accnt ORDER BY administerdate DESC LIMIT 1";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":medid",$medid);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        try{
+
+            if($stmnt->execute())
+            {
+                $records = $stmnt->fetchAll();
+               // var_dump($records);
+                $msgar = array("code"=>"200 Successfull","records"=>$records,"count"=>count($records));
+               
+                return $msgar;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msgar = array("code"=>"700-Sql Error","message"=>$e->__toString());
+            return $msgar;
+        }
     }
     public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
     {
@@ -568,6 +738,10 @@ class SQLData{
         $shorthand=$medname;
         $status="pending";
         $writer="System";// Laster we need to go back and pass in the writer | Should be an Office Admin, Nurse and or Provider vs System
+        if($prn==null || $prn==Null)
+        {
+            $prn="";
+        }
         $sql="INSERT INTO medications (accountnumber,order_number,patient_id,ndcnumber,rxnorns,prn,additional_settings,total,`route`,diagnose_code,med_frequency,alt_route,med_amount,med_doseuom,medname,med_startdate,shorthand,
         instruction,medchangetype,status,writer)
         VALUES(:accnt,:ordnum,:patid,:ndcnum,:rxnum,:prn,:adminsetting,:totaltabs,:route,:diag,:freq,:altroute,:medamnt,:dosage,:medname,:medstrtdt,:shorthand,:instruction,:medchange,:stat,:writer)";
@@ -2448,14 +2622,14 @@ class SQLData{
     // WHERE orders.accountnumber=:accnt AND orders.patientid=:patid AND orders.npinumber=:npi AND medications.status='Active' AND medications.medname=:medname";
      $sql="SELECT * FROM medications
      LEFT JOIN orders ON orders.ordernumber = medications.order_number
-     WHERE orders.accountnumber=:accnt AND orders.patientid=:patid AND orders.npinumber=:npi AND orders.status=:stat AND medications.medname=:medname";
+     WHERE orders.accountnumber=:accnt AND orders.patientid=:patid AND orders.npinumber=:npi AND orders.status='Active' AND medications.medname=:medname";
     
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":npi",$npinumber);
         $stmnt->bindParam(":patid",$patientid);
         $stmnt->bindParam(":medname",$medname);
-        $stmnt->bindParam(":stat",$status);
+       // $stmnt->bindParam(":stat",$status);
         try{
             if($stmnt->execute())
             {
@@ -2494,6 +2668,8 @@ class SQLData{
       LEFT JOIN medicationlog ON medicationlog.medicationid = medications.medentryid
       LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid
       WHERE orders.accountnumber=:accnt AND orders.patientid=:patid and orders.npinumber=:npi AND orders.status='Active' AND additional_settings='Administered' ";
+      *6/10/25 Need to adjust the sql to account for Meciation.status to be included in the WHERE clause
+      *6/10/25 Also added medication status =hold OR adjustment to include active or held medications 
      */
     $sql="SELECT medications.*,
     orders.*,
@@ -2508,7 +2684,7 @@ class SQLData{
       LEFT JOIN orders ON  orders.ordernumber = medications.order_number
       LEFT JOIN medicationlog ON medicationlog.medicationid = medications.medentryid
       LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid
-      WHERE orders.accountnumber=:accnt AND orders.patientid=:patid and orders.npinumber=:npi AND orders.status='Active' AND additional_settings='Administered'
+      WHERE orders.accountnumber=:accnt AND orders.patientid=:patid and orders.npinumber=:npi AND orders.status='Active' OR orders.status='hold' AND medications.status='Active' OR medications.status='hold' AND additional_settings='Administered'
       GROUP BY
       medications.medentryid,  orders.orderid,medicationlog.phid,orders.ordernumber, medicationlog.medicationid";
       $stmnt = $this->con->prepare($sql);
@@ -2530,6 +2706,8 @@ class SQLData{
         return $errormsg;
       }
     }
+    /*6/10/2025 Adding SQL to Locate Med Log Records and add New Dates to be administered for any medications that's in the Log Table*/
+
     public function GetMeasurements($arr){
         $sql = "SELECT * FROM foradata WHERE patientId=:pid AND MDeviceID = :meterid";
         $stmnt = $this->con->prepare($sql);
