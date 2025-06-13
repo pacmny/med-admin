@@ -419,14 +419,13 @@
                             </span>
 
                             <BarcodeScanner
-    v-if="scannerContext && scannerContext.timeObj === timeObj"
-    @scanned="onBarcodeScanned"
-    @close="scannerContext = null"
-    :active="true"
+:active="scannerContext?.timeObj === timeObj"
+:scanRegion="scannerContext?.timeObj === timeObj ? scanRegion : null"
+:rapidScanMode="rapidScanMode"
+@scanned="onBarcodeScanned"
+@close="scannerContext = null"
+/>
 
-    :scanRegion="scanRegion"
-  :rapidScanMode="rapidScanMode"
-  />
                           </div>
                         </template>
                       </template>
@@ -477,16 +476,19 @@
   >
     {{ timeObj.time }}
   </span>
-</div>
-<BarcodeScanner
-  v-if="scannerContext && scannerContext.timeObj === currentTimeObj(med)"
-  :active="true"
-  @scanned="onBarcodeScanned"
-  @close="scannerContext = null"
 
-  :scanRegion="scanRegion"
-  :rapidScanMode="rapidScanMode"
+  <BarcodeScanner
+:active="scannerContext?.timeObj === timeObj"
+:scanRegion="scannerContext?.timeObj === timeObj ? scanRegion : null"
+:rapidScanMode="rapidScanMode"
+@scanned="onBarcodeScanned"
+@close="scannerContext = null"
 />
+
+</div>
+
+
+
 
 
             <div class="detail-row">
@@ -1845,18 +1847,37 @@ function onBarcodeScanned(barcode: string) {
 }
 
 function handleTimeClick(dateObj: Date, timeObj: any, med: Medication) {
-  const now = new Date()
-  const isToday =
-    dateObj.getFullYear() === now.getFullYear() &&
-    dateObj.getMonth() === now.getMonth() &&
-    dateObj.getDate() === now.getDate()
-  if (isToday) {
-    scannerContext.value = { med, timeObj, dateObj }
-    // showBarcodeScanner.value = true
-  } else {
-    openActionPopup(dateObj, timeObj, med)
+  // Only allow today’s date
+  const today = normalizeToMidnight(new Date())
+  const selectedDay = normalizeToMidnight(dateObj)
+  if (selectedDay.getTime() !== today.getTime()) {
+    errorMessage.value = "Medications can only be given on the current date."
+    showErrorModal.value = true
+    return
   }
+
+  // Compute minutes difference from scheduled time
+  const [hStr, mStr] = timeObj.time.split(':').map(s => s.trim())
+  const scheduled = new Date(dateObj)
+  scheduled.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0)
+  const diffMinutes = (new Date().getTime() - scheduled.getTime()) / 60000
+
+  // Early / late check (±60min window)
+  if (diffMinutes < -60 || diffMinutes > 60) {
+    pendingDateAndTime.value = { dateObj, timeObj, medication: med }
+    isEarly.value = diffMinutes < -60
+    confirmationMessage.value = isEarly.value
+      ? "This medication is early, do you still want to give it?"
+      : "This medication is late, do you still want to give it?"
+    showTimeConfirmationPopup.value = true
+    return
+  }
+
+  // All checks passed: open camera for this one time slot only
+  scannerContext.value = { med, timeObj, dateObj }
 }
+
+
 
 
 
@@ -1931,12 +1952,15 @@ function handleTimeActionSelected({ action }: { action: string }) {
 // Early/late
 function confirmTimeAction() {
   showTimeConfirmationPopup.value = false
-  if (!isEarly.value && pendingDateAndTime.value) {
-    selectedDateAndTime.value = pendingDateAndTime.value
-    showTimeActionPopup.value = true
+  if (pendingDateAndTime.value) {
+    const { dateObj, timeObj, medication } = pendingDateAndTime.value
+    // now that user confirmed, open the barcode scanner for this single slot
+    scannerContext.value = { med: medication, timeObj, dateObj }
     pendingDateAndTime.value = null
   }
 }
+
+
 function triggerEarlyYes() {
   showEarlyReasonInput.value = true
 }

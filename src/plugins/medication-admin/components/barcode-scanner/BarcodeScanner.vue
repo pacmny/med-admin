@@ -1,10 +1,33 @@
+<!-- src/components/barcode-scanner/BarcodeScanner.vue -->
 <template>
-  <div class="scanner-container">
-    <video ref="videoEl" autoplay playsinline muted class="scanner-video" />
+  <div v-if="active" class="scanner-container">
+    <video
+      ref="videoEl"
+      class="scanner-video"
+      autoplay
+      playsinline
+      muted
+    ></video>
 
     <div class="scanner-overlay">
       <template v-if="scanRegion">
-        <!-- existing adaptive‐region logic… -->
+        <div
+          class="region-border"
+          :style="{
+            left: `${scanRegion.x}px`,
+            top: `${scanRegion.y}px`,
+            width: `${scanRegion.width}px`,
+            height: `${scanRegion.height}px`,
+            borderColor: rapidScanMode ? '#F59E0B' : '#10B981'
+          }"
+        >
+          <div
+            class="region-label"
+            :style="{ color: rapidScanMode ? '#F59E0B' : '#10B981' }"
+          >
+            {{ rapidScanMode ? 'Rapid scan ready' : 'Barcode detected' }}
+          </div>
+        </div>
       </template>
       <template v-else>
         <div class="default-box">
@@ -14,79 +37,113 @@
       </template>
     </div>
 
-    <!-- 🔴 simple text “X” close button -->
-    <button class="close-btn" @click="$emit('close')" aria-label="Close scanner">
-      ✕
-    </button>
+    <button
+      class="close-btn"
+      @click="handleClose"
+      aria-label="Close scanner"
+    >✕</button>
   </div>
 </template>
 
 <script setup lang="ts">
-// no lucide imports needed
-import { ref, onMounted, defineEmits, defineProps } from 'vue'
+import {
+  ref,
+  watch,
+  onUnmounted,
+  nextTick,
+  defineProps,
+  defineEmits
+} from 'vue'
 
+/* ---------- props ---------- */
 const props = defineProps<{
-  scanRegion: { x: number; y: number; width: number; height: number } | null
+  active: boolean
+  scanRegion?: { x: number; y: number; width: number; height: number } | null
   rapidScanMode?: boolean
 }>()
 
-const emit = defineEmits(['close'])
+/* ---------- emits ---------- */
+const emit = defineEmits<{
+  /** Fired when a barcode library supplies a decoded string */
+  scanned: (code: string) => void
+  /** Fired when the user presses the ✕ button */
+  close: () => void
+}>()
 
-const videoEl = ref<HTMLVideoElement|null>(null)
-onMounted(() => {
-  // your existing camera setup…
-})
+/* ---------- refs ---------- */
+const videoEl = ref<HTMLVideoElement | null>(null)
+let stream: MediaStream | null = null
+
+/* ---------- camera helpers ---------- */
+async function startCamera() {
+  if (!videoEl.value) return                           // safety
+
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },          // prefer rear cam
+        width:  { ideal: 1280 },
+        height: { ideal: 720 }
+      },
+      audio: false
+    })
+
+    videoEl.value.srcObject = stream
+    await videoEl.value.play()                         // required on Chrome
+  } catch (err) {
+    console.error('Camera start failed:', err)
+    stopCamera()
+  }
+}
+
+function stopCamera() {
+  if (stream) {
+    stream.getTracks().forEach(t => t.stop())
+    stream = null
+  }
+  if (videoEl.value) videoEl.value.srcObject = null
+}
+
+/* ---------- react to prop changes ---------- */
+watch(
+  () => props.active,
+  async active => {
+    if (active) {
+      await nextTick()      // wait until <video> is rendered
+      await startCamera()
+    } else {
+      stopCamera()
+    }
+  },
+  { immediate: true }
+)
+
+/* ---------- lifecycle ---------- */
+onUnmounted(stopCamera)
+
+/* ---------- UI events ---------- */
+function handleClose() {
+  stopCamera()
+  emit('close')
+}
 </script>
 
 <style scoped>
-.scanner-container {
-  position: relative;
-  width: 100%; height: 100%;
-  background: black;
+.scanner-container { position: relative; width:100%; height:100%; background:#000; }
+.scanner-video     { width:100%; height:100%; object-fit:cover; }
+.scanner-overlay   { position:absolute; inset:0; pointer-events:none; }
+.default-box       { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:12rem; height:8rem; }
+.default-border    { position:absolute; inset:0; border:4px solid #ef4444; border-radius:0.5rem; opacity:0.8; }
+.default-label     { position:absolute; top:-1.5rem; left:50%; transform:translateX(-50%); color:#ef4444; font-size:0.85rem; font-weight:500; }
+.region-border     { position:absolute; border:4px solid; border-radius:0.5rem; transition:all 0.2s ease-in-out; }
+.region-label      { position:absolute; top:-1.5rem; left:0; font-size:0.85rem; font-weight:500; }
+.close-btn         {
+  position:absolute; top:0.5rem; right:0.5rem;
+  width:2rem; height:2rem;
+  display:flex; align-items:center; justify-content:center;
+  border:none; border-radius:50%;
+  background:rgba(255,255,255,0.8);
+  font-size:1.2rem; cursor:pointer;
 }
-.scanner-video {
-  width: 100%; height: 100%;
-  object-fit: cover;
-}
-
-.scanner-overlay { position: absolute; inset: 0; pointer-events: none; }
-
-.default-box {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  width: 12rem; height: 8rem;
-}
-.default-border {
-  position: absolute; inset: 0;
-  border: 4px solid #ef4444;  /* red */
-  border-radius: 0.5rem;
-  opacity: 0.8;
-}
-.default-label {
-  position: absolute;
-  top: -1.5rem; left: 50%;
-  transform: translateX(-50%);
-  color: #ef4444;
-  font-size: 0.85rem;
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-/* 🔴 Close button styling */
-.close-btn {
-  position: absolute;
-  top: 0.5rem; right: 0.5rem;
-  background: rgba(255,255,255,0.8);
-  border: none;
-  border-radius: 50%;
-  width: 2rem; height: 2rem;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 1.2rem;
-  line-height: 1;
-  cursor: pointer;
-}
-.close-btn:hover {
-  background: rgba(255,255,255,1);
-}
+.close-btn:hover   { background:#fff; }
 </style>

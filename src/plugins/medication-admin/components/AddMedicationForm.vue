@@ -1,645 +1,1202 @@
 <template>
   <transition name="fade">
     <div v-if="show" class="modal-overlay">
-      <div class="modal-content">
-        <!-- Heading -->
-        <h2 class="modal-title">
-          {{ isEditMode ? 'Edit Medication' : 'Add New Medication' }}
-        </h2>
+      <template v-if="!isMobile">
+        <div class="modal-content">
+          <!-- Heading -->
+          <h2 class="modal-title">
+            {{ isEditMode ? 'Edit Medication' : 'Add New Medication' }}
+          </h2>
 
-        <!-- Tabs -->
-        <div class="tabs">
-          <button
-            v-for="tab in tabs"
-            :key="tab.value"
-            class="tab-button"
-            :class="{ active: activeTab === tab.value }"
-            @click="activeTab = tab.value"
-          >
-            {{ tab.label }}
-          </button>
-        </div>
-
-        <!-- TAB 1: Medication Information -->
-        <div v-if="activeTab === 'medInfo'" class="tab-panel">
-          <h3 class="section-title">Medication Information</h3>
-
-          <!-- Medication Name (required) -->
-          
-          
-          <div class="form-group autocomplete">
-            <label>
-              Medication Name <span class="required">*</span>
-            </label>
-            <input
-              type="text"
-              v-model="formData.medicationName"
-              placeholder="Medication Name"
-              required
-              aria-required="true"
-              class="autocomplete-input"
-              @focus="showSuggestions = searchResults.length > 0"
-              @input="debouncedFetch"
-            />
-            <ul v-if="showSuggestions" class="suggestions-list">
-              <li
-                v-for="item in searchResults"
-                :key="item.packaging[0].package_ndc"
-                class="suggestion-item"
-                @mousedown.prevent="selectResult(item)"
-              >
-                <div class="suggestion-header">
-                  <strong>
-                    {{ searchMode === 'brand' && item.brand_name
-                        ? item.brand_name
-                        : item.generic_name
-                    }}
-                  </strong>
-                  <span class="suggestion-ingredients">
-                    ({{ formatIngredients(item.active_ingredients) }})
-                  </span>
-                </div>
-                <div class="suggestion-ndc">
-                  {{ item.packaging[0].package_ndc }}
-                </div>
-              </li>
-            </ul>
+          <!-- Tabs -->
+          <div class="tabs">
+            <button
+              v-for="tab in tabs"
+              :key="tab.value"
+              class="tab-button"
+              :class="{ active: activeTab === tab.value }"
+              @click="activeTab = tab.value"
+            >
+              {{ tab.label }}
+            </button>
           </div>
 
+          <!-- TAB 1: Medication Information -->
+          <div v-if="activeTab === 'medInfo'" class="tab-panel">
+            <h3 class="section-title">Medication Information</h3>
 
-          <!-- Dosage + Frequency row -->
-          <div class="form-row">
-            <div class="form-group dosage-group">
+            <!-- Medication Name (required) -->
+            
+            
+            <div class="form-group autocomplete">
               <label>
-                Dosage <span class="required">*</span>
+                Medication Name <span class="required">*</span>
               </label>
-              <div class="dosage-row">
-                <input
-                  type="text"
-                  v-model="formData.dosage"
-                  placeholder="Dosage"
-                  class="dosage-input"
-                  required
-                  aria-required="true"
-                />
-                <select
-                  v-model="formData.unitType"
-                  class="dosage-select"
+              <input
+                type="text"
+                v-model="formData.medicationName"
+                placeholder="Medication Name"
+                required
+                aria-required="true"
+                class="autocomplete-input"
+                @focus="showSuggestions = searchResults.length > 0"
+                @input="debouncedFetch"
+              />
+              <ul v-if="showSuggestions" class="suggestions-list">
+                <li
+                  v-for="item in searchResults"
+                  :key="item.packaging[0].package_ndc"
+                  class="suggestion-item"
+                  @mousedown.prevent="selectResult(item)"
                 >
-                  <option :value="''">Select Dosage Form</option>
-                  <option
-                    v-for="option in dosageOptions"
-                    :key="option"
-                    :value="option"
-                  >
-                    {{ option }}
-                  </option>
-                </select>
-              </div>
+                  <div class="suggestion-header">
+                    <strong>
+                      {{ searchMode === 'brand' && item.brand_name
+                          ? item.brand_name
+                          : item.generic_name
+                      }}
+                    </strong>
+                    <span class="suggestion-ingredients">
+                      ({{ formatIngredients(item.active_ingredients) }})
+                    </span>
+                  </div>
+                  <div class="suggestion-ndc">
+                    {{ item.packaging[0].package_ndc }}
+                  </div>
+                </li>
+              </ul>
             </div>
-            <div class="form-group">
-              <label>
-                Frequency <span class="required">*</span>
-              </label>
-              <select
-                v-model="formData.frequency"
-                required
-                aria-required="true"
-              >
-                <option value="">Select frequency</option>
-  <option>1 time daily</option>
-  <option>2 times daily</option>
-  <option>2 times daily, as needed (PRN)</option>
-  <option>3 times a day</option>
-  <option>3 times a day, as needed for headache (PRN)</option>
-  <option>3 times daily</option>
-  <option>3 times daily, as needed (PRN)</option>
-  <option>4 times a day</option>
-  <option>4 times daily</option>
-  <option>4 times daily, as needed (PRN)</option>
-  <option>as directed</option>
-  <option>as needed</option>
-  <option>as one dose on the first day then take one tablet daily thereafter</option>
-  <option>at bedtime</option>
-  <option>at bedtime, as needed (PRN)</option>
-  <option>at bedtime as needed for sleep (PRN)</option>
-  <option>before every meal</option>
-  <option>bi-weekly</option>
-  <option>constant infusion</option>
-  <option>daily</option>
-  <option>daily, as needed (PRN)</option>
-  <option>daily as directed</option>
-  <option>every day</option>
-  <option>every month</option>
-  <option>every other day</option>
-  <option>every morning</option>
-  <option>every evening</option>
-  <option>every hour</option>
-  <option>every hour, as needed (PRN)</option>
-  <option>every 2 hours</option>
-  <option>every 2 hours, as needed (PRN)</option>
-  <option>every 3 hours</option>
-  <option>every 3 hours, as needed (PRN)</option>
-  <option>every 4 hours</option>
-  <option>every 4 hours, as needed (PRN)</option>
-  <option>every 4 to 6 hours, as needed for pain (PRN)</option>
-  <option>every 4 to 6 minutes</option>
-  <option>every 4 to 8 hours</option>
-  <option>every 6 hours</option>
-  <option>every 6 hours, as needed for pain (PRN)</option>
-  <option>every 6 hours, as needed for cough (PRN)</option>
-  <option>every 8 hours</option>
-  <option>every 8 hours, as needed (PRN)</option>
-  <option>every 12 hours</option>
-  <option>every 12 hours, as needed (PRN)</option>
-  <option>every 24 hours</option>
-  <option>every 24 hours, as needed (PRN)</option>
-  <option>every Monday, Wednesday, Friday, Sunday</option>
-  <option>every Tuesday, Thursday, Saturday</option>
-  <option>before breakfast, lunch, dinner</option>
-  <option>after breakfast, lunch, dinner</option>
-  <option>Friday</option>
-  <option>Monday</option>
-  <option>once a week</option>
-  <option>one time dose</option>
-  <option>Saturday</option>
-  <option>Sunday</option>
-  <option>three times a week</option>
-  <option>Thursday</option>
-  <option>Tuesday</option>
-  <option>twice daily</option>
-  <option>twice daily, as needed for nausea (PRN)</option>
-  <option>two times a week</option>
-  <option>use as directed per instructions in pack</option>
-  <option>Wednesday</option>
-  <option>weekly</option>
-              </select>
-            </div>
-          </div>
 
-          <!-- Route & Duration row -->
-          <div class="form-row">
-            <div class="form-group">
-              <label>
-                Route <span class="required">*</span>
-              </label>
-              <select
-                v-model="formData.route"
-                required
-                aria-required="true"
-              >
-                <option value="">Select route</option>
-                <option value="Oral/Sublingual">Oral/Sublingual</option>
-                <option value="IVI Intravaginal">IVI Intravaginal</option>
-                <option value="SQ (Subcutaneous)">SQ (Subcutaneous)</option>
-                <option value="IM (Intramuscular)">IM (Intramuscular)</option>
-                <option value="IV (Intravenous)">IV (Intravenous)</option>
-                <option value="ID (Intradermal)">ID (Intradermal)</option>
-                <option value="TOP Topical">TOP Topical</option>
-                <option value="Neb/INH">Neb/INH</option>
-                <option value="NAS Intranasal">NAS Intranasal</option>
-                <option value="TD Transdermal">TD Transdermal</option>
-                <option value="Urethral">Urethral</option>
-                <option value="Rectally">Rectally</option>
-                <option value="Optic">Optic</option>
-                <option value="Otic">Otic</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label>Duration</label>
-              <select v-model="formData.duration">
-                <option value="">Select Duration</option>
-                <option value="7">7 days</option>
-                <option value="14">14 days</option>
-                <option value="30">30 days</option>
-                <option value="60">60 days</option>
-                <option value="90">90 days</option>
-              </select>
-            </div>
-          </div>
 
-          <!-- NDC, RX Norm, Diagnosis in one row -->
-          <div class="form-row">
-            <div class="form-group" style="position: relative;">
-              <label>NDC Number</label>
-              <div style="display: flex; align-items: center; gap: 0.5rem;">
-                <input
-                  type="text"
-                  v-model="formData.ndcNumber"
-                  placeholder="NDC Number"
-                />
-                <button type="button" class="camera-btn" @click="showScanner = true" title="Scan Barcode">
-                  <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="16" y="3" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="16" y="16" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="3" y="16" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="8" y="8" width="8" height="8" rx="2" stroke="#0c8687" stroke-width="2"/></svg>
-                </button>
-                <button type="button" class="verify-btn" :disabled="!formData.ndcNumber" @click="fetchMedicationDetailsFromAPI(formData.ndcNumber)">Verify</button>
-              </div>
-              <!-- Barcode Scanner Modal -->
-              <div v-if="showScanner" class="modal-overlay">
-                <div class="modal-content" style="max-width: 420px;">
-                  <BarcodeScanner @scanned="onBarcodeScanned" @close="showScanner = false" />
-                  <button class="btn-cancel" style="margin-top: 1rem;" @click="showScanner = false">Close</button>
-                </div>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>RX Norm</label>
-              <input
-                type="text"
-                v-model="formData.rxNorm"
-                placeholder="RX Norm"
-              />
-            </div>
-            <div class="form-group">
-              <label>Diagnosis</label>
-              <input
-                type="text"
-                v-model="formData.diagnosis"
-                placeholder="Diagnosis"
-              />
-            </div>
-          </div>
-
-          <!-- PRN if route is in [IVI, SQ, IM, ID, TOP] -->
-          <div
-            v-if="!['IV (Intravenous)','Oral/Sublingual'].includes(formData.route)"
-            class="form-group checkbox-group"
-          >
-            <input
-              type="checkbox"
-              id="prnCheck-otherRoutes"
-              v-model="formData.prn"
-            />
-            <label for="prnCheck-otherRoutes">PRN (As Needed)</label>
-          </div>
-
-          <!-- Oral route only -->
-          <div v-if="formData.route === 'Oral/Sublingual'" class="form-row">
-            <div class="form-group">
-              <label>Number of Tablets/Quantity</label>
-              <input
-                type="number"
-                min="0"
-                v-model.number="formData.quantity"
-                placeholder="0"
-              />
-            </div>
-            <div class="form-group checkbox-group">
-              <input
-                type="checkbox"
-                id="prnCheck-oral"
-                v-model="formData.prn"
-              />
-              <label for="prnCheck-oral">PRN (As Needed)</label>
-            </div>
-          </div>
-
-          <!-- IV Administration -->
-          <div v-if="formData.route === 'IV (Intravenous)'">
-            <h4>IV Administration</h4>
-
-            <!-- Fluid Type & VIA row -->
+            <!-- Dosage + Frequency row -->
             <div class="form-row">
-              <div class="form-group">
-                <label>Fluid Type</label>
-                <select v-model="formData.fluidType">
-                  <option value="">Select fluid type</option>
-                  <option>0.9% Normal Saline</option>
-                  <option>D5W (5% Dextrose in Water)</option>
-                  <option>Lactated Ringers (LR)</option>
-                  <option>Half Normal Saline (0.45% NaCl)</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>VIA</label>
-                <select v-model="formData.via">
-                  <option value="">Select an option</option>
-                  <option>Peripheral IV - Left Arm</option>
-                  <option>Peripheral IV - Right Arm</option>
-                  <option>PICC Line - Left</option>
-                  <option>PICC Line - Right</option>
-                  <option>Mid Line - Left</option>
-                  <option>Mid Line - Right</option>
-                  <option>Central Line - Left</option>
-                  <option>Central Line - Right</option>
-                </select>
-              </div>
-            </div>
-
-            <!-- Volume + Rate row -->
-            <div class="form-row volume-rate-row">
-              <div class="form-group volume-group">
-                <label>Total Volume</label>
-                <div class="volume-row">
+              <div class="form-group dosage-group">
+                <label>
+                  Dosage <span class="required">*</span>
+                </label>
+                <div class="dosage-row">
                   <input
-                    list="volumeOptions"
-                    v-model="formData.totalVolume"
-                    class="volume-dropdown"
-                    placeholder="e.g. 100"
+                    type="text"
+                    v-model="formData.dosage"
+                    placeholder="Dosage"
+                    class="dosage-input"
+                    required
+                    aria-required="true"
                   />
-                  <datalist id="volumeOptions">
-                    <option value="10"></option>
-                    <option value="100"></option>
-                    <option value="250"></option>
-                    <option value="500"></option>
-                    <option value="1000"></option>
-                  </datalist>
                   <select
-                    class="volume-dropdown"
-                    v-model="formData.totalVolumeUnit"
+                    v-model="formData.unitType"
+                    class="dosage-select"
                   >
-                    <option value="ml">ml</option>
-                    <option value="liter">liter</option>
+                    <option :value="''">Select Dosage Form</option>
+                    <option
+                      v-for="option in dosageOptions"
+                      :key="option"
+                      :value="option"
+                    >
+                      {{ option }}
+                    </option>
                   </select>
                 </div>
               </div>
               <div class="form-group">
-                <label>Rate</label>
-                <input
-                  type="text"
-                  v-model="formData.rate"
-                  placeholder="50 (ml/hr)"
-                />
-              </div>
-              <div class="form-group">
-                <label>How Long (hrs)</label>
-                <input
-                  type="text"
-                  :value="formData.howLong"
-                  disabled
-                  placeholder="Computed"
-                />
+                <label>
+                  Frequency <span class="required">*</span>
+                </label>
+                <select
+                  v-model="formData.frequency"
+                  required
+                  aria-required="true"
+                >
+                  <option value="">Select frequency</option>
+    <option>1 time daily</option>
+    <option>2 times daily</option>
+    <option>2 times daily, as needed (PRN)</option>
+    <option>3 times a day</option>
+    <option>3 times a day, as needed for headache (PRN)</option>
+    <option>3 times daily</option>
+    <option>3 times daily, as needed (PRN)</option>
+    <option>4 times a day</option>
+    <option>4 times daily</option>
+    <option>4 times daily, as needed (PRN)</option>
+    <option>as directed</option>
+    <option>as needed</option>
+    <option>as one dose on the first day then take one tablet daily thereafter</option>
+    <option>at bedtime</option>
+    <option>at bedtime, as needed (PRN)</option>
+    <option>at bedtime as needed for sleep (PRN)</option>
+    <option>before every meal</option>
+    <option>bi-weekly</option>
+    <option>constant infusion</option>
+    <option>daily</option>
+    <option>daily, as needed (PRN)</option>
+    <option>daily as directed</option>
+    <option>every day</option>
+    <option>every month</option>
+    <option>every other day</option>
+    <option>every morning</option>
+    <option>every evening</option>
+    <option>every hour</option>
+    <option>every hour, as needed (PRN)</option>
+    <option>every 2 hours</option>
+    <option>every 2 hours, as needed (PRN)</option>
+    <option>every 3 hours</option>
+    <option>every 3 hours, as needed (PRN)</option>
+    <option>every 4 hours</option>
+    <option>every 4 hours, as needed (PRN)</option>
+    <option>every 4 to 6 hours, as needed for pain (PRN)</option>
+    <option>every 4 to 6 minutes</option>
+    <option>every 4 to 8 hours</option>
+    <option>every 6 hours</option>
+    <option>every 6 hours, as needed for pain (PRN)</option>
+    <option>every 6 hours, as needed for cough (PRN)</option>
+    <option>every 8 hours</option>
+    <option>every 8 hours, as needed (PRN)</option>
+    <option>every 12 hours</option>
+    <option>every 12 hours, as needed (PRN)</option>
+    <option>every 24 hours</option>
+    <option>every 24 hours, as needed (PRN)</option>
+    <option>every Monday, Wednesday, Friday, Sunday</option>
+    <option>every Tuesday, Thursday, Saturday</option>
+    <option>before breakfast, lunch, dinner</option>
+    <option>after breakfast, lunch, dinner</option>
+    <option>Friday</option>
+    <option>Monday</option>
+    <option>once a week</option>
+    <option>one time dose</option>
+    <option>Saturday</option>
+    <option>Sunday</option>
+    <option>three times a week</option>
+    <option>Thursday</option>
+    <option>Tuesday</option>
+    <option>twice daily</option>
+    <option>twice daily, as needed for nausea (PRN)</option>
+    <option>two times a week</option>
+    <option>use as directed per instructions in pack</option>
+    <option>Wednesday</option>
+    <option>weekly</option>
+                </select>
               </div>
             </div>
 
-            <!-- Start/End Time row -->
+            <!-- Route & Duration row -->
             <div class="form-row">
               <div class="form-group">
-                <label>Start Time</label>
+                <label>
+                  Route <span class="required">*</span>
+                </label>
+                <select
+                  v-model="formData.route"
+                  required
+                  aria-required="true"
+                >
+                  <option value="">Select route</option>
+                  <option value="Oral/Sublingual">Oral/Sublingual</option>
+                  <option value="IVI Intravaginal">IVI Intravaginal</option>
+                  <option value="SQ (Subcutaneous)">SQ (Subcutaneous)</option>
+                  <option value="IM (Intramuscular)">IM (Intramuscular)</option>
+                  <option value="IV (Intravenous)">IV (Intravenous)</option>
+                  <option value="ID (Intradermal)">ID (Intradermal)</option>
+                  <option value="TOP Topical">TOP Topical</option>
+                  <option value="Neb/INH">Neb/INH</option>
+                  <option value="NAS Intranasal">NAS Intranasal</option>
+                  <option value="TD Transdermal">TD Transdermal</option>
+                  <option value="Urethral">Urethral</option>
+                  <option value="Rectally">Rectally</option>
+                  <option value="Optic">Optic</option>
+                  <option value="Otic">Otic</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>Duration</label>
+                <select v-model="formData.duration">
+                  <option value="">Select Duration</option>
+                  <option value="7">7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="30">30 days</option>
+                  <option value="60">60 days</option>
+                  <option value="90">90 days</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- NDC, RX Norm, Diagnosis in one row -->
+            <div class="form-row">
+              <div class="form-group" style="position: relative;">
+                <label>NDC Number</label>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                  <input
+                    type="text"
+                    v-model="formData.ndcNumber"
+                    placeholder="NDC Number"
+                  />
+                  <button type="button" class="camera-btn" @click="showScanner = true" title="Scan Barcode">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" fill="none" viewBox="0 0 24 24"><rect x="3" y="3" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="16" y="3" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="16" y="16" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="3" y="16" width="5" height="5" rx="1.5" stroke="#0c8687" stroke-width="2"/><rect x="8" y="8" width="8" height="8" rx="2" stroke="#0c8687" stroke-width="2"/></svg>
+                  </button>
+                  <button type="button" class="verify-btn" :disabled="!formData.ndcNumber" @click="fetchMedicationDetailsFromAPI(formData.ndcNumber)">Verify</button>
+                </div>
+                <!-- Barcode Scanner Modal -->
+                <div v-if="showScanner" class="modal-overlay">
+                  <div class="modal-content" style="max-width: 420px;">
+                    <BarcodeScanner @scanned="onBarcodeScanned" @close="showScanner = false" />
+                    <button class="btn-cancel" style="margin-top: 1rem;" @click="showScanner = false">Close</button>
+                  </div>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>RX Norm</label>
                 <input
-                  type="time"
-                  v-model="formData.startTime"
-                  placeholder="HH:MM"
+                  type="text"
+                  v-model="formData.rxNorm"
+                  placeholder="RX Norm"
                 />
               </div>
               <div class="form-group">
-                <label>End Time</label>
+                <label>Diagnosis</label>
                 <input
-                  type="time"
-                  :value="formData.endTime"
-                  disabled
+                  type="text"
+                  v-model="formData.diagnosis"
+                  placeholder="Diagnosis"
                 />
               </div>
             </div>
 
-            <!-- PRN for IV -->
-            <div class="form-group checkbox-group">
+            <!-- PRN if route is in [IVI, SQ, IM, ID, TOP] -->
+            <div
+              v-if="!['IV (Intravenous)','Oral/Sublingual'].includes(formData.route)"
+              class="form-group checkbox-group"
+            >
               <input
                 type="checkbox"
-                id="prnCheck-iv"
+                id="prnCheck-otherRoutes"
                 v-model="formData.prn"
               />
-              <label for="prnCheck-iv">PRN (As Needed)</label>
+              <label for="prnCheck-otherRoutes">PRN (As Needed)</label>
+            </div>
+
+            <!-- Oral route only -->
+            <div v-if="formData.route === 'Oral/Sublingual'" class="form-row">
+              <div class="form-group">
+                <label>Number of Tablets/Quantity</label>
+                <input
+                  type="number"
+                  min="0"
+                  v-model.number="formData.quantity"
+                  placeholder="0"
+                />
+              </div>
+              <div class="form-group checkbox-group">
+                <input
+                  type="checkbox"
+                  id="prnCheck-oral"
+                  v-model="formData.prn"
+                />
+                <label for="prnCheck-oral">PRN (As Needed)</label>
+              </div>
+            </div>
+
+            <!-- IV Administration -->
+            <div v-if="formData.route === 'IV (Intravenous)'">
+              <h4>IV Administration</h4>
+
+              <!-- Fluid Type & VIA row -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Fluid Type</label>
+                  <select v-model="formData.fluidType">
+                    <option value="">Select fluid type</option>
+                    <option>0.9% Normal Saline</option>
+                    <option>D5W (5% Dextrose in Water)</option>
+                    <option>Lactated Ringers (LR)</option>
+                    <option>Half Normal Saline (0.45% NaCl)</option>
+                  </select>
+                </div>
+                <div class="form-group">
+                  <label>VIA</label>
+                  <select v-model="formData.via">
+                    <option value="">Select an option</option>
+                    <option>Peripheral IV - Left Arm</option>
+                    <option>Peripheral IV - Right Arm</option>
+                    <option>PICC Line - Left</option>
+                    <option>PICC Line - Right</option>
+                    <option>Mid Line - Left</option>
+                    <option>Mid Line - Right</option>
+                    <option>Central Line - Left</option>
+                    <option>Central Line - Right</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Volume + Rate row -->
+              <div class="form-row volume-rate-row">
+                <div class="form-group volume-group">
+                  <label>Total Volume</label>
+                  <div class="volume-row">
+                    <input
+                      list="volumeOptions"
+                      v-model="formData.totalVolume"
+                      class="volume-dropdown"
+                      placeholder="e.g. 100"
+                    />
+                    <datalist id="volumeOptions">
+                      <option value="10"></option>
+                      <option value="100"></option>
+                      <option value="250"></option>
+                      <option value="500"></option>
+                      <option value="1000"></option>
+                    </datalist>
+                    <select
+                      class="volume-dropdown"
+                      v-model="formData.totalVolumeUnit"
+                    >
+                      <option value="ml">ml</option>
+                      <option value="liter">liter</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Rate</label>
+                  <input
+                    type="text"
+                    v-model="formData.rate"
+                    placeholder="50 (ml/hr)"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>How Long (hrs)</label>
+                  <input
+                    type="text"
+                    :value="formData.howLong"
+                    disabled
+                    placeholder="Computed"
+                  />
+                </div>
+              </div>
+
+              <!-- Start/End Time row -->
+              <div class="form-row">
+                <div class="form-group">
+                  <label>Start Time</label>
+                  <input
+                    type="time"
+                    v-model="formData.startTime"
+                    placeholder="HH:MM"
+                  />
+                </div>
+                <div class="form-group">
+                  <label>End Time</label>
+                  <input
+                    type="time"
+                    :value="formData.endTime"
+                    disabled
+                  />
+                </div>
+              </div>
+
+              <!-- PRN for IV -->
+              <div class="form-group checkbox-group">
+                <input
+                  type="checkbox"
+                  id="prnCheck-iv"
+                  v-model="formData.prn"
+                />
+                <label for="prnCheck-iv">PRN (As Needed)</label>
+              </div>
             </div>
           </div>
-        </div>
 
-        <!-- TAB 2: Prescription Info -->
-        <div v-if="activeTab === 'prescriptionInfo'" class="tab-panel">
-          <h3 class="section-title">Prescription Information</h3>
-          <div class="form-group">
-            <label>RX Number</label>
-            <input
-              type="text"
-              v-model="formData.rxNumber"
-              placeholder="RX Number"
-            />
-          </div>
-          <div class="form-group">
-            <label>Date the script was filled</label>
-            <input
-              type="date"
-              v-model="formData.filledDate"
-              placeholder="mm/dd/yyyy"
-            />
-          </div>
-          <div class="form-group">
-            <label>Number of Refills</label>
-            <input
-              type="number"
-              min="0"
-              v-model.number="formData.refills"
-              placeholder="0"
-            />
-          </div>
-          <div class="form-row">
+          <!-- TAB 2: Prescription Info -->
+          <div v-if="activeTab === 'prescriptionInfo'" class="tab-panel">
+            <h3 class="section-title">Prescription Information</h3>
             <div class="form-group">
-              <label>Start Date</label>
+              <label>RX Number</label>
+              <input
+                type="text"
+                v-model="formData.rxNumber"
+                placeholder="RX Number"
+              />
+            </div>
+            <div class="form-group">
+              <label>Date the script was filled</label>
               <input
                 type="date"
-                v-model="formData.startDate"
+                v-model="formData.filledDate"
                 placeholder="mm/dd/yyyy"
               />
             </div>
             <div class="form-group">
-              <label>End Date</label>
+              <label>Number of Refills</label>
               <input
-                type="date"
-                v-model="formData.endDate"
-                placeholder="mm/dd/yyyy"
+                type="number"
+                min="0"
+                v-model.number="formData.refills"
+                placeholder="0"
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Start Date</label>
+                <input
+                  type="date"
+                  v-model="formData.startDate"
+                  placeholder="mm/dd/yyyy"
+                />
+              </div>
+              <div class="form-group">
+                <label>End Date</label>
+                <input
+                  type="date"
+                  v-model="formData.endDate"
+                  placeholder="mm/dd/yyyy"
+                />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Refill Reminder Date</label>
+                <input
+                  type="date"
+                  v-model="formData.refillReminderDate"
+                  placeholder="mm/dd/yyyy"
+                />
+              </div>
+              <div class="form-group">
+                <label>Expiration/Refills until</label>
+                <input
+                  type="date"
+                  v-model="formData.expirationDate"
+                  placeholder="mm/dd/yyyy"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: Provider Info -->
+          <div v-if="activeTab === 'providerInfo'" class="tab-panel">
+            <h3 class="section-title">Provider Information</h3>
+            <div class="form-group">
+              <label>Provider Name</label>
+              <input
+                type="text"
+                v-model="formData.providerName"
+                placeholder="Provider Name"
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>DEA Number</label>
+                <input
+                  type="text"
+                  v-model="formData.providerDea"
+                  placeholder="DEA Number"
+                />
+              </div>
+              <div class="form-group">
+                <label>NPI Number</label>
+                <input
+                  type="text"
+                  v-model="formData.providerNpi"
+                  placeholder="NPI Number"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>License Number</label>
+              <input
+                type="text"
+                v-model"text"
+                v-model="formData.licenseNumber"
+                placeholder="License Number"
+              />
+            </div>
+            <div class="form-group">
+              <label>Address</label>
+              <input
+                type="text"
+                v-model="formData.providerAddress"
+                placeholder="Address"
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Office Number</label>
+                <input
+                  type="text"
+                  v-model="formData.providerOffice"
+                  placeholder="Office Number"
+                />
+              </div>
+              <div class="form-group">
+                <label>Cell Phone</label>
+                <input
+                  type="text"
+                  v-model="formData.providerCell"
+                  placeholder="Cell Phone"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                v-model="formData.providerEmail"
+                placeholder="Email"
               />
             </div>
           </div>
-          <div class="form-row">
+
+          <!-- TAB 4: Pharmacy Info -->
+          <div v-if="activeTab === 'pharmacyInfo'" class="tab-panel">
+            <h3 class="section-title">Pharmacy Information</h3>
             <div class="form-group">
-              <label>Refill Reminder Date</label>
+              <label>Pharmacy Name</label>
               <input
-                type="date"
-                v-model="formData.refillReminderDate"
-                placeholder="mm/dd/yyyy"
+                type="text"
+                v-model="formData.pharmacyName"
+                placeholder="Pharmacy Name"
               />
             </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>DEA Number</label>
+                <input
+                  type="text"
+                  v-model="formData.pharmacyDea"
+                  placeholder="DEA Number"
+                />
+              </div>
+              <div class="form-group">
+                <label>NPI Number</label>
+                <input
+                  type="text"
+                  v-model="formData.pharmacyNpi"
+                  placeholder="NPI Number"
+                />
+              </div>
+            </div>
             <div class="form-group">
-              <label>Expiration/Refills until</label>
+              <label>Address</label>
               <input
-                type="date"
-                v-model="formData.expirationDate"
-                placeholder="mm/dd/yyyy"
+                type="text"
+                v-model="formData.pharmacyAddress"
+                placeholder="Address"
+              />
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label>Office Number</label>
+                <input
+                  type="text"
+                  v-model="formData.pharmacyOffice"
+                  placeholder="Office Number"
+                />
+              </div>
+              <div class="form-group">
+                <label>Cell Phone</label>
+                <input
+                  type="text"
+                  v-model="formData.pharmacyCell"
+                  placeholder="Cell Phone"
+                />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>Email</label>
+              <input
+                type="email"
+                v-model="formData.pharmacyEmail"
+                placeholder="Email"
+              />
+            </div>
+
+            <!-- Nurse Signature -->
+            <div class="form-group">
+              <label for="nurseSignature">Nurse Signature</label>
+              <input
+                type="text"
+                id="nurseSignature"
+                placeholder="Nurse signature"
+                v-model="formData.nurseSignature"
               />
             </div>
           </div>
+
+          <!-- Save/Cancel Buttons -->
+          <div class="form-actions">
+            <button class="btn-cancel" @click="handleCancel">
+              Cancel
+            </button>
+            <button
+              class="btn-save"
+              @click="handleSave"
+              :disabled="!isFormValid"
+            >
+              Save
+            </button>
+          </div>
+
         </div>
+      </template>
 
-        <!-- TAB 3: Provider Info -->
-        <div v-if="activeTab === 'providerInfo'" class="tab-panel">
-          <h3 class="section-title">Provider Information</h3>
-          <div class="form-group">
-            <label>Provider Name</label>
-            <input
-              type="text"
-              v-model="formData.providerName"
-              placeholder="Provider Name"
-            />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>DEA Number</label>
-              <input
-                type="text"
-                v-model="formData.providerDea"
-                placeholder="DEA Number"
-              />
-            </div>
-            <div class="form-group">
-              <label>NPI Number</label>
-              <input
-                type="text"
-                v-model="formData.providerNpi"
-                placeholder="NPI Number"
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>License Number</label>
-            <input
-              type="text"
-              v-model"text"
-              v-model="formData.licenseNumber"
-              placeholder="License Number"
-            />
-          </div>
-          <div class="form-group">
-            <label>Address</label>
-            <input
-              type="text"
-              v-model="formData.providerAddress"
-              placeholder="Address"
-            />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Office Number</label>
-              <input
-                type="text"
-                v-model="formData.providerOffice"
-                placeholder="Office Number"
-              />
-            </div>
-            <div class="form-group">
-              <label>Cell Phone</label>
-              <input
-                type="text"
-                v-model="formData.providerCell"
-                placeholder="Cell Phone"
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              v-model="formData.providerEmail"
-              placeholder="Email"
-            />
-          </div>
-        </div>
+      <!-- MOBILE LAYOUT -->
+      <template v-else>
+        <div class="modal-content mobile-modal">
+          <h2 class="modal-title">Add New Medication</h2>
 
-        <!-- TAB 4: Pharmacy Info -->
-        <div v-if="activeTab === 'pharmacyInfo'" class="tab-panel">
-          <h3 class="section-title">Pharmacy Information</h3>
-          <div class="form-group">
-            <label>Pharmacy Name</label>
-            <input
-              type="text"
-              v-model="formData.pharmacyName"
-              placeholder="Pharmacy Name"
-            />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>DEA Number</label>
-              <input
-                type="text"
-                v-model="formData.pharmacyDea"
-                placeholder="DEA Number"
-              />
-            </div>
-            <div class="form-group">
-              <label>NPI Number</label>
-              <input
-                type="text"
-                v-model="formData.pharmacyNpi"
-                placeholder="NPI Number"
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Address</label>
-            <input
-              type="text"
-              v-model="formData.pharmacyAddress"
-              placeholder="Address"
-            />
-          </div>
-          <div class="form-row">
-            <div class="form-group">
-              <label>Office Number</label>
-              <input
-                type="text"
-                v-model="formData.pharmacyOffice"
-                placeholder="Office Number"
-              />
-            </div>
-            <div class="form-group">
-              <label>Cell Phone</label>
-              <input
-                type="text"
-                v-model="formData.pharmacyCell"
-                placeholder="Cell Phone"
-              />
-            </div>
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input
-              type="email"
-              v-model="formData.pharmacyEmail"
-              placeholder="Email"
-            />
-          </div>
+          <!-- Accordions instead of tabs -->
+          <details open class="mobile-section">
+  <summary class="mobile-section-header">Medication Information</summary>
+  <div class="mobile-section-body">
 
-          <!-- Nurse Signature -->
-          <div class="form-group">
-            <label for="nurseSignature">Nurse Signature</label>
-            <input
-              type="text"
-              id="nurseSignature"
-              placeholder="Nurse signature"
-              v-model="formData.nurseSignature"
-            />
+    <!-- Medication Name + Autocomplete -->
+    <div class="mobile-form-group autocomplete mobile-autocomplete">
+      <label>Medication Name <span class="required">*</span></label>
+      <input
+        type="text"
+        v-model="formData.medicationName"
+        placeholder="Medication Name"
+        @focus="showSuggestions = searchResults.length > 0"
+        @input="debouncedFetch"
+        class="mobile-input"
+      />
+      <ul v-if="showSuggestions" class="mobile-suggestions-list">
+        <li
+          v-for="item in searchResults"
+          :key="item.packaging[0].package_ndc"
+          class="mobile-suggestion-item"
+          @mousedown.prevent="selectResult(item)"
+        >
+          <div class="mobile-suggestion-header">
+            <strong>
+              {{ searchMode === 'brand' && item.brand_name
+                  ? item.brand_name
+                  : item.generic_name }}
+            </strong>
+            <small class="mobile-suggestion-ingredients">
+              ({{ formatIngredients(item.active_ingredients) }})
+            </small>
           </div>
-        </div>
+          <div class="mobile-suggestion-ndc">
+            {{ item.packaging[0].package_ndc }}
+          </div>
+        </li>
+      </ul>
+    </div>
 
-        <!-- Save/Cancel Buttons -->
-        <div class="form-actions">
-          <button class="btn-cancel" @click="handleCancel">
-            Cancel
-          </button>
-          <button
-            class="btn-save"
-            @click="handleSave"
-            :disabled="!isFormValid"
-          >
-            Save
-          </button>
-        </div>
-
+    <!-- Dosage + Dosage Form -->
+    <div class="mobile-form-group">
+      <label>Dosage <span class="required">*</span></label>
+      <div class="mobile-inline-group">
+        <input
+          type="text"
+          v-model="formData.dosage"
+          placeholder="Dosage"
+          class="mobile-input dosage-input"
+        />
+        <select v-model="formData.unitType" class="mobile-select">
+          <option value="">Select Dosage Form</option>
+          <option v-for="opt in dosageOptions" :key="opt">{{ opt }}</option>
+        </select>
       </div>
+    </div>
+
+    <!-- Frequency -->
+    <div class="mobile-form-group">
+      <label>Frequency <span class="required">*</span></label>
+      <select v-model="formData.frequency" class="mobile-select">
+        <option value="">Select frequency</option>
+        <option v-for="opt in frequencyOptions" :key="opt">{{ opt }}</option>
+      </select>
+    </div>
+
+    <!-- Route + Duration -->
+    <div class="mobile-form-group">
+      <label>Route <span class="required">*</span></label>
+      <select v-model="formData.route" class="mobile-select">
+        <option value="">Select route</option>
+        <option v-for="opt in routeOptions" :key="opt" :value="opt">{{ opt }}</option>
+      </select>
+    </div>
+    <div class="mobile-form-group">
+      <label>Duration</label>
+      <select v-model="formData.duration" class="mobile-select">
+        <option value="">Select Duration</option>
+        <option value="7">7 days</option>
+        <option value="14">14 days</option>
+        <option value="30">30 days</option>
+        <option value="60">60 days</option>
+        <option value="90">90 days</option>
+      </select>
+    </div>
+
+    <!-- NDC + Scanner + Verify -->
+    <div class="mobile-form-group">
+      <label>NDC Number</label>
+      <div class="mobile-inline-group">
+        <input
+          type="text"
+          v-model="formData.ndcNumber"
+          placeholder="NDC Number"
+          class="mobile-input"
+        />
+        <button @click="showScanner = true" class="mobile-icon-btn" title="Scan Barcode">
+          <!-- replace with your SVG icon -->
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+               stroke="#0c8687" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3"  y="3"  width="5"  height="5"  rx="1.5"/>
+            <rect x="16" y="3"  width="5"  height="5"  rx="1.5"/>
+            <rect x="16" y="16" width="5"  height="5"  rx="1.5"/>
+            <rect x="3"  y="16" width="5"  height="5"  rx="1.5"/>
+            <rect x="8"  y="8"  width="8"  height="8"  rx="2"/>
+          </svg>
+        </button>
+        <button
+          @click="fetchMedicationDetailsFromAPI(formData.ndcNumber)"
+          :disabled="!formData.ndcNumber"
+          class="mobile-verify-btn"
+        >
+          Verify
+        </button>
+      </div>
+
+      <!-- inline modal for mobile scanner -->
+      <div v-if="showScanner" class="modal-overlay">
+        <div class="modal-content" style="max-width:360px;">
+          <BarcodeScanner
+            :active="showScanner"
+            :scanRegion="scanRegion"
+            :rapidScanMode="rapidScanMode"
+            @scanned="onBarcodeScanned"
+            @close="showScanner = false"
+          />
+          <button class="btn-cancel" @click="showScanner = false" style="margin-top:1rem">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- RX Norm -->
+    <div class="mobile-form-group">
+      <label>RX Norm</label>
+      <input
+        type="text"
+        v-model="formData.rxNorm"
+        placeholder="RX Norm"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- Diagnosis -->
+    <div class="mobile-form-group">
+      <label>Diagnosis</label>
+      <input
+        type="text"
+        v-model="formData.diagnosis"
+        placeholder="Diagnosis"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- PRN Checkbox for non-oral routes -->
+    <div
+      v-if="!['IV (Intravenous)','Oral/Sublingual'].includes(formData.route)"
+      class="mobile-form-group mobile-checkbox-group"
+    >
+      <input type="checkbox" id="prn-other" v-model="formData.prn" />
+      <label for="prn-other">PRN (As Needed)</label>
+    </div>
+
+    <!-- Oral ONLY quantity + PRN -->
+    <div v-if="formData.route === 'Oral/Sublingual'" class="mobile-form-group">
+      <label>Quantity (# Tablets)</label>
+      <input
+        type="number"
+        v-model.number="formData.quantity"
+        min="0"
+        class="mobile-input"
+      />
+      <div class="mobile-checkbox-group">
+        <input id="prn-oral" type="checkbox" v-model="formData.prn" />
+        <label for="prn-oral">PRN (As Needed)</label>
+      </div>
+    </div>
+
+    <!-- IV Subsection -->
+    <div v-if="formData.route === 'IV (Intravenous)'" class="mobile-subsection">
+      <h4 class="mobile-subsection-title">IV Administration</h4>
+
+      <div class="mobile-form-group">
+        <label>Fluid Type</label>
+        <select v-model="formData.fluidType" class="mobile-select">
+          <option value="">Select fluid type</option>
+          <option>0.9% Normal Saline</option>
+          <option>D5W (5% Dextrose in Water)</option>
+          <option>Lactated Ringers (LR)</option>
+          <option>Half Normal Saline (0.45% NaCl)</option>
+        </select>
+      </div>
+      <div class="mobile-form-group">
+        <label>VIA</label>
+        <select v-model="formData.via" class="mobile-select">
+          <option value="">Select IV site</option>
+          <option>Peripheral IV – Left Arm</option>
+          <option>Peripheral IV – Right Arm</option>
+          <option>PICC Line – Left</option>
+          <option>PICC Line – Right</option>
+          <option>Mid Line – Left</option>
+          <option>Mid Line – Right</option>
+          <option>Central Line – Left</option>
+          <option>Central Line – Right</option>
+        </select>
+      </div>
+
+      <div class="mobile-form-group">
+        <label>Total Volume</label>
+        <div class="mobile-inline-group">
+          <input
+            list="volumeOptions"
+            v-model="formData.totalVolume"
+            placeholder="e.g. 100"
+            class="mobile-input volume-input"
+          />
+          <select v-model="formData.totalVolumeUnit" class="mobile-select">
+            <option value="ml">ml</option>
+            <option value="liter">liter</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="mobile-form-group">
+        <label>Rate (ml/hr)</label>
+        <input
+          type="number"
+          v-model="formData.rate"
+          placeholder="50"
+          class="mobile-input"
+        />
+      </div>
+
+      <div class="mobile-form-group">
+        <label>How Long (hrs)</label>
+        <input
+          type="text"
+          :value="formData.howLong"
+          disabled
+          class="mobile-input"
+        />
+      </div>
+
+      <div class="mobile-form-group">
+        <label>Start Time</label>
+        <input type="time" v-model="formData.startTime" class="mobile-input" />
+      </div>
+      <div class="mobile-form-group">
+        <label>End Time</label>
+        <input type="time" :value="formData.endTime" disabled class="mobile-input" />
+      </div>
+
+      <div class="mobile-checkbox-group">
+        <input type="checkbox" id="prn-iv" v-model="formData.prn" />
+        <label for="prn-iv">PRN (As Needed)</label>
+      </div>
+    </div>
+
+  </div>
+</details>
+
+
+
+          <details open class="mobile-section">
+  <summary class="mobile-section-header">Prescription Information</summary>
+  <div class="mobile-section-body">
+    <!-- RX Number -->
+    <div class="mobile-form-group">
+      <label>RX Number</label>
+      <input
+        type="text"
+        v-model="formData.rxNumber"
+        placeholder="RX Number"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- Date Script Filled -->
+    <div class="mobile-form-group">
+      <label>Date Script Was Filled</label>
+      <input
+        type="date"
+        v-model="formData.filledDate"
+        placeholder="mm/dd/yyyy"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- Number of Refills -->
+    <div class="mobile-form-group">
+      <label>Number of Refills</label>
+      <input
+        type="number"
+        min="0"
+        v-model.number="formData.refills"
+        placeholder="0"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- Start & End Dates -->
+    <div class="mobile-inline-group">
+      <div class="mobile-form-group">
+        <label>Start Date</label>
+        <input
+          type="date"
+          v-model="formData.startDate"
+          placeholder="mm/dd/yyyy"
+          class="mobile-input"
+        />
+      </div>
+      <div class="mobile-form-group">
+        <label>End Date</label>
+        <input
+          type="date"
+          v-model="formData.endDate"
+          placeholder="mm/dd/yyyy"
+          class="mobile-input"
+        />
+      </div>
+    </div>
+
+    <!-- Refill Reminder & Expiration -->
+    <div class="mobile-inline-group">
+      <div class="mobile-form-group">
+        <label>Refill Reminder Date</label>
+        <input
+          type="date"
+          v-model="formData.refillReminderDate"
+          placeholder="mm/dd/yyyy"
+          class="mobile-input"
+        />
+      </div>
+      <div class="mobile-form-group">
+        <label>Expiration / Refills Until</label>
+        <input
+          type="date"
+          v-model="formData.expirationDate"
+          placeholder="mm/dd/yyyy"
+          class="mobile-input"
+        />
+      </div>
+    </div>
+  </div>
+</details>
+
+
+          <details open class="mobile-section">
+  <summary class="mobile-section-header">Provider Information</summary>
+  <div class="mobile-section-body">
+    <!-- Provider Name -->
+    <div class="mobile-form-group">
+      <label>Provider Name</label>
+      <input
+        type="text"
+        v-model="formData.providerName"
+        placeholder="Provider Name"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- DEA & NPI -->
+    <div class="mobile-inline-group">
+      <div class="mobile-form-group">
+        <label>DEA Number</label>
+        <input
+          type="text"
+          v-model="formData.providerDea"
+          placeholder="DEA Number"
+          class="mobile-input"
+        />
+      </div>
+      <div class="mobile-form-group">
+        <label>NPI Number</label>
+        <input
+          type="text"
+          v-model="formData.providerNpi"
+          placeholder="NPI Number"
+          class="mobile-input"
+        />
+      </div>
+    </div>
+
+    <!-- License Number -->
+    <div class="mobile-form-group">
+      <label>License Number</label>
+      <input
+        type="text"
+        v-model="formData.licenseNumber"
+        placeholder="License Number"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- Address -->
+    <div class="mobile-form-group">
+      <label>Address</label>
+      <input
+        type="text"
+        v-model="formData.providerAddress"
+        placeholder="Address"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- Office & Cell -->
+    <div class="mobile-inline-group">
+      <div class="mobile-form-group">
+        <label>Office Number</label>
+        <input
+          type="text"
+          v-model="formData.providerOffice"
+          placeholder="Office Number"
+          class="mobile-input"
+        />
+      </div>
+      <div class="mobile-form-group">
+        <label>Cell Phone</label>
+        <input
+          type="text"
+          v-model="formData.providerCell"
+          placeholder="Cell Phone"
+          class="mobile-input"
+        />
+      </div>
+    </div>
+
+    <!-- Email -->
+    <div class="mobile-form-group">
+      <label>Email</label>
+      <input
+        type="email"
+        v-model="formData.providerEmail"
+        placeholder="Email"
+        class="mobile-input"
+      />
+    </div>
+  </div>
+</details>
+
+
+          <details open class="mobile-section">
+  <summary class="mobile-section-header">Pharmacy Information</summary>
+  <div class="mobile-section-body">
+
+    <!-- Pharmacy Name -->
+    <div class="mobile-form-group">
+      <label>Pharmacy Name</label>
+      <input
+        type="text"
+        v-model="formData.pharmacyName"
+        placeholder="Pharmacy Name"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- DEA & NPI -->
+    <div class="mobile-inline-group">
+      <div class="mobile-form-group">
+        <label>DEA Number</label>
+        <input
+          type="text"
+          v-model="formData.pharmacyDea"
+          placeholder="DEA Number"
+          class="mobile-input"
+        />
+      </div>
+      <div class="mobile-form-group">
+        <label>NPI Number</label>
+        <input
+          type="text"
+          v-model="formData.pharmacyNpi"
+          placeholder="NPI Number"
+          class="mobile-input"
+        />
+      </div>
+    </div>
+
+    <!-- Address -->
+    <div class="mobile-form-group">
+      <label>Address</label>
+      <input
+        type="text"
+        v-model="formData.pharmacyAddress"
+        placeholder="Address"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- Office & Cell -->
+    <div class="mobile-inline-group">
+      <div class="mobile-form-group">
+        <label>Office Number</label>
+        <input
+          type="text"
+          v-model="formData.pharmacyOffice"
+          placeholder="Office Number"
+          class="mobile-input"
+        />
+      </div>
+      <div class="mobile-form-group">
+        <label>Cell Phone</label>
+        <input
+          type="text"
+          v-model="formData.pharmacyCell"
+          placeholder="Cell Phone"
+          class="mobile-input"
+        />
+      </div>
+    </div>
+
+    <!-- Email -->
+    <div class="mobile-form-group">
+      <label>Email</label>
+      <input
+        type="email"
+        v-model="formData.pharmacyEmail"
+        placeholder="Email"
+        class="mobile-input"
+      />
+    </div>
+
+    <!-- Nurse Signature -->
+    <div class="mobile-form-group">
+      <label for="nurseSignature">Nurse Signature</label>
+      <input
+        type="text"
+        id="nurseSignature"
+        v-model="formData.nurseSignature"
+        placeholder="Nurse signature"
+        class="mobile-input"
+      />
+    </div>
+
+  </div>
+</details>
+
+
+          <!-- Save/Cancel -->
+          <div class="form-actions mobile-actions">
+            <button class="btn-cancel" @click="handleCancel">Cancel</button>
+            <button class="btn-save" @click="handleSave" :disabled="!isFormValid">
+              Save
+            </button>
+          </div>
+        </div>
+      </template>
+
     </div>
   </transition>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch, defineProps, defineEmits } from 'vue'
+import { ref, computed, watch, defineProps, defineEmits, onMounted, onUnmounted } from 'vue'
 import BarcodeScanner from "./barcode-scanner/BarcodeScanner.vue"
 
 interface MedicationFormData {
@@ -712,6 +1269,95 @@ interface FdaResult {
   dosage_form: string
   route: string[]
 }
+
+// full list of frequency options
+const frequencyOptions = [
+  '1 time daily',
+  '2 times daily',
+  '2 times daily, as needed (PRN)',
+  '3 times a day',
+  '3 times a day, as needed for headache (PRN)',
+  '3 times daily',
+  '3 times daily, as needed (PRN)',
+  '4 times a day',
+  '4 times daily',
+  '4 times daily, as needed (PRN)',
+  'as directed',
+  'as needed',
+  'as one dose on the first day then take one tablet daily thereafter',
+  'at bedtime',
+  'at bedtime, as needed (PRN)',
+  'at bedtime as needed for sleep (PRN)',
+  'before every meal',
+  'bi-weekly',
+  'constant infusion',
+  'daily',
+  'daily, as needed (PRN)',
+  'daily as directed',
+  'every day',
+  'every month',
+  'every other day',
+  'every morning',
+  'every evening',
+  'every hour',
+  'every hour, as needed (PRN)',
+  'every 2 hours',
+  'every 2 hours, as needed (PRN)',
+  'every 3 hours',
+  'every 3 hours, as needed (PRN)',
+  'every 4 hours',
+  'every 4 hours, as needed (PRN)',
+  'every 4 to 6 hours, as needed for pain (PRN)',
+  'every 4 to 6 minutes',
+  'every 4 to 8 hours',
+  'every 6 hours',
+  'every 6 hours, as needed for pain (PRN)',
+  'every 6 hours, as needed for cough (PRN)',
+  'every 8 hours',
+  'every 8 hours, as needed (PRN)',
+  'every 12 hours',
+  'every 12 hours, as needed (PRN)',
+  'every 24 hours',
+  'every 24 hours, as needed (PRN)',
+  'every Monday, Wednesday, Friday, Sunday',
+  'every Tuesday, Thursday, Saturday',
+  'before breakfast, lunch, dinner',
+  'after breakfast, lunch, dinner',
+  'Friday',
+  'Monday',
+  'once a week',
+  'one time dose',
+  'Saturday',
+  'Sunday',
+  'three times a week',
+  'Thursday',
+  'Tuesday',
+  'twice daily',
+  'twice daily, as needed for nausea (PRN)',
+  'two times a week',
+  'use as directed per instructions in pack',
+  'Wednesday',
+  'weekly'
+]
+
+// full list of route options
+const routeOptions = [
+  'Oral/Sublingual',
+  'IVI Intravaginal',
+  'SQ (Subcutaneous)',
+  'IM (Intramuscular)',
+  'IV (Intravenous)',
+  'ID (Intradermal)',
+  'TOP Topical',
+  'Neb/INH',
+  'NAS Intranasal',
+  'TD Transdermal',
+  'Urethral',
+  'Rectally',
+  'Optic',
+  'Otic'
+]
+
 
 // Map of keywords ? exactly your <option> values
   const routeMap: Record<string, string> = {
@@ -1002,6 +1648,17 @@ function resetForm() {
   }
 }
 
+const isMobile = ref(window.innerWidth < 768)
+function updateMobile() {
+  isMobile.value = window.innerWidth < 768
+}
+onMounted(() => {
+  window.addEventListener('resize', updateMobile)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', updateMobile)
+})
+
 function handleSave() {
   emit('save', {
     ...formData.value,
@@ -1264,4 +1921,161 @@ function onBarcodeScanned(barcode) {
   color: #777;
   margin-top: 2px;
 }
+
+/* Mobile‐only section styling */
+.mobile-section {
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  margin-bottom: 1rem;
+  overflow: hidden;
+}
+.mobile-section-header {
+  background: #e6f4f4;
+  padding: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.mobile-section-body {
+  padding: 1rem;
+  background: #fff;
+}
+
+/* Basic form groups */
+.mobile-form-group {
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+}
+.mobile-form-group label {
+  margin-bottom: 0.25rem;
+  font-size: 0.95rem;
+}
+.mobile-input,
+.mobile-select {
+  padding: 0.6rem;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+/* Inline fields (e.g. dosage+unit, NDC+buttons) */
+.mobile-inline-group {
+  display: flex;
+  gap: 0.5rem;
+}
+.dosage-input,
+.volume-input {
+  flex: 0 0 4rem;
+}
+.mobile-select {
+  flex: 1;
+}
+
+/* Scanner & verify buttons */
+.mobile-icon-btn {
+  background: none;
+  border: none;
+  padding: 0.2rem;
+  cursor: pointer;
+}
+.mobile-verify-btn {
+  background: #0c8687;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+.mobile-verify-btn:disabled {
+  background: #b2d8d8;
+  cursor: not-allowed;
+}
+
+/* Autocomplete suggestions override */
+.mobile-autocomplete {
+  position: relative;
+}
+.mobile-suggestions-list {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #ccc;
+  max-height: 180px;
+  overflow-y: auto;
+  z-index: 10;
+}
+.mobile-suggestion-item {
+  padding: 0.5rem;
+  cursor: pointer;
+}
+.mobile-suggestion-item:hover {
+  background: #f5f5f5;
+}
+.mobile-suggestion-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+.mobile-suggestion-ingredients {
+  font-size: 0.85rem;
+  color: #555;
+}
+.mobile-suggestion-ndc {
+  font-size: 0.85rem;
+  color: #777;
+  margin-top: 0.25rem;
+}
+
+/* IV sub‐section */
+.mobile-subsection {
+  border-top: 1px solid #ddd;
+  padding-top: 1rem;
+  margin-top: 1rem;
+}
+.mobile-subsection-title {
+  font-size: 1rem;
+  margin-bottom: 0.75rem;
+}
+
+/* ----- MOBILE‐ONLY MODAL ADJUSTMENTS ----- */
+@media (max-width: 767px) {
+  /* shrink & scroll the modal itself */
+  .modal-content {
+    width: 95vw;
+    max-width: 380px;
+    padding: 1rem;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-sizing: border-box;
+  }
+
+  /* make every input & select stretch */
+  .mobile-input,
+  .mobile-select {
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  /* inline groups now wrap */
+  .mobile-inline-group {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  /* default to full‐width for each child */
+  .mobile-inline-group > * {
+    flex: 1 1 100%;
+  }
+  /* optional: refine specific fields */
+  .mobile-inline-group .dosage-input {
+    flex: 0 1 40%;
+  }
+  .mobile-inline-group .mobile-select {
+    flex: 0 1 58%;
+  }
+}
+
+
+
 </style>
