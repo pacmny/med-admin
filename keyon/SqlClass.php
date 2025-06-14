@@ -790,7 +790,7 @@ class SQLData{
                 }
                 catch(PDOException $e)
                 {
-                    $ermsg = array("error"=>"700-SQL error","message"=>$e->__toString(),"firstsqlstatus"=$msg);
+                    $ermsg = array("error"=>"700-SQL error","message"=>$e->__toString(),"firstsqlstatus"=>$msg);
                     return $ermsg;
                 }
                 return $msgar;
