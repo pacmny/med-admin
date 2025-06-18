@@ -1,311 +1,552 @@
 <template>
   <div id="app">
-    <h2>Administration</h2>
 
     <div class="table-container">
       <!-- Status Filter -->
-      <div class="status-filter">
-        <h3>Filter by Status:</h3>
-        <div class="status-buttons">
-          <button
-            class="status-button"
-            :class="{ active: selectedStatus === null }"
-            @click="handleStatusFilter(null)"
-          >
-            Show All
-          </button>
-          <button
-            v-for="option in statusOptions"
-            :key="option.value"
-            class="status-button"
-            :class="{ active: selectedStatus === option.value }"
-            :style="{ backgroundColor: option.color }"
-            @click="handleStatusFilter(option.value)"
-          >
-            {{ option.label }}
-          </button>
+      <template v-if="!isMobile">
+        <div class="status-filter">
+            <h3>Filter by Status:</h3>
+            <div class="status-buttons">
+            <button
+                class="status-button"
+                :class="{ active: selectedStatus === null }"
+                @click="handleStatusFilter(null)"
+            >
+                Show All
+            </button>
+            <button
+                v-for="option in statusOptions"
+                :key="option.value"
+                class="status-button"
+                :class="{ active: selectedStatus === option.value }"
+                :style="{ backgroundColor: option.color }"
+                @click="handleStatusFilter(option.value)"
+            >
+                {{ option.label }}
+            </button>
+            </div>
         </div>
-      </div>
+      </template>
+      <template v-else>
+  		<!-- MOBILE: Filter-by-Status dropdown -->
+        <div class="mobile-filter-dropdown">
+          <label for="mobileFilter">Filter by Status:</label>
+          <select
+            id="mobileFilter"
+            @change="e => handleStatusFilter(e.target.value === '' ? null : e.target.value)"
+            class="mobile-filter-select"
+          >
+            <option value="">Show All</option>
+            <option value="active">Active</option>
+            <option value="discontinue">Discontinue</option>
+            <option value="hold">Hold</option>
+            <option value="new">New</option>
+            <option value="pending">Pending</option>
+            <option value="change">Change</option>
+            <option value="completed">Completed</option>
+            <option value="partial">Partial</option>
+          </select>
+        </div>
+      </template>
 
       <!-- Date Range and Add Form -->
-      <div class="date-range-selector">
-        <label for="date-range-picker">Select Date Range:</label>
-        <input type="text" id="date-range-picker" placeholder="Select date range" />
-        <button class="add-manually-btn" @click="showAddForm = true">
-          Add Manually
-        </button>
-      </div>
+      <template v-if="!isMobile">
+        <div class="date-range-selector">
+            <label for="date-range-picker">Select Date Range:</label>
+            <input type="text" id="date-range-picker" placeholder="Select date range" />
+            <button class="add-manually-btn" @click="showAddForm = true">
+            Add Manually
+            </button>
+        </div>
+      </template>
 
-      <!-- Sorting Controls + Sign Off Button + Expand/Collapse -->
-      <div class="sort-controls">
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'medication' }"
-          @click="handleSort('medication')"
-        >
-          Sort by Medication
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'time' }"
-          @click="handleSort('time')"
-        >
-          Sort by Time
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'diagnosis' }"
-          @click="handleSort('diagnosis')"
-        >
-          Sort by Diagnosis
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'route' }"
-          @click="handleSort('route')"
-        >
-          Sort by Route
-        </button>
-        <button
-          class="sort-button"
-          :class="{ active: sortBy === 'prn' }"
-          @click="handleSort('prn')"
-        >
-          Sort by PRN
-        </button>
+      <template v-else>
+        <!-- add a wrapper so desktop never gets these styles -->
+    	<div class="mobile-toolbar">
+            <div class="date-range-selector">
+            <button class="add-manually-btn" @click="showAddForm = true">
+                Add Manually
+            </button>
+            <button
+                class="sort-button sign-off-button"
+                @click="showSignOffPopup = true"
+            >
+                Signature
+            </button>
+            <input
+                type="text"
+                id="date-range-picker"
+                placeholder="Date Range"
+            />
+            </div>
 
-        <!-- Expand/Collapse Columns -->
-        <button
-          class="sort-button"
-          @click="toggleCollapse"
-        >
-          {{ collapsed ? 'Expand' : 'Collapse' }}
-        </button>
+            <!-- … your filter/sort dropdowns and date chips … -->
+        </div>
+      </template>
 
-        <!-- Sign Off Button -->
-        <button
-          class="sort-button sign-off-button"
-          @click="showSignOffPopup = true"
-        >
-          Sign Off
-        </button>
-      </div>
+	  <template v-if="isMobile">
+        <!-- … your mobile filter & sort dropdowns … -->
 
-      <!-- Grouped Medications -->
-      <template v-for="(medsInGroup, category) in groupedMedications" :key="category">
-        <div v-if="medsInGroup.length > 0">
-          <!-- Sticky category header -->
-          <h3 class="category-header">{{ category }}</h3>
-          <div class="category-section">
-            <table class="schedule-table">
-              <thead>
-                <tr>
-                  <th class="sticky-header-1">Medication Details</th>
-                  <!-- Hide these columns if collapsed -->
-                  <th v-if="!collapsed" class="sticky-header-2">Status</th>
-                  <th v-if="!collapsed" class="sticky-header-3">Tabs Available</th>
-                  <th v-if="!collapsed" class="sticky-header-4">Frequency</th>
-                  <th v-if="!collapsed" class="sticky-header-5">Dosage</th>
-                  <th v-if="!collapsed" class="sticky-header-6">Select Time and Dosage</th>
-                  <!-- Date Columns -->
-                  <th
-                    v-for="dateObj in allColumns"
-                    :key="dateObj.getTime()"
-                  >
-                    Administration Times ({{ formatDate(dateObj) }})
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr
-                  v-for="(med, medIndex) in medsInGroup"
-                  :key="medIndex"
-                  class="medication-row"
-                  :class="getRowStatusClass(med)"
-                  :data-med-index="medIndex"
-                >
-                  <!-- Medication Info -->
-                  <td class="sticky-column-1" :style="{
-                              backgroundColor:
-                                med.temporaryStatus ==='hold'
-                                  ? '#fff3cd'
-                                  : '#f8f9fa'
-                            }">
-                    <ExpandableDetails
-                      :medication="med"
-                      @update="handleMedicationUpdate"
-                    >
-                      <template #preview>
-                        {{ med.medname }}
-                      </template>
-                    </ExpandableDetails>
-                  </td>
-
-                  <!-- Status (hidden if collapsed) -->
-                  <td v-if="!collapsed" class="sticky-column-2">
-                    <select
-                      class="status-dropdown"
-                      @change="(e) => handleStatusChange(e, medIndex)"
-                    >
-                      <option
-                        v-for="option in statusOptions"
-                        :key="option.value"
-                        :value="option.value"
-                        :style="{ backgroundColor: option.color }"
-                        :selected="med.status === option.value"
-                      >
-                      {{ option.label }} 
-                      </option>
-                    </select>
-                  </td>
-
-                  <!-- Tabs Available (hidden if collapsed) -->
-                  <td v-if="!collapsed" class="tabs-available sticky-column-3">
-                    <div class="tabs-counter">
-                      <input
-                        type="number"
-                        v-model="med.available"
-                        @change="handleTabsChange(med, $event.target.value)"
-                        class="tabs-input"
-                      />
-                    </div>
-                  </td>
-
-                  <!-- Frequency & Dosage (hidden if collapsed) -->
-                  <td v-if="!collapsed" class="sticky-column-4">{{ med.med_frequency || 'Not set' }}</td>
-                  <td v-if="!collapsed" class="sticky-column-5">{{ med.med_amount || 'Not set' }}</td>
-
-                  <!-- "Select Time and Dosage" Button (hidden if collapsed) -->
-                  <td v-if="!collapsed" class="select-time-dosage sticky-column-6">
-                    <button class="select-button" @click="toggleSelectDropdown(med)">
-                      Select
-                    </button>
-                  </td>
-
-                  <!-- Times by Date -->
-                  <td
-                    v-for="dateObj in allColumns"
-                    :key="dateObj.getTime()"
-                  >
-                    <div class="administration-times">
-                      <!-- PRN Meds -->
-                      <template v-if="med.prn">
-                        <div class="prn-indicator" @click="stampPRNTime(med)">
-                          As needed
-                        </div>
-                        <div
-                          v-if="med.times && med.times.length"
-                          class="prn-times-list"
-                        >
-                          <div
-                            v-for="timeObj in med.times.filter(entry => entry.date === formatDateToYYYYMMDD(dateObj))"
-                            :key="timeObj.time + timeObj.status"
-                            class="time-entry"
-                            :class="[timeObj.status, { discontinued: timeObj.status === 'discontinue' }]"
-                            @mouseover="showTooltip(timeObj)"
-                            @mouseout="hideTooltip"
-                            :style="{
-                              backgroundColor:
-                                timeObj.locked && timeObj.status === 'taken'
-                                  ? '#b3f0b3'
-                                  : timeObj.locked && timeObj.status === 'refused'
-                                  ? '#f9b3b3'
-                                  : timeObj.locked && timeObj.status ==='hold'
-                                  ? '#fff3cd'
-                                  : 'transparent'
-                                  
-                            }"
-                          >
-                            {{ timeObj.time }}
-                            <span v-if="timeObj.earlyReason">
-                              ({{ timeObj.earlyReason }})
-                            </span>
-                            <!-- Tooltip Icon -->
-                            <span
-                              v-if="getTooltipText(timeObj)"
-                              class="tooltip-icon"
-                              :title="getTooltipText(timeObj)"
-                            >
-                              ℹ️
-                            </span>
-                          </div>
-                        </div>
-                      </template>
-
-                      <!-- Scheduled Meds (non-PRN) -->
-                      <template v-else>
-                        <template v-for="timeObj in getTimesForDate(med, dateObj)">
-                          <!-- Only show if base time matches category if we're sorting by time -->
-                          <div
-                            v-if="sortBy !== 'time' || extractBaseTime(timeObj.time) === category"
-                            :key="timeObj.time"
-                            class="time-entry"
-                            :class="[timeObj.status, timeObj.temporaryStatus, { discontinued: timeObj.status === 'discontinue' }]"
-                            @click="!timeObj.locked && openActionPopup(dateObj, timeObj, med)"
-                            :style="{
-                              backgroundColor:
-                                timeObj.locked && timeObj.status === 'taken'
-                                  ? '#b3f0b3'
-                                  : timeObj.locked && timeObj.status === 'refused'
-                                  ? '#f9b3b3'
-                                  : timeObj.locked && timeObj.status ==='hold'
-                                  ? '#fff3cd'
-                                  : 'transparent'
-                            }"
-                          >
-                            {{ timeObj.time }}
-                            <span v-if="timeObj.earlyReason">
-                              ({{ timeObj.earlyReason }})
-                            </span>
-
-                            <!-- Immediate Icons -->
-                            <template v-if="timeObj.temporaryStatus === 'taken'">
-                              <span
-                                class="icon-immediate"
-                                style="color: #28a745; margin-left: 0.3rem;"
-                                title="Taken"
-                              >
-                                ✔
-                              </span>
-                            </template>
-                            <template v-else-if="timeObj.temporaryStatus === 'refused'">
-                              <span
-                                class="icon-immediate"
-                                style="color: #dc3545; margin-left: 0.3rem;"
-                                title="Refused"
-                              >
-                                ✘
-                              </span>
-                            </template>
-                            <template v-else-if="timeObj.temporaryStatus === 'later'">
-                              <span
-                                class="icon-immediate"
-                                style="color: #ffe600; margin-left: 0.3rem;"
-                                title="Take Later"
-                              >
-                                ⏳
-                              </span>
-                            </template>
-
-                            <!-- Tooltip if signed off -->
-                            <span
-                              v-if="getTooltipText(timeObj)"
-                              class="tooltip-icon"
-                              :title="getTooltipText(timeObj)"
-                            >
-                              ℹ️
-                            </span>
-                          </div>
-                        </template>
-                      </template>
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+        <!-- MOBILE: Selected-Dates Scroll -->
+        <div class="mobile-date-scroll">
+          <div
+            v-for="date in selectedDates"
+            :key="date"
+            class="mobile-date-box"
+            @click="selectDate(date)"
+          >
+            {{ date }}
           </div>
         </div>
       </template>
+
+	  <template v-if="!isMobile">
+		<!-- Sorting Controls + Sign Off Button + Expand/Collapse -->
+		<div class="sort-controls">
+			<button
+			class="sort-button"
+			:class="{ active: sortBy === 'medication' }"
+			@click="handleSort('medication')"
+			>
+			Sort by Medication
+			</button>
+			<button
+			class="sort-button"
+			:class="{ active: sortBy === 'time' }"
+			@click="handleSort('time')"
+			>
+			Sort by Time
+			</button>
+			<button
+			class="sort-button"
+			:class="{ active: sortBy === 'diagnosis' }"
+			@click="handleSort('diagnosis')"
+			>
+			Sort by Diagnosis
+			</button>
+			<button
+			class="sort-button"
+			:class="{ active: sortBy === 'route' }"
+			@click="handleSort('route')"
+			>
+			Sort by Route
+			</button>
+			<button
+			class="sort-button"
+			:class="{ active: sortBy === 'prn' }"
+			@click="handleSort('prn')"
+			>
+			Sort by PRN
+			</button>
+
+			<!-- Expand/Collapse Columns -->
+			<button
+			class="sort-button"
+			@click="toggleCollapse"
+			>
+			{{ collapsed ? 'Expand' : 'Collapse' }}
+			</button>
+
+			<!-- Sign Off Button -->
+			<button
+			class="sort-button sign-off-button"
+			@click="showSignOffPopup = true"
+			>
+			Sign Off
+			</button>
+		</div>
+	  </template>
+
+	  <template v-else>
+        <!-- MOBILE: Sort-by dropdown -->
+        <div class="mobile-sort-row">
+    		<!-- Left: Sort dropdown -->
+			<div class="mobile-sort-col mobile-sort-col-left">
+			<label for="mobileSort">Sort by:</label>
+			<select
+				id="mobileSort"
+				v-model="selectedSort"
+				@change="onSortChange"
+				class="mobile-sort-select"
+			>
+				<option disabled value="">— Select —</option>
+				<option value="Medication">Medication</option>
+				<option value="Time">Time</option>
+				<option value="Diagnosis">Diagnosis</option>
+				<option value="Route">Route</option>
+				<option value="PRN">PRN</option>
+			</select>
+			</div>
+
+			<!-- Center: clicked‐date display -->
+			<div class="mobile-sort-col mobile-sort-col-center">
+			{{ activeDate || ' ' }}
+			</div>
+
+			<!-- Right: static text -->
+			<div class="mobile-sort-col mobile-sort-col-right">
+			Admin Time
+			</div>
+		</div>
+      </template>
+
+      <!-- Grouped Medications -->
+	  <template v-if="!isMobile">
+		<template v-for="(medsInGroup, category) in groupedMedications" :key="category">
+			<div v-if="medsInGroup.length > 0">
+				<!-- Sticky category header -->
+				<h3 class="category-header">{{ category }}</h3>
+				<div class="category-section">
+					<table class="schedule-table">
+						<thead>
+							<tr>
+							<th class="sticky-header-1">Medication Details</th>
+							<!-- Hide these columns if collapsed -->
+							<th v-if="!collapsed" class="sticky-header-2">Status</th>
+							<th v-if="!collapsed" class="sticky-header-3">Tabs Available</th>
+							<th v-if="!collapsed" class="sticky-header-4">Frequency</th>
+							<th v-if="!collapsed" class="sticky-header-5">Dosage</th>
+							<th v-if="!collapsed" class="sticky-header-6">Select Time and Dosage</th>
+							<!-- Date Columns -->
+							<th
+								v-for="dateObj in allColumns"
+								:key="dateObj.getTime()"
+							>
+								Administration Times ({{ formatDate(dateObj) }})
+							</th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr
+							v-for="(med, medIndex) in medsInGroup"
+							:key="medIndex"
+							class="medication-row"
+							:class="getRowStatusClass(med)"
+							:data-med-index="medIndex">
+								<!-- Medication Info -->
+								<!-- <td class="sticky-column-1" :style="{
+											backgroundColor:
+												med.temporaryStatus ==='hold'
+												? '#fff3cd'
+												: '#f8f9fa'
+											}">
+									<ExpandableDetails
+									:medication="med"
+									@update="handleMedicationUpdate"
+									>
+									<template #preview>
+										{{ med.medname }}
+									</template>
+									</ExpandableDetails>
+								</td> -->
+
+								<!-- ABOVE IS PRIOR TEMPLATE, BELOW IS NEW VIA CHRIS -->
+
+								<!-- Medication Info: clickable name => edit 
+									PLUS the new tooltip icon showing the nurse/time from Add New Medication -->
+								<td class="sticky-column-1">
+									<span
+									class="medication-link"
+									@click="openMedicationForm(med)"
+									>
+									{{ med.medname }}
+									</span>
+									<!-- Tooltip icon for nurse/time from Add New Medication -->
+									<span
+									v-if="getAddMedicationTooltip(med)"
+									class="tooltip-icon"
+									:title="getAddMedicationTooltip(med)"
+									style="margin-left: 4px;"
+									>
+									ℹ️
+									</span>
+								</td>
+
+								<!-- Status (hidden if collapsed) -->
+								<td v-if="!collapsed" class="sticky-column-2">
+									<select
+									class="status-dropdown"
+									@change="(e) => handleStatusChange(e, medIndex)"
+									>
+									<option
+										v-for="option in statusOptions"
+										:key="option.value"
+										:value="option.value"
+										:style="{ backgroundColor: option.color }"
+										:selected="med.status === option.value"
+									>
+									{{ option.label }} 
+									</option>
+									</select>
+								</td>
+
+								<!-- Tabs Available (hidden if collapsed) -->
+								<td v-if="!collapsed" class="tabs-available sticky-column-3">
+									<div class="tabs-counter">
+									<input
+										type="number"
+										v-model="med.available"
+										@change="handleTabsChange(med, $event.target.value)"
+										class="tabs-input"
+									/>
+									</div>
+									<!-- Dosage type dropdown (unitType) -->
+									<div class="unit-dropdown">
+									<select v-model="med.unitType" class="unit-select">
+										<option value="" disabled>Select Dosage Type</option>
+										<option
+										v-for="option in unitOptions"
+										:key="option"
+										:value="option"
+										>
+										{{ option }}
+										</option>
+									</select>
+									</div>
+								</td>
+
+								<!-- Frequency & Dosage (hidden if collapsed) -->
+								<td v-if="!collapsed" class="sticky-column-4">{{ med.med_frequency || 'Not set' }}</td>
+								<td v-if="!collapsed" class="sticky-column-5">{{ med.med_amount || 'Not set' }}</td>
+
+								<!-- "Select Time and Dosage" Button (hidden if collapsed) -->
+								<td v-if="!collapsed" class="select-time-dosage sticky-column-6">
+									<button class="select-button" @click="toggleSelectDropdown(med)">
+									Select
+									</button>
+								</td>
+
+								<!-- Times by Date -->
+								<td
+									v-for="dateObj in allColumns"
+									:key="dateObj.getTime()"
+								>
+									<div class="administration-times">
+									<!-- PRN Meds -->
+									<template v-if="med.prn">
+										<div class="prn-indicator" v-if="!hasPrnTimesForDate(med, dateObj)" @click="stampPRNTime(med)">
+										As needed
+										</div>
+										<div
+										v-if="med.times && med.times.length"
+										class="prn-times-list"
+										>
+										<div
+											v-for="timeObj in med.times.filter(entry => entry.date === formatDateToYYYYMMDD(dateObj))"
+											:key="timeObj.time + timeObj.status"
+											class="time-entry"
+											:class="[timeObj.status, { discontinued: timeObj.status === 'discontinue' }]"
+											@mouseover="showTooltip(timeObj)"
+											@mouseout="hideTooltip"
+											:style="{
+											backgroundColor:
+												timeObj.locked && timeObj.status === 'taken'
+												? '#b3f0b3'
+												: timeObj.locked && timeObj.status === 'refused'
+												? '#f9b3b3'
+												: timeObj.locked && timeObj.status ==='hold'
+												? '#fff3cd'
+                        :timeObj.locked && timeObj.status =='discontinued'
+                        ? '#f8d7da'
+												: 'transparent'
+												
+											}"
+										>
+											{{ timeObj.time }}
+											<span v-if="timeObj.earlyReason">
+											({{ timeObj.earlyReason }})
+											</span>
+											<!-- Tooltip Icon -->
+											<span
+											v-if="getTooltipText(timeObj)"
+											class="tooltip-icon"
+											:title="getTooltipText(timeObj)"
+											>
+											ℹ️
+											</span>
+										</div>
+										</div>
+									</template>
+
+									<!-- Scheduled Meds (non-PRN) -->
+									<template v-else>
+										<template v-for="timeObj in getTimesForDate(med, dateObj)">
+										<!-- Only show if base time matches category if we're sorting by time -->
+										<div
+											v-if="sortBy !== 'time' || extractBaseTime(timeObj.time) === category"
+											:key="timeObj.time"
+											class="time-entry"
+											:class="[timeObj.status, timeObj.temporaryStatus, { discontinued: timeObj.status === 'discontinue' }]"
+											@click="!timeObj.locked && openActionPopup(dateObj, timeObj, med)"
+											:style="{
+											backgroundColor:
+												timeObj.locked && timeObj.status === 'taken'
+												? '#b3f0b3'
+												: timeObj.locked && timeObj.status === 'refused'
+												? '#f9b3b3'
+												: timeObj.locked && timeObj.status ==='hold'
+												? '#fff3cd'
+                        :timeObj.locked && timeObj.status ==='discontinued'
+                        ? '#f8d7da'
+												: 'transparent'
+											}"
+										>
+											{{ timeObj.time }}
+											<span v-if="timeObj.earlyReason">
+											({{ timeObj.earlyReason }})
+											</span>
+
+											<!-- Immediate Icons -->
+											<template v-if="timeObj.temporaryStatus === 'taken'">
+											<span
+												class="icon-immediate"
+												style="color: #28a745; margin-left: 0.3rem;"
+												title="Taken"
+											>
+												✔
+											</span>
+											</template>
+											<template v-else-if="timeObj.temporaryStatus === 'refused'">
+											<span
+												class="icon-immediate"
+												style="color: #dc3545; margin-left: 0.3rem;"
+												title="Refused"
+											>
+												✘
+											</span>
+											</template>
+											<template v-else-if="timeObj.temporaryStatus === 'later'">
+											<span
+												class="icon-immediate"
+												style="color: #ffe600; margin-left: 0.3rem;"
+												title="Take Later"
+											>
+												⏳
+											</span>
+											</template>
+
+											<!-- Tooltip if signed off -->
+											<span
+											v-if="getTooltipText(timeObj)"
+											class="tooltip-icon"
+											:title="getTooltipText(timeObj)"
+											>
+											ℹ️
+											</span>
+										</div>
+										</template>
+									</template>
+									</div>
+								</td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</template>
+	  </template>
+
+	  <template v-else>
+		<div class="mobile-accordion-container">
+			<template
+			v-for="(medsInGroup, category) in groupedMedications"
+			:key="category"
+			>
+				<h3 class="category-header">{{ category }}</h3>
+				<div class="accordion">
+					<div
+					class="accordion-item"
+					v-for="med in medsInGroup"
+					:key="med.name"
+					:class="{ active: openAccordions[med.name] }"
+					>
+						<button
+							class="accordion-button"
+							@click="toggleAccordion(med.name)"
+						>
+							{{ med.name }}
+						</button>
+
+						<div
+							class="accordion-content"
+							v-show="openAccordions[med.name]"
+						>
+							<!-- Dosage + Unit as text -->
+
+							<!-- Administration times for the current date -->
+							<!-- inside your <div class="accordion-content"> -->
+							<div class="mobile-times">
+								<span
+									v-for="timeObj in getTimesForDate(med, findDateObj(activeDate))"
+									:key="timeObj.time + timeObj.status"
+									class="time-bubble"
+									@click="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
+								>
+									{{ timeObj.time }}
+
+									<!-- <BarcodeScanner
+								:active="scannerContext?.timeObj === timeObj"
+								:scanRegion="scannerContext?.timeObj === timeObj ? scanRegion : null"
+								:rapidScanMode="rapidScanMode"
+								@scanned="onBarcodeScanned"
+								@close="scannerContext = null"
+								/> -->
+								</span>
+							</div>
+							<div class="detail-row">
+								<span class="label">Dosage</span>
+								<span class="value">{{ med.dosage || '–' }} {{ med.unitType || '' }}</span>
+							</div>
+
+							<!-- Frequency -->
+							<div class="detail-row">
+								<span class="label">Frequency</span>
+								<span class="value">{{ med.frequency || 'Not set' }}</span>
+							</div>
+
+							<!-- Available (smaller input) -->
+							<div class="detail-row">
+								<span class="label">Available</span>
+								<input
+									type="number"
+									v-model="med.tabsAvailable"
+									class="available-input"
+									readonly
+								/>
+							</div>
+
+							<!-- Select Time & Dosage -->
+							<div class="detail-row">
+								<button
+									class="select-btn"
+									@click="toggleSelectDropdown(med)"
+								>
+									Select Time & Dosage
+								</button>
+							</div>
+
+							<!-- Status Dropdown -->
+							<div class="detail-row">
+								<span class="label">Status</span>
+								<select
+									v-model="med.status"
+									class="status-select"
+								>
+									<option
+									v-for="opt in statusOptions"
+									:key="opt.value"
+									:value="opt.value"
+									>
+									{{ opt.label }}
+									</option>
+								</select>
+							</div>
+						</div>
+					</div>
+				</div>
+			</template>
+		</div>
+	  </template>
     </div>
 
     <!-- Add Medication Form -->
@@ -318,6 +559,14 @@
       @save="handleNewMedication"
       @loadprov="loadpastProv"
     />
+
+	<!-- Chris version
+	<AddMedicationForm
+      :show="showAddForm"
+      :existingMedication="editingMedication"
+      @close="showAddForm = false"
+      @save="handleMedicationFormSave"
+    /> -->
 
     <!-- Hold/New/Discontinue Time Selector Modal -->
     <div v-if="showHoldSelector" class="modal-overlay">
@@ -352,7 +601,7 @@
           </select>
         </div>
         <div class="form-group">
-          <label>Dosage (tabs per admin time):</label>
+          <label>Dosage ({{selectedMedicationForTime.unitType || 'unit'}} per admin time):</label>
           <input
             type="number"
             v-model="selectedDosage"
@@ -435,9 +684,9 @@
     <!-- Sign-Off Popup -->
     <div v-if="showSignOffPopup" class="modal-overlay">
       <div class="modal-content">
-        <h3>Sign Off Pending Transactions</h3>
+        <h3>Signature Pending Transactions</h3>
         <div v-if="pendingTransactions.length === 0">
-          <p>No medications pending sign-off.</p>
+          <p>No medications pending signature.</p>
           <div class="button-row">
             <button @click="showSignOffPopup = false">Close</button>
           </div>
@@ -464,8 +713,17 @@
               </span>
             </li>
           </ul>
+		  <div class="form-group">
+            <label for="signOffNurseSignature">Nurse Signature:</label>
+            <input
+              type="text"
+              id="signOffNurseSignature"
+              v-model="signOffNurseSignature"
+              placeholder="Enter your name or initials"
+            />
+          </div>
           <div class="button-row">
-            <button @click="finalSignOff" class="save-button">Sign Off</button>
+            <button @click="finalSignOff" class="save-button" :disabled="!signOffNurseSignature">Sign Off</button>
             <button @click="showSignOffPopup = false" class="cancel-button">Cancel</button>
           </div>
         </div>
@@ -475,7 +733,7 @@
     <!-- PRN Sign-Off Popup -->
     <div v-if="showPrnSignOffPopup" class="modal-overlay">
       <div class="modal-content">
-        <h3>PRN Sign-Off</h3>
+        <h3>PRN Signature</h3>
         <p>
           <strong>Medication:</strong>
           {{ prnSignOffMedication?.name }}
@@ -533,11 +791,25 @@
       </div>
     </div>
   </div>
+  <div
+  v-if="scannerContext"
+  class="scanner-modal-overlay"
+  @click.self="scannerContext = null">
+	<div class="scanner-modal-content">
+		<!-- <BarcodeScanner
+		:active="true"
+		:scanRegion="scanRegion"
+		:rapidScanMode="rapidScanMode"
+		@scanned="onBarcodeScanned"
+		@close="scannerContext = null"
+		/> -->
+	</div>
+  </div>
 </template>
 
 <script setup lang="ts">
 import MedicationActionPopup from './MedicationActionPopup.vue'
-import { ref, computed, watch, onMounted, defineProps, withDefaults, defineEmits } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted, reactive, defineProps, withDefaults, defineEmits, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
 import 'flatpickr/dist/flatpickr.css'
 import flatpickr from 'flatpickr'
@@ -545,8 +817,14 @@ import axios from 'axios'
 import ExpandableDetails from './ExpandableDetails.vue'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
+// import BarcodeScanner from './barcode-scanner/BarcodeScanner.vue'
 
 const FUTURE_DAYS_TO_POPULATE = 365
+let fpInstance: ReturnType<typeof flatpickr> | null = null
+
+const scanRegion = ref<any>(null)
+const rapidScanMode = ref(false)
+
 export interface Provider {
   providerid:string;
   name:string;
@@ -561,6 +839,7 @@ export interface Medication {
     temporaryStatus?: string
     med_amount?: number|string
     earlyReason?: string
+	reason?: string
   }[]>
   tabsAvailable: number
   frequency?: string
@@ -588,7 +867,356 @@ export interface Medication {
 
   discontinuedDate?: Date
   discontinuedTimes?: Record<string, string[]>
+
+  // Added from Chris version
+
+  ndcNumber?: string
+
+  /** Link dosage type to the dropdown in "Amount Available" */
+  unitType?: string
+
+  /** For "Add New Medication" nurse + time */
+  addedByNurse?: string
+  addedTimestamp?: string
+
+  /** For hold reasons, etc. */
+  holdInfo?: any
+
+  /** For PRN meds, we store usage times in a separate array. */
+  times?: {
+	time: string
+	status: string
+	date: string
+	locked?: boolean
+	signedOff?: any
+	dosage?: number|string
+	earlyReason?: string
+	reason?: string
+  }[]
 }
+// --------------- Chris additions to <script> ---------------
+
+// Determines if screen is mobile or not for mobile UI
+const isMobile = ref(window.innerWidth < 768)
+window.addEventListener('resize', () => {
+	isMobile.value = window.innerWidth < 768
+	initializeDateRangePicker()
+})
+
+// reactive map to track which med is open
+const openAccordions = reactive<Record<string, boolean>>({})
+
+// toggler
+function toggleAccordion(key: string) {
+	openAccordions[key] = !openAccordions[key]
+}
+
+const selectedSort = ref('')
+
+// when it changes, call your existing sort functions
+function onSortChange() {
+	switch (selectedSort.value){
+		case 'Medication':
+			handleSort('medication')
+			break
+		case 'Time':
+			handleSort('time')
+			break
+		case 'Diagnosis':
+			handleSort('diagnosis')
+			break
+		case 'Route':
+			handleSort('route')
+			break
+		case 'PRN':
+			handleSort('prn')
+			break
+	}
+}
+
+/**
+ * Call your existing updateDateRange(start, end)
+ * and also populate the mobile chips.
+ */
+function onDateRangePicked(selDates: Date[]) {
+	// first, build your full dateList via your existing logic
+	updateDateRange(selDates[0], selDates[1])
+
+	// now map each Date in dateList into "M/D" strings
+	selectedDates.value = dateList.value.map(d => {
+		const m = d.getMonth() + 1
+		const dd = d.getDate()
+		return `${m}/${dd}`
+	})
+}
+
+function currentTimeObj(med: Medication) {
+	// if the scannerContext.med matches this med, return its timeObj
+	if (scannerContext.value?.med === med) {
+		return scannerContext.value.timeObj
+	}
+	return null
+}
+
+/** We reuse the same unit options for both the "AddMedicationForm" and the dropdown here. */
+const unitOptions = [
+  "Actuation", "Ampule", "Application", "Applicator", "Auto-Injector", "Bar",
+  "Capful", "Caplet", "Capsule", "Cartridge", "Centimeter", "Disk", "Dropperful",
+  "Each", "Film", "Fluid Ounce", "Gallon", "Gram", "Gum", "Implant", "Inch",
+  "Inhalation", "Injection", "Insert", "Liter", "Lollipop", "Lozenge", "Metric Drop",
+  "Microgram", "Milliequivalent", "Milligram", "Milliliter", "Nebule", "Ounce",
+  "Package", "Packet", "Pad", "Patch", "Pellet", "Pill", "Pint", "Pre-filled Pen Syringe",
+  "Puff", "Pump", "Ring", "Sachet", "Scoopful", "Sponge", "Spray", "Stick", "Strip",
+  "Suppository", "Swab", "Syringe", "Tablet", "Troche", "Unit", "Vial", "Wafer"
+]
+
+const showBarcodeScanner = ref(false)
+const scannerContext = ref<{ med: Medication, timeObj: any, dateObj: Date } | null>(null)
+
+const selectedDates = ref<string[]>([])
+
+const editingMedication = ref<any | null>(null)
+
+function onAddMedication() {
+	editingMedication.value = null
+	showAddForm.value = true
+}
+
+function openMedicationForm(med: Medication) {
+  editingMedication.value = {
+    ...med,
+    originalName: med.name,
+
+    medicationName: med.name,
+    quantity: med.tabsAvailable,
+    ndcNumber: med.ndcNumber || '',
+    rxNorm: med.rxNorm || '',
+
+    rxNumber: med.rxNumber || '',
+    refills: med.refills ?? 0,
+    pharmacy: med.pharmacy || '',
+    pharmacyNpi: med.pharmacyNpi || '',
+    pharmacyAddress: med.pharmacyAddress || '',
+    pharmacyPhone: med.pharmacyPhone || '',
+    pharmacyDea: med.pharmacyDea || '',
+    prescriberInfo: med.prescriberInfo || '',
+    prescriberDeaNpi: med.prescriberDeaNpi || '',
+
+    unitType: med.unitType || '',
+    nurseSignature: med.addedByNurse || ''
+  }
+  showAddForm.value = true
+}
+
+function handleMedicationFormSave(payload: any) {
+  const isEdit = payload.isEdit
+  const originalName = payload.originalName
+  const nurseSignature = payload.nurseSignature || ''
+
+  if (!isEdit) {
+    const newMedication: Medication = {
+      name: payload.medicationName,
+      ndcNumber: payload.ndcNumber || '',
+      rxNorm: payload.rxNorm || '',
+      tabsAvailable: payload.quantity || 0,
+      frequency: payload.frequency,
+      dosage: payload.dosage,
+      route: payload.route,
+      prn: payload.prn,
+      diagnosis: payload.diagnosis || '',
+      unitType: payload.unitType || '',
+      rxNumber: payload.rxNumber || '',
+      refills: payload.refills || 0,
+      pharmacy: payload.pharmacy || '',
+      pharmacyNpi: payload.pharmacyNpi || '',
+      pharmacyAddress: payload.pharmacyAddress || '',
+      pharmacyPhone: payload.pharmacyPhone || '',
+      pharmacyDea: payload.pharmacyDea || '',
+      prescriberInfo: payload.prescriberInfo || '',
+      prescriberDeaNpi: payload.prescriberDeaNpi || '',
+      administrationTimes: '',
+      dates: {},
+      addedByNurse: nurseSignature,
+      addedTimestamp: new Date().toISOString()
+    }
+    medications.value.push(newMedication)
+    populateMedicationTable()
+  } else {
+    const idx = medications.value.findIndex(m => m.name === originalName)
+    if (idx !== -1) {
+      medications.value[idx].name = payload.medicationName
+      medications.value[idx].ndcNumber = payload.ndcNumber
+      medications.value[idx].rxNorm = payload.rxNorm
+      medications.value[idx].frequency = payload.frequency
+      medications.value[idx].dosage = payload.dosage
+      medications.value[idx].route = payload.route
+      medications.value[idx].tabsAvailable = payload.quantity
+      medications.value[idx].prn = payload.prn
+      medications.value[idx].diagnosis = payload.diagnosis
+      medications.value[idx].unitType = payload.unitType
+      medications.value[idx].rxNumber = payload.rxNumber
+      medications.value[idx].refills = payload.refills
+      medications.value[idx].pharmacy = payload.pharmacy
+      medications.value[idx].pharmacyNpi = payload.pharmacyNpi
+      medications.value[idx].pharmacyAddress = payload.pharmacyAddress
+      medications.value[idx].pharmacyPhone = payload.pharmacyPhone
+      medications.value[idx].pharmacyDea = payload.pharmacyDea
+      medications.value[idx].prescriberInfo = payload.prescriberInfo
+      medications.value[idx].prescriberDeaNpi = payload.prescriberDeaNpi
+      medications.value[idx].addedByNurse = nurseSignature
+      medications.value[idx].addedTimestamp = new Date().toISOString()
+
+      populateMedicationTable()
+    }
+  }
+  showAddForm.value = false
+}
+
+// Signature popup
+const signOffNurseSignature = ref('')
+
+/** Tooltip for which nurse added med + timestamp */
+function getAddMedicationTooltip(med: Medication) {
+  if (!med.addedByNurse || !med.addedTimestamp) return ''
+  const addedTime = new Date(med.addedTimestamp).toLocaleString()
+  return `Nurse: ${med.addedByNurse}\nAdded On: ${addedTime}`
+}
+
+function isMedicationVisible(med: Medication): boolean {
+  // If no discontinuedDate => show
+  if (!med.discontinuedDate) return true
+
+  // If no date range => show
+  if (dateList.value.length === 0) return true
+
+  // If earliest day is after med.discontinuedDate => hide the med entirely
+  const earliestDay = normalizeToMidnight(dateList.value[0])
+  if (earliestDay.getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
+    return false
+  }
+  return true
+}
+
+const activeDate = ref<string>('')
+
+// handler when user clicks a date box
+function selectDate(date: string) {
+  activeDate.value = date
+}
+
+onUnmounted(() => {
+	if (fpInstance) {
+		fpInstance.destroy()
+		fpInstance = null
+	}
+})
+
+const localProps = withDefaults(defineProps<{ medications?: Medication[] }>(), {
+  medications: () => []
+})
+
+watch(() => localProps.medications, (newMeds) => {
+  if (!localStorage.getItem('medications')) {
+    medications.value = [...newMeds]
+  }
+}, { immediate: true })
+
+/*const localEmit = defineEmits<{
+  (e: 'statusChange', medication: Medication, status: string): void;
+  (e: 'medicationTaken', medication: Medication, time: string, action: string): void;
+  (e: 'signatureSubmit', signature: string, medications: Medication[], time: string): void;
+  (e: 'tabsChange', medication: Medication, tabs: number): void;
+}>() */
+
+/** For PRN meds, we check if any times exist that day to hide "As needed" */
+function hasPrnTimesForDate(med: Medication, dateObj: Date): boolean {
+  if (!med.times) return false
+  const dateStr = formatDateToYYYYMMDD(dateObj)
+  return med.times.some(entry => entry.date === dateStr)
+}
+
+watch(selectedDates, dates => {
+  if (dates.length && !activeDate.value) {
+    activeDate.value = dates[0]
+  }
+})
+
+function findDateObj(dateStr: string): Date {
+  const found = dateList.value.find(d => {
+    return `${d.getMonth() + 1}/${d.getDate()}` === dateStr
+  })
+  return found ?? normalizeToMidnight(new Date())
+}
+
+function parseDateKey(key: string): Date {
+  const [y, m, d] = key.split('-').map(Number)
+  return new Date(y, m - 1, d)
+}
+
+function onBarcodeScanned(barcode: string) {
+  if (scannerContext.value) {
+    scannerContext.value.timeObj.temporaryStatus = 'taken'
+    alert('Scanned barcode: ' + barcode)
+  }
+  scannerContext.value = null
+}
+
+function handleTimeClick(dateObj: Date, timeObj: any, med: Medication) {
+  // Only allow today’s date
+  const today = normalizeToMidnight(new Date())
+  const selectedDay = normalizeToMidnight(dateObj)
+  if (selectedDay.getTime() !== today.getTime()) {
+    errorMessage.value = "Medications can only be given on the current date."
+    showErrorModal.value = true
+    return
+  }
+
+  // Compute minutes difference from scheduled time
+  const [hStr, mStr] = timeObj.time.split(':').map(s => s.trim())
+  const scheduled = new Date(dateObj)
+  scheduled.setHours(parseInt(hStr, 10), parseInt(mStr, 10), 0, 0)
+  const diffMinutes = (new Date().getTime() - scheduled.getTime()) / 60000
+
+  // Early / late check (±60min window)
+  if (diffMinutes < -60 || diffMinutes > 60) {
+    pendingDateAndTime.value = { dateObj, timeObj, medication: med }
+    isEarly.value = diffMinutes < -60
+    confirmationMessage.value = isEarly.value
+      ? "This medication is early, do you still want to give it?"
+      : "This medication is late, do you still want to give it?"
+    showTimeConfirmationPopup.value = true
+    return
+  }
+
+  // All checks passed: open camera for this one time slot only
+  scannerContext.value = { med, timeObj, dateObj }
+}
+
+// Signature grouping
+function groupTransactionsByTime(transactions: any[]) {
+  const map: Record<string, any[]> = {}
+  transactions.forEach(item => {
+    const rawTime = item.timeObj.time.includes("(")
+      ? item.timeObj.time.split("(")[0].trim()
+      : item.timeObj.time
+    if (!map[rawTime]) {
+      map[rawTime] = []
+    }
+    map[rawTime].push(item)
+  })
+  return Object.entries(map).map(([time, items]) => ({ time, items }))
+}
+const takenGrouped = computed(() => {
+  const takenItems = pendingTransactions.value.filter(pt => pt.timeObj.temporaryStatus === 'taken')
+  return groupTransactionsByTime(takenItems)
+})
+const refusedGrouped = computed(() => {
+  const refusedItems = pendingTransactions.value.filter(pt => pt.timeObj.temporaryStatus === 'refused')
+  return groupTransactionsByTime(refusedItems)
+})
+
+// --------------- End of Chris additions to <script> ---------------
+
 const CURR_API="/keyon/";
 const router = useRouter()
 const medications = ref<Medication[]>([]);
@@ -664,22 +1292,19 @@ const Reasaon4change = ref<string>('');
 let medval= {};
 // FREQUENCY OPTIONS
 const frequencyOptions = [
-  '1 times daily',
-  '2 times daily',
-  '3 times daily',
-  '4 times daily',
-  'every other day',
-  'at bedtime',
-  'every hour',
-  'every 2 hours',
-  'every 3 hours',
-  'every 4 hours',
-  'every 6 hours',
-  'every 8 hours',
-  'every 12 hours',
-  'every 24 hours',
-  'monday, wednesday, friday, sunday',
-  'tuesday, thursday, saturday'
+  '1 time daily', '2 times daily', '3 times daily', '4 times daily',
+  'as directed', 'as needed', 'as one dose', 'at bedtime',
+  'before every meal', 'bi-weekly', 'constant infusion', 'daily',
+  'daily as directed', 'every day', 'every month', 'every other day',
+  'every morning', 'every evening', 'every hour', 'every 2 hours',
+  'every 3 hours', 'every 4 hours', 'every 4 to 6 hours, as needed',
+  'every 4 to 6 minutes', 'every 4 to 8 hours', 'every 6 hours',
+  'every 8 hours', 'every 12 hours', 'every 24 hours',
+  'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday',
+  'every Monday, Wednesday, Friday, Sunday', 'every Tuesday, Thursday, Saturday',
+  'before breakfast, lunch, dinner', 'after breakfast, lunch, dinner',
+  'once a week', 'one time dose', 'three times a week', 'twice daily',
+  'two times a week', 'use as directed per instructions in pack', 'weekly'
 ]
 function updatepastProvBoolean()
 {
@@ -840,7 +1465,10 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
   return grouped
 }
 const groupedMedications = computed(() => {
-  let sortedMeds = [...medications.value]
+//   let sortedMeds = [...medications.value]
+// Chris version, just this one line change
+  let sortedMeds = [...medications.value].filter(med => isMedicationVisible(med))
+
   if (selectedStatus.value) {
     sortedMeds = sortedMeds.filter(med => med.status === selectedStatus.value)
   }
@@ -981,14 +1609,14 @@ watch(medications, (newVal) => {
   
 }, { deep: true })
 
-const props = withDefaults(defineProps<{ medications?: Medication[] }>(), {
+/*const props = withDefaults(defineProps<{ medications?: Medication[] }>(), {
   medications: () => []
 })
 watch(() => props.medications, (newMeds) => {
   if (!localStorage.getItem('medications')) {
     medications.value = [...newMeds]
   }
-}, { immediate: true })
+}, { immediate: true }) */
 
 const emit = defineEmits<{
   (e: 'statusChange', medication: Medication, status: string): void;
@@ -1006,6 +1634,19 @@ watch(selectedFrequency, (newFreq) => {
   const timesCount = getTimesCountFromFrequency(newFreq)
   timeInputs.value = Array(timesCount).fill('')
 })
+// Chris version below, might need to be adjusted
+// watch(selectedFrequency, (newFreq) => {
+//   if (selectedMedicationForTime.value?.prn || !newFreq) {
+//     timeInputs.value = []
+//     return
+//   }
+//   const count = getTimesCountFromFrequency(newFreq)
+//   const existingTimes = [...timeInputs.value]
+//   timeInputs.value = Array.from({ length: count }, (_, i) =>
+//     i < existingTimes.length ? existingTimes[i] : ''
+//   )
+// })
+
 function getTimesCountFromFrequency(frequency: string): number {
   if (!frequency) return 0
   const dailyMatch = frequency.match(/(\d+)\s*times?\s*daily/)
@@ -1054,6 +1695,32 @@ function toggleSelectDropdown(medication: Medication) {
   }
   showTimeModal.value = true
 }
+// Chris version below, might need to be adjusted
+// function toggleSelectDropdown(med: Medication) {
+//   if (med.tabsAvailable <= 0) {
+//     errorMessage.value = "Please add tabs available"
+//     showErrorModal.value = true
+//     return
+//   }
+//   selectedMedicationForTime.value = med
+
+//   let splitted: string[] = []
+//   if (med.administrationTimes && med.administrationTimes !== 'As needed') {
+//     splitted = med.administrationTimes.split(',').map(t => t.trim())
+//   }
+
+//   selectedFrequency.value = ''
+//   timeInputs.value = []
+
+//   nextTick(() => {
+//     selectedFrequency.value = med.frequency || ''
+//     selectedDosage.value = med.dosage || '1'
+//     if (!med.prn && splitted.length > 0) {
+//       timeInputs.value = splitted
+//     }
+//     showTimeModal.value = true
+//   })
+// }
 
 async function handleSave() {
   if (!selectedMedicationForTime.value) {
@@ -1174,7 +1841,7 @@ async function handleSave() {
           slotedtimes:newTimeArray,
           adminDate:todaydt,
           medname:medname,
-          ordernumber:med.ordernumber, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:changeorder.value,
           changereason:Reasaon4change.value ||'',
@@ -1219,7 +1886,7 @@ async function handleSave() {
           slotedtimes:newTimeArray,
           adminDate:todaydt,
           medname:medname,
-          ordernumber:med.ordernumber, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:false,
           changereason:Reasaon4change.value || ''
@@ -1316,23 +1983,49 @@ onMounted(() => {
   loadMedications()
   initializeDateRangePicker()
   //populateMedicationTable()
+  // ^this gets called in Chris version
 })
 
 // ---------- DATE RANGE PICKER ----------
+// function initializeDateRangePicker() {
+//   const dateRangePicker = document.getElementById('date-range-picker')
+//   if (dateRangePicker) {
+//     flatpickr(dateRangePicker, {
+//       mode: "range",
+//       dateFormat: "l, M d, Y",
+//       maxDate: new Date().fp_incr(365),
+//       onChange: (selDates) => {
+//         if (selDates.length === 2) {
+//           updateDateRange(selDates[0], selDates[1])
+//         }
+//       }
+//     })
+//   }
+// }
+// Chris version
 function initializeDateRangePicker() {
-  const dateRangePicker = document.getElementById('date-range-picker')
-  if (dateRangePicker) {
-    flatpickr(dateRangePicker, {
-      mode: "range",
-      dateFormat: "l, M d, Y",
-      maxDate: new Date().fp_incr(365),
-      onChange: (selDates) => {
-        if (selDates.length === 2) {
+  const el = document.getElementById('date-range-picker')
+  if (!el) return
+
+  // clean up old instance
+  if (fpInstance) fpInstance.destroy()
+
+  fpInstance = flatpickr(el, {
+    mode: 'range',
+    inline: false,
+    dateFormat: isMobile.value ? 'm/d' : 'l, M d, Y',
+    disableMobile: false,
+    maxDate: new Date().fp_incr(365),
+    onChange: (selDates) => {
+      if (selDates.length === 2) {
+        if (isMobile.value) {
+          onDateRangePicked(selDates)
+        } else {
           updateDateRange(selDates[0], selDates[1])
         }
       }
-    })
-  }
+    }
+  })
 }
 function updateDateRange(startDate: Date, endDate: Date) {
   /*Function sets up the dateList array with start and end date from calendar*/
@@ -1592,19 +2285,20 @@ function handleHoldSubmit(data: {
     times: data.times,
     reason: data.reason,
     type: data.holdType,
-    status:data.statusOption,
-    ordernumber:medication.ordernumber
+    ordernumber:medication.ordernumber,
+    status:data.statusOption
   }
-   var ask="";
-  if(data.statusOption=="discontinue")
+  let ask ="";
+
+  if(data.statusOption === 'discontinue')
   {
-     ask = confirm("Are you sure you want to discountinue this medication?");
+    ask = confirm("Are you sure you want to discontinue this medication?");
   }
-  if(data.statusOption=="hold")
+  if(data.statusOption =='hold')
   {
      ask = confirm("Are you sure you want to hold this medication?");
   }
-  
+   
   if(ask==true)
   {
     holdMedication(medication.holdInfo);
@@ -1621,6 +2315,141 @@ function handleHoldSubmit(data: {
   showHoldSelector.value = false
   selectedMedicationForHold.value = null
 }
+//Chris version below
+// function handleHoldSubmit(data: {
+//   dateRange: [Date, Date];
+//   times: string[] | null;
+//   reason: string;
+//   holdType: 'all' | 'specific';
+//   statusOption?: 'hold' | 'new' | 'discontinue' | 'change';
+//     }) {
+//   if (!selectedMedicationForHold.value) return
+//   const medication = selectedMedicationForHold.value
+//   medication.holdInfo = data
+
+//   // Shared references
+//   const startDate = normalizeToMidnight(data.dateRange[0])
+//   const startDateStr = formatDateToYYYYMMDD(startDate)
+
+//   // --- 1) DISCONTINUE LOGIC (unchanged, as you said it's perfect) ---
+//   if (data.statusOption === 'discontinue') {
+//     if (data.holdType === 'all') {
+//       // Discontinue entire medication
+//       medication.discontinuedDate = startDate
+//       if (medication.dates) {
+//         // On the discontinuation date => set all to red (status='discontinue')
+//         if (medication.dates[startDateStr]) {
+//           medication.dates[startDateStr].forEach(slot => {
+//             slot.status = 'discontinue'
+//           })
+//         }
+//         // Remove future dates entirely
+//         for (const dKey of Object.keys(medication.dates)) {
+//           const dObj = normalizeToMidnight(parseDateKey(dKey))
+//           if (dObj.getTime() > startDate.getTime()) {
+//             delete medication.dates[dKey]
+//           }
+//         }
+//       }
+//     } else if (data.holdType === 'specific') {
+//       // Discontinue only selected time(s)
+//       if (!data.times || data.times.length === 0) {
+//         showHoldSelector.value = false
+//         selectedMedicationForHold.value = null
+//         return
+//       }
+//       if (!medication.discontinuedTimes) {
+//         medication.discontinuedTimes = {}
+//       }
+//       // On the exact start date => mark those times 'discontinue'
+//       if (medication.dates && medication.dates[startDateStr]) {
+//         medication.dates[startDateStr].forEach(slot => {
+//           if (data.times!.includes(slot.time)) {
+//             slot.status = 'discontinue'
+//           }
+//         })
+//       }
+//       // Remove those times from all future dates
+//       const endDate = new Date(startDate)
+//       endDate.setDate(endDate.getDate() + FUTURE_DAYS_TO_POPULATE)
+//       let day = new Date(startDate)
+//       day.setDate(day.getDate() + 1)
+
+//       while (day <= endDate) {
+//         const ds = formatDateToYYYYMMDD(day)
+//         if (!medication.discontinuedTimes[ds]) {
+//           medication.discontinuedTimes[ds] = []
+//         }
+//         data.times.forEach(tStr => {
+//           if (!medication.discontinuedTimes[ds].includes(tStr)) {
+//             medication.discontinuedTimes[ds].push(tStr)
+//           }
+//         })
+//         if (medication.dates[ds]) {
+//           medication.dates[ds] = medication.dates[ds].filter(
+//             slot => !data.times!.includes(slot.time)
+//           )
+//         }
+//         day.setDate(day.getDate() + 1)
+//       }
+//     }
+//   }
+
+//   // --- 2) HOLD LOGIC (newly added to match "discontinue" behavior) ---
+//   else if (data.statusOption === 'hold') {
+//     if (data.holdType === 'all') {
+//       // Hold entire medication
+//       //  a) On the hold date => set status='hold' (yellow)
+//       if (medication.dates && medication.dates[startDateStr]) {
+//         medication.dates[startDateStr].forEach(slot => {
+//           slot.status = 'hold'
+//         })
+//       }
+//       //  b) Remove all future days from medication.dates
+//       if (medication.dates) {
+//         for (const dKey of Object.keys(medication.dates)) {
+//           const dObj = normalizeToMidnight(parseDateKey(dKey))
+//           if (dObj.getTime() > startDate.getTime()) {
+//             delete medication.dates[dKey]
+//           }
+//         }
+//       }
+//     } else if (data.holdType === 'specific') {
+//       // Hold only selected time(s)
+//       if (!data.times || data.times.length === 0) {
+//         showHoldSelector.value = false
+//         selectedMedicationForHold.value = null
+//         return
+//       }
+//       // a) On the hold date => set those slot(s) status='hold' (yellow)
+//       if (medication.dates && medication.dates[startDateStr]) {
+//         medication.dates[startDateStr].forEach(slot => {
+//           if (data.times.includes(slot.time)) {
+//             slot.status = 'hold'
+//           }
+//         })
+//       }
+//       // b) Remove those times on all subsequent days
+//       const endDate = new Date(startDate)
+//       endDate.setDate(endDate.getDate() + FUTURE_DAYS_TO_POPULATE)
+//       let day = new Date(startDate)
+//       day.setDate(day.getDate() + 1)
+//       while (day <= endDate) {
+//         const ds = formatDateToYYYYMMDD(day)
+//         if (medication.dates && medication.dates[ds]) {
+//           medication.dates[ds] = medication.dates[ds].filter(
+//             slot => !data.times!.includes(slot.time)
+//           )
+//         }
+//         day.setDate(day.getDate() + 1)
+//       }
+//     }
+//   }
+
+//   // "new"/"change" logic (if any) ...
+//   showHoldSelector.value = false
+//   selectedMedicationForHold.value = null
+// }
 
 // ---------- CLOSE ERROR MODAL ----------
 function closeErrorModal() {
@@ -1646,6 +2475,7 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   }
   let slots = [...med.dates[dateStr]]
 
+  // If medication is fully discontinued after a certain date => no times after that
   if (med.discontinuedDate) {
     const discDay = normalizeToMidnight(med.discontinuedDate)
     const thisDay = normalizeToMidnight(dateObj)
@@ -1653,16 +2483,30 @@ function getTimesForDate(med: Medication, dateObj: Date) {
       return []
     }
   }
-  if (med.discontinuedTimes) {
-    for (const discDateStr of Object.keys(med.discontinuedTimes)) {
-      const discDayParsed = normalizeToMidnight(new Date(discDateStr))
-      const thisDay = normalizeToMidnight(dateObj)
-      if (thisDay.getTime() > discDayParsed.getTime()) {
-        const timesToRemove = med.discontinuedTimes[discDateStr]
-        slots = slots.filter(s => !timesToRemove.includes(s.time))
+
+  // For "partial" specific-time discontinuation:
+  if (med.discontinuedTimes && med.discontinuedTimes[dateStr]) {
+    const timesToSkip = med.discontinuedTimes[dateStr]
+    slots = slots.filter(s => {
+      if (timesToSkip.includes(s.time)) {
+        return s.status === 'discontinue'
       }
-    }
+      return true
+    })
   }
+
+  // ─── Sort chronologically by the base "HH:MM" of each time string ───
+  slots.sort((a, b) => {
+    // extractBaseTime strips any "(…)" suffix and returns "HH:MM"
+    const tA = extractBaseTime(a.time)
+    const tB = extractBaseTime(b.time)
+    const [hA, mA] = tA.split(':').map(Number)
+    const [hB, mB] = tB.split(':').map(Number)
+    const msA = hA * 3600_000 + mA * 60_000
+    const msB = hB * 3600_000 + mB * 60_000
+    return msA - msB
+  })
+
   return slots
 }
 
@@ -1744,6 +2588,16 @@ function confirmTimeAction() {
     pendingDateAndTime.value = null
   }
 }
+//Chris version
+// function confirmTimeAction() {
+//   showTimeConfirmationPopup.value = false
+//   if (pendingDateAndTime.value) {
+//     const { dateObj, timeObj, medication } = pendingDateAndTime.value
+//     // now that user confirmed, open the barcode scanner for this single slot
+//     scannerContext.value = { med: medication, timeObj, dateObj }
+//     pendingDateAndTime.value = null
+//   }
+// }
 function triggerEarlyYes() {
   showEarlyReasonInput.value = true
 }
@@ -1999,6 +2853,36 @@ function finalSignOff() {
   pendingTransactions.value = []
   showSignOffPopup.value = false
 }
+// Chris version
+// function finalSignOff() {
+//   if (!signOffNurseSignature.value) {
+//     alert("Please enter your nurse signature before signing off.")
+//     return
+//   }
+//   const now = new Date()
+
+//   pendingTransactions.value.forEach(item => {
+//     const { medication, timeObj } = item
+//     const pendingAction = timeObj.temporaryStatus
+//     if (!pendingAction) return
+//     timeObj.locked = true
+//     timeObj.status = pendingAction
+//     timeObj.signedOff = { nurse: signOffNurseSignature.value, date: now }
+
+//     if (pendingAction === 'taken') {
+//       const dose = (typeof timeObj.dosage === 'number')
+//         ? timeObj.dosage
+//         : parseInt(medication.dosage || '1', 10)
+//       medication.tabsAvailable = Math.max(0, medication.tabsAvailable - dose)
+//       const formatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+//       timeObj.time = timeObj.time + " (taken at " + formatted + ")"
+//     }
+//   })
+
+//   pendingTransactions.value = []
+//   signOffNurseSignature.value = ''
+//   showSignOffPopup.value = false
+// }
 //-------Hold Medication Axios Call --------//
 async function holdMedication(medholddata:object)
 {
@@ -2009,7 +2893,7 @@ async function holdMedication(medholddata:object)
       accountnumber:"904575107",
       npinumber:"123456789",
       patientid:"709081242",
-      //ordernumber:selectedMedicationForHold.ordernumber, //"36",
+     // ordernumber:"36",
       holdobjec:medholddata
     }
    }
@@ -2118,6 +3002,10 @@ function closePrnSignOffPopup() {
 function handlePrnSignOff() {
   if (!prnSignOffMedication.value || !prnSignOffTimeObj.value) {
     showPrnSignOffPopup.value = false
+    return
+  }
+  if (!prnNurseSignature.value) {
+    alert("Please enter your nurse signature before signing off.")
     return
   }
   prnSignOffTimeObj.value.signedOff = {
@@ -2275,6 +3163,9 @@ function hideTooltip() {}
 .category-section {
   overflow-x: scroll;
   margin-bottom: 2rem;
+  /* Chris adds */
+  max-height: 400px;
+  overflow-y: auto;
 }
 .category-header {
   background-color: #0c8687;
@@ -2300,52 +3191,63 @@ function hideTooltip() {}
 }
 
 /* Sticky table header row */
-/* .schedule-table thead th {
-  position: sticky;
-  top: 0;
-  background-color: #f8f9fa;
-  z-index: 2;
-} */
-.schedule-table .sticky-header-1,  .sticky-header-2, .sticky-header-3, .sticky-header-4, .sticky-header-5, .sticky-header-6{
+/* Was just commented out before */
+.schedule-table thead th {
   position: sticky;
   top: 0;
   background-color: #f8f9fa;
   z-index: 2;
 }
-
-.schedule-table .sticky-column-1, .sticky-column-2, .sticky-column-3, .sticky-column-4, .sticky-column-5, .sticky-column-6 {
+.schedule-table .sticky-header-1,
+.schedule-table .sticky-header-2,
+.schedule-table .sticky-header-3,
+.schedule-table .sticky-header-4,
+.schedule-table .sticky-header-5,
+.schedule-table .sticky-header-6 {
   position: sticky;
-  background-color: #ffffff;
+  top: 0;
+  background-color: #f8f9fa;
+  z-index: 10;
+}
+
+.schedule-table .sticky-column-1,
+.schedule-table .sticky-column-2,
+.schedule-table .sticky-column-3,
+.schedule-table .sticky-column-4,
+.schedule-table .sticky-column-5,
+.schedule-table .sticky-column-6 {
+  position: sticky;
+  background-color: #d4edda;
   z-index: 3;
 }
 
 .schedule-table .sticky-column-1, .sticky-header-1 {
   left: 0;
-  min-width: 220px;
+  min-width: 250px;
 }
 
 .schedule-table .sticky-column-2, .sticky-header-2 {
-  left: 220px;
+  left: 262px;
   min-width: 120px;
 }
 
 .schedule-table .sticky-column-3, .sticky-header-3 {
-  left: 340px;
-  min-width: 140px;
+  left: 394px;
+  min-width: 180px;
 }
 
 .schedule-table .sticky-column-4, .sticky-header-4 {
-  left: 480px;
+  left: 651px;
   min-width: 100px;
 }
 
 .schedule-table .sticky-column-5, .sticky-header-5 {
-  left: 580px;
+  left: 765px;
   min-width: 100px;
 }
 
 .schedule-table .sticky-column-6, .sticky-header-6 {
-  left: 680px;
+  left: 875px;
   min-width: 200px;
 }
 
@@ -2360,12 +3262,15 @@ function hideTooltip() {}
   text-align: center;
 }
 .tabs-available {
-  /* background-color: #d4edda; */
   padding: 8px;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  justify-content: center;
 }
 .tabs-counter {
   display: flex;
-  justify-content: center;
+  /* justify-content: center; */
   align-items: center;
 }
 .tabs-input {
@@ -2437,6 +3342,10 @@ function hideTooltip() {}
 .time-entry.discontinue {
   background-color: #f8d7da !important;
 }
+.time-entry.hold {
+  background-color: #fff3cd !important;
+  color: #000;
+}
 
 /* Icons for immediate statuses */
 .icon-immediate {
@@ -2473,9 +3382,10 @@ function hideTooltip() {}
   width: 90%;
   max-width: 400px;
   padding: 2rem;
-  margin-top:0;
+  /* Commented out to keep consistent with Chris */
+  /* margin-top:0;
   overflow-y:scroll;
-  height:420px;
+  height:420px; */
 }
 
 /* Button Rows */
@@ -2577,4 +3487,351 @@ function hideTooltip() {}
   background-color: #6c757d;
   color: white;
 }
+
+/* New Chris CSS */
+
+/* Make the medication name clickable */
+.medication-link {
+  color: #007bff;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.medication-link:hover {
+  color: #0056b3;
+}
+
+.add-manually-btn {
+  background-color: #0c8687;
+  border: none;
+  border-radius: 4px;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  cursor: pointer;
+}
+.add-manually-btn:hover {
+  background-color: #0a7273;
+}
+
+.unit-dropdown {
+  display: inline-block;
+}
+.unit-select {
+  padding: 4px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.status-time-header {
+  font-weight: bold;
+  margin: 1rem 0 0.5rem;
+  font-size: 1rem;
+}
+
+.taken-time {
+  color: #28a745;
+}
+.refused-time {
+  color: #dc3545;
+}
+.sign-off-item {
+  display: flex;
+  align-items: center;
+  margin-left: 1.5rem;
+  margin-bottom: 8px;
+}
+.taken-icon {
+  color: #28a745;
+  margin-right: 0.4rem;
+  font-size: 1.1rem;
+}
+.refused-icon {
+  color: #dc3545;
+  margin-right: 0.4rem;
+  font-size: 1.1rem;
+}
+.sign-off-med {
+  font-weight: 500;
+}
+
+.accordion {
+    margin-top: 10px;
+}
+
+.accordion-item {
+    border-bottom: 1px solid #ddd; /* Light grey border for separation */
+}
+
+.accordion-button {
+    background-color: #0055cc; /* Medium blue button */
+    color: #ffffff; /* White text for readability */
+    padding: 15px;
+    width: 100%;
+    text-align: left;
+    border: none;
+    outline: none;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background-color 0.3s ease;
+}
+
+.accordion-button:hover {
+    background-color: #003366; /* Dark blue on hover */
+}
+
+.accordion-content {
+    display: none; /* Hide content initially */
+    background-color: #f4f4f4; /* Light grey background for content */
+    padding: 15px;
+}
+
+.accordion-item.active .accordion-content {
+    display: block; /* Show content when item is active */
+}
+
+.mobile-date-scroll {
+  display: flex;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.mobile-date-box {
+  flex: 0 0 auto;
+  background-color: #66b2b2;
+  color: white;
+  border-radius: 4px;
+  padding: 0.25rem 0.5rem;
+  margin-right: 0.5rem;
+  text-align: center;
+  white-space: nowrap;
+  font-size: 0.9rem;
+}
+
+
+@media (max-width: 767px) {
+  /* ensure we only style the mobile toolbar */
+  .mobile-toolbar .date-range-selector {
+    display: flex;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  /* each child (button or input) takes 1/3 of the width */
+  .mobile-toolbar .date-range-selector > * {
+    flex: 1;
+    box-sizing: border-box;
+  }
+
+  /* shared appearance for buttons & input */
+  .mobile-toolbar
+    .date-range-selector
+    button,
+  .mobile-toolbar
+    .date-range-selector
+    input#date-range-picker {
+    display: block;
+    width: 100%;
+    padding: 0.6rem 0;
+    font-size: 1rem;
+    text-align: center;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+  }
+
+  /* Customize each control */
+  .mobile-toolbar .add-manually-btn {
+    background-color: #008080;
+    color: #fff;
+    border: none;
+  }
+
+  .mobile-toolbar .sign-off-button {
+    background-color: #fff;
+    color: #333;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+  }
+
+  .mobile-toolbar input#date-range-picker {
+    background-color: #fff;
+    color: #333;
+    cursor: pointer;
+  }
+  .mobile-toolbar input#date-range-picker::placeholder {
+    color: #888;
+  }
+
+  .mobile-sort-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    padding: 0.5rem 0;
+  }
+  .mobile-sort-col {
+    flex: 1;
+    box-sizing: border-box;
+  }
+  .mobile-sort-col-left {
+    text-align: left;
+  }
+  .mobile-sort-col-center {
+    text-align: center;
+  }
+  .mobile-sort-col-right {
+    text-align: right;
+  }
+
+  /* style the select to fit nicely */
+  .mobile-sort-select {
+    width: 100%;
+    padding: 0.4rem;
+    font-size: 1rem;
+    margin-top: 0.2rem;
+  }
+
+  /* ensure label + select line up */
+  .mobile-sort-col-left label {
+    font-weight: bold;
+    margin-right: 0.25rem;
+  }
+
+  .mobile-accordion-container .detail-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+  /* 2) Labels take just the space they need */
+  .mobile-accordion-container .detail-row .label {
+    flex: 0 0 auto;
+    width: auto;
+  }
+
+  .detail-row .label {
+  flex: 0 0 auto;
+  font-weight: 500;
+  width: 4.5rem;
+}
+
+.detail-row .value {
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+  /* 3) The controls (inputs, selects, buttons) then flow in */
+  .mobile-accordion-container .dosage-input,
+  .mobile-accordion-container .available-input,
+  .mobile-accordion-container .unit-select,
+  .mobile-accordion-container .status-select,
+  .mobile-accordion-container .select-btn {
+    flex: 0 0 auto;   /* shrink to fit their content */
+    margin: 0;        /* no auto-margins pushing them right */
+  }
+
+  .select-btn {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 0.9rem;
+  border-radius: 4px;
+}
+
+  .available-input {
+  width: 3rem;
+  padding: 0.25rem;
+  text-align: center;
+}
+
+.dosage-input {
+  display: none !important;
+}
+
+  /* 4) If you still want a bit of breathing room on the right edge */
+  .mobile-accordion-container .accordion-content {
+    padding-right: 1rem;
+  }
+}
+
+/* Match the date‐range scrollbar for the time‐bubbles strip */
+.mobile-times {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 0.5rem 0;
+}
+
+/* WebKit scrollbar */
+.mobile-times::-webkit-scrollbar {
+  height: 6px;
+}
+.mobile-times::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05);
+}
+.mobile-times::-webkit-scrollbar-thumb {
+  background: rgba(0,0,0,0.2);
+  border-radius: 3px;
+}
+
+/* Ensure each bubble stays its size */
+.time-bubble {
+  flex: 0 0 auto;
+}
+
+/* backdrop */
+.scanner-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+/* the “dialog” itself */
+.scanner-modal-content {
+  position: relative;
+  width: 90vw;       /* 90% of viewport width */
+  max-width: 360px;  /* but never wider than 360px */
+  height: 50vh;      /* half your screen height */
+  max-height: 50vh;  /* enforce the 50vh cap */
+  background: black;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+/* close button */
+.scanner-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: rgba(255,255,255,0.8);
+  border: none;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  z-index: 10;
+}
+
+/* force the scanner to fill the modal */
+.scanner-modal-content > * {
+  width: 100%;
+  height: 100%;
+}
+
+
+/* slightly larger on desktop, if you care */
+@media(min-width: 768px) {
+  .scanner-modal-content {
+    max-width: 600px;
+    height: 70vh;
+  }
+}
+
 </style>
