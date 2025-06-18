@@ -1174,7 +1174,7 @@ async function handleSave() {
           slotedtimes:newTimeArray,
           adminDate:todaydt,
           medname:medname,
-          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          ordernumber:med.ordernumber, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:changeorder.value,
           changereason:Reasaon4change.value ||'',
@@ -1219,7 +1219,7 @@ async function handleSave() {
           slotedtimes:newTimeArray,
           adminDate:todaydt,
           medname:medname,
-          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          ordernumber:med.ordernumber, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:false,
           changereason:Reasaon4change.value || ''
@@ -1592,9 +1592,19 @@ function handleHoldSubmit(data: {
     times: data.times,
     reason: data.reason,
     type: data.holdType,
-    status:data.statusOption
+    status:data.statusOption,
+    ordernumber:medication.ordernumber
   }
-  let ask = confirm("Are you sure you want to hold this medication?");
+   var ask="";
+  if(data.statusOption=="discontinue")
+  {
+     ask = confirm("Are you sure you want to discountinue this medication?");
+  }
+  if(data.statusOption=="hold")
+  {
+     ask = confirm("Are you sure you want to hold this medication?");
+  }
+  
   if(ask==true)
   {
     holdMedication(medication.holdInfo);
@@ -1992,14 +2002,14 @@ function finalSignOff() {
 //-------Hold Medication Axios Call --------//
 async function holdMedication(medholddata:object)
 {
-  console.log(medholddata);return;
+  console.log(medholddata);
    let content = {
     MedicationAdmin:{
       API_Meth:"HoldMedication",
       accountnumber:"904575107",
       npinumber:"123456789",
       patientid:"709081242",
-      ordernumber:"36",
+      //ordernumber:selectedMedicationForHold.ordernumber, //"36",
       holdobjec:medholddata
     }
    }
