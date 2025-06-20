@@ -1,5 +1,14 @@
 <template>
   <div id="app">
+
+    <!-- MOBILE HEADER -->
+<template v-if="isMobile">
+  <div class="mobile-header">
+    <button class="back-button" @click="goBack">← Return</button>
+    <span class="mobile-title">Medication Admin Record</span>
+  </div>
+</template>
+
     
     <div class="table-container">
       <!-- Status Filter -->
@@ -27,8 +36,8 @@
           </div>
         </div>
       </template>
-      <template v-else>
-  <!-- MOBILE: Filter-by-Status dropdown -->
+      <!-- <template v-else>
+  MOBILE: Filter-by-Status dropdown
         <div class="mobile-filter-dropdown">
           <label for="mobileFilter">Filter by Status:</label>
           <select
@@ -47,7 +56,7 @@
             <option value="partial">Partial</option>
           </select>
         </div>
-      </template>
+      </template> -->
 
       <!-- Date Range and Add Form -->
        <template v-if="!isMobile">
@@ -64,20 +73,19 @@
   <!-- add a wrapper so desktop never gets these styles -->
   <div class="mobile-toolbar">
     <div class="date-range-selector">
-      <button class="add-manually-btn" @click="onAddMedication">
-        Add Manually
-      </button>
-      <button
-        class="sort-button sign-off-button"
-        @click="showSignOffPopup = true"
-      >
-        Signature
-      </button>
-      <input
+      <button class="mobile-action-btn" @click="onAddMedication">
+Add Manually
+</button>
+<input
         type="text"
         id="date-range-picker"
+        class="mobile-action-btn"
         placeholder="Date Range"
       />
+<button class="mobile-action-btn" @click="showSignOffPopup = true">
+Signature
+</button>
+    
     </div>
 
     <!-- … your filter/sort dropdowns and date chips … -->
@@ -86,20 +94,59 @@
 
 
             <template v-if="isMobile">
-        <!-- … your mobile filter & sort dropdowns … -->
+  <div class="mobile-filter-sort-row">
+    <!-- Filter by Status -->
+    <div class="mobile-filter-dropdown">
+      <label for="mobileFilter">Filter by Status:</label>
+      <select
+        id="mobileFilter"
+        @change="e => handleStatusFilter(e.target.value === '' ? null : e.target.value)"
+        class="mobile-filter-select"
+      >
+        <option value="">Show All</option>
+        <option value="active">Active</option>
+        <option value="discontinue">Discontinue</option>
+        <option value="hold">Hold</option>
+        <option value="new">New</option>
+        <option value="pending">Pending</option>
+        <option value="change">Change</option>
+        <option value="completed">Completed</option>
+        <option value="partial">Partial</option>
+      </select>
+    </div>
 
-        <!-- MOBILE: Selected-Dates Scroll -->
-        <div class="mobile-date-scroll">
-          <div
-            v-for="date in selectedDates"
-            :key="date"
-            class="mobile-date-box"
-            @click="selectDate(date)"
-          >
-            {{ date }}
-          </div>
-        </div>
-        </template>
+    <!-- Sort by -->
+    <div class="mobile-sort-dropdown">
+      <label for="mobileSort">Sort by:</label>
+      <select
+        id="mobileSort"
+        v-model="selectedSort"
+        @change="onSortChange"
+        class="mobile-sort-select"
+      >
+        <option disabled value="">— Select —</option>
+        <option value="Medication">Medication</option>
+        <option value="Time">Time</option>
+        <option value="Diagnosis">Diagnosis</option>
+        <option value="Route">Route</option>
+        <option value="PRN">PRN</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- MOBILE: Selected-Dates Scroll -->
+  <div class="mobile-date-scroll">
+    <div
+      v-for="date in selectedDates"
+      :key="date"
+      class="mobile-date-box"
+      @click="selectDate(date)"
+    >
+      {{ date }}
+    </div>
+  </div>
+</template>
+
 
       <!-- Sorting Controls + Signature Button + Expand/Collapse -->
       <template v-if="!isMobile">
@@ -161,7 +208,7 @@
         <!-- MOBILE: Sort-by dropdown -->
         <div class="mobile-sort-row">
     <!-- Left: Sort dropdown -->
-    <div class="mobile-sort-col mobile-sort-col-left">
+    <!-- <div class="mobile-sort-col mobile-sort-col-left">
       <label for="mobileSort">Sort by:</label>
       <select
         id="mobileSort"
@@ -176,7 +223,7 @@
         <option value="Route">Route</option>
         <option value="PRN">PRN</option>
       </select>
-    </div>
+    </div> -->
 
     <!-- Center: clicked‐date display -->
     <div class="mobile-sort-col mobile-sort-col-center">
@@ -184,9 +231,9 @@
     </div>
 
     <!-- Right: static text -->
-    <div class="mobile-sort-col mobile-sort-col-right">
+    <!-- <div class="mobile-sort-col mobile-sort-col-right">
       Admin Time
-    </div>
+    </div> -->
   </div>
 
       </template>
@@ -438,6 +485,7 @@
         </div>
       </template>
       </template>
+
      <template v-else>
   <div class="mobile-accordion-container">
     <template
@@ -505,18 +553,32 @@
             </div>
 
             <!-- Available (smaller input) -->
-            <div class="detail-row">
-              <span class="label">Available</span>
-              <input
-                type="number"
-                v-model="med.tabsAvailable"
-                class="available-input"
-                readonly
-              />
-            </div>
+            <!-- Available + Status on the same row -->
+<div class="detail-row">
+  <span class="label">Available</span>
+  <input
+    type="number"
+    v-model="med.tabsAvailable"
+    class="available-input"
+    readonly
+  />
 
-            <!-- Select Time & Dosage -->
-            <div class="detail-row">
+  <span class="label">Status</span>
+  <select
+    v-model="med.status"
+    class="status-select"
+  >
+    <option
+      v-for="opt in statusOptions"
+      :key="opt.value"
+      :value="opt.value"
+    >
+      {{ opt.label }}
+    </option>
+  </select>
+</div>
+
+<div class="detail-row">
               <button
                 class="select-btn"
                 @click="toggleSelectDropdown(med)"
@@ -525,22 +587,7 @@
               </button>
             </div>
 
-            <!-- Status Dropdown -->
-            <div class="detail-row">
-              <span class="label">Status</span>
-              <select
-                v-model="med.status"
-                class="status-select"
-              >
-                <option
-                  v-for="opt in statusOptions"
-                  :key="opt.value"
-                  :value="opt.value"
-                >
-                  {{ opt.label }}
-                </option>
-              </select>
-            </div>
+
           </div>
         </div>
       </div>
@@ -575,7 +622,7 @@
 
     <!-- Time and Dosage Modal -->
     <div v-if="showTimeModal" class="modal-overlay">
-      <div class="modal-content">
+      <div class="modal-content time-modal-content">
         <h3>Select Time and Dosage</h3>
         <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
         <div class="form-group">
@@ -1003,6 +1050,8 @@ function currentTimeObj(med: Medication) {
     return scannerContext.value.timeObj
   }
   return null
+
+  
 }
 
 
@@ -2640,20 +2689,31 @@ function hideTooltip() {}
 }
 
 .accordion-button {
-    background-color: #0055cc; /* Medium blue button */
-    color: #ffffff; /* White text for readability */
-    padding: 15px;
-    width: 100%;
-    text-align: left;
-    border: none;
-    outline: none;
-    cursor: pointer;
-    font-size: 18px;
-    transition: background-color 0.3s ease;
+  display: block;            /* make it a block so width:100% applies */
+  width: 100%;               /* stretch to fill the wrapper */
+  box-sizing: border-box;    /* include padding/border in that width */
+  padding: 15px 20px;        /* adjust for your desired vertical/horizontal padding */
+  background-color: #0c8687; /* your teal */
+  color: #fff;               /* keep the text readable */
+  border: none;              /* remove any default border */
+  border-radius: 12px;       /* your rounded corners */
+  text-align: left;          /* or center, as you prefer */
+  font-size: 18px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.accordion-button {
+  /* everything else… */
+  margin-bottom: 12px;   /* space between each box */
 }
 
 .accordion-button:hover {
-    background-color: #003366; /* Dark blue on hover */
+  background-color: #0a7273; /* a slightly darker teal on hover */
+}
+
+.accordion-button:hover {
+    background-color: #3e9394; /* Dark blue on hover */
 }
 
 .accordion-content {
@@ -2694,6 +2754,21 @@ function hideTooltip() {}
     width: 100%;
     gap: 0.5rem;
   }
+
+    .accordion-button {
+    position: relative;
+    padding-right: 40px; /* make room for the arrow */
+  }
+  .accordion-button::after {
+    content: '▾';         /* the down-triangle */
+    position: absolute;
+    right: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 1.2rem;
+    color: #fff;
+  }
+
 
   /* each child (button or input) takes 1/3 of the width */
   .mobile-toolbar .date-range-selector > * {
@@ -2815,6 +2890,21 @@ function hideTooltip() {}
   border-radius: 4px;
 }
 
+.select-btn {
+  background-color: #3e9394;
+  color: #ffffff;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 24px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.select-btn:hover {
+  background-color: #357b7d;
+}
+
   .available-input {
   width: 3rem;
   padding: 0.25rem;
@@ -2909,6 +2999,88 @@ function hideTooltip() {}
     max-width: 600px;
     height: 70vh;
   }
+}
+
+
+.time-modal-content {
+  background-color: #f4f4f4;
+}
+
+
+
+
+/* ─── 1) The container for each row ─── */
+.mobile-accordion-container .detail-row {
+  /* add this: */
+  color: #3e9394;
+
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+/* ─── 2) The label on the left ─── */
+.mobile-accordion-container .detail-row .label {
+  /* add this: */
+  color: #3e9394;
+
+  flex: 0 0 auto;
+  width: auto;
+  font-weight: 500;
+}
+
+/* ─── 3) The value on the right ─── */
+.mobile-accordion-container .detail-row .value {
+  /* add this: */
+  color: #3e9394;
+
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+/* make all three mobile toolbar buttons the same green */
+.mobile-toolbar .mobile-action-btn {
+  background-color: #008080;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 0;
+  font-size: 1rem;
+  border-radius: 4px;
+  text-align: center;
+}
+
+
+.mobile-filter-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.mobile-header {
+  display: flex;
+  align-items: center;
+  background-color: #0c8687;
+  color: white;
+  padding: 0.75rem 1rem;
+}
+.back-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1rem;
+  margin-right: 1rem;
+  cursor: pointer;
+}
+.mobile-title {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.mobile-toolbar #date-range-picker {
+ background-color:#008080 !important;
+ color: #ffffff !important;
 }
 
 

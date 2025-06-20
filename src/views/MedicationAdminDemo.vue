@@ -39,7 +39,7 @@ const handleSignatureSubmit = (signature: string, medications: Medication[], tim
 
 <template>
   <div>
-    <h1>Medication Administration Record</h1>
+    <!-- <h1>Medication Administration Record</h1> -->
     <MedicationAdministration 
       :medications="medications"
       @statusChange="handleStatusChange"
