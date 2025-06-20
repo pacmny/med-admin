@@ -493,54 +493,51 @@ Signature
       :key="category"
     >
       <h3 class="category-header">{{ category }}</h3>
+
       <div class="accordion">
         <div
           class="accordion-item"
           v-for="med in medsInGroup"
           :key="med.name"
-          :class="{ active: openAccordions[med.name] }"
         >
-          <button
-            class="accordion-button"
+          <!-- GREEN HEADER (clickable) -->
+          <div
+            class="mobile-accordion-header"
+            :class="{ open: openAccordions[med.name] }"
             @click="toggleAccordion(med.name)"
           >
-            {{ med.name }}
-          </button>
+            <div class="header-main">
+              <span class="med-name">{{ med.name }}</span>
+              <span class="accordion-arrow">
+                {{ openAccordions[med.name] ? '▾' : '▸' }}
+              </span>
+            </div>
 
+            <!-- Scrollable times row (only when open) -->
+            <div
+              v-if="openAccordions[med.name]"
+              class="header-times"
+            >
+              <div class="mobile-times">
+                <span
+                  v-for="timeObj in getTimesForDate(med, findDateObj(activeDate))"
+                  :key="timeObj.time + timeObj.status"
+                  class="time-bubble"
+                  :class="timeObj.status"
+                  @click.stop="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
+                >
+                  {{ timeObj.time }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <!-- WHITE CONTENT BOX -->
           <div
             class="accordion-content"
             v-show="openAccordions[med.name]"
           >
-            <!-- Dosage + Unit as text -->
-
-            <!-- Administration times for the current date -->
-<!-- inside your <div class="accordion-content"> -->
-<div class="mobile-times">
-  <span
-    v-for="timeObj in getTimesForDate(med, findDateObj(activeDate))"
-    :key="timeObj.time + timeObj.status"
-    class="time-bubble"
-    @click="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
-  >
-    {{ timeObj.time }}
-
-    <!-- <BarcodeScanner
-:active="scannerContext?.timeObj === timeObj"
-:scanRegion="scannerContext?.timeObj === timeObj ? scanRegion : null"
-:rapidScanMode="rapidScanMode"
-@scanned="onBarcodeScanned"
-@close="scannerContext = null"
-/> -->
-  </span>
-
-  
-
-</div>
-
-
-
-
-
+            <!-- Dosage -->
             <div class="detail-row">
               <span class="label">Dosage</span>
               <span class="value">{{ med.dosage || '–' }} {{ med.unitType || '' }}</span>
@@ -552,33 +549,19 @@ Signature
               <span class="value">{{ med.frequency || 'Not set' }}</span>
             </div>
 
-            <!-- Available (smaller input) -->
-            <!-- Available + Status on the same row -->
-<div class="detail-row">
-  <span class="label">Available</span>
-  <input
-    type="number"
-    v-model="med.tabsAvailable"
-    class="available-input"
-    readonly
-  />
+            <!-- Available -->
+            <div class="detail-row">
+              <span class="label">Available</span>
+              <input
+                type="number"
+                v-model="med.tabsAvailable"
+                class="available-input"
+                readonly
+              />
+            </div>
 
-  <span class="label">Status</span>
-  <select
-    v-model="med.status"
-    class="status-select"
-  >
-    <option
-      v-for="opt in statusOptions"
-      :key="opt.value"
-      :value="opt.value"
-    >
-      {{ opt.label }}
-    </option>
-  </select>
-</div>
-
-<div class="detail-row">
+            <!-- Select Time & Dosage button -->
+            <div class="detail-row">
               <button
                 class="select-btn"
                 @click="toggleSelectDropdown(med)"
@@ -587,13 +570,31 @@ Signature
               </button>
             </div>
 
-
+            <!-- Status -->
+            <div class="detail-row">
+              <span class="label">Status</span>
+              <select
+                v-model="med.status"
+                class="status-select"
+              >
+                <option
+                  v-for="opt in statusOptions"
+                  :key="opt.value"
+                  :value="opt.value"
+                >
+                  {{ opt.label }}
+                </option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
     </template>
   </div>
 </template>
+
+
+
 
 
 
@@ -2716,15 +2717,7 @@ function hideTooltip() {}
     background-color: #3e9394; /* Dark blue on hover */
 }
 
-.accordion-content {
-    display: none; /* Hide content initially */
-    background-color: #f4f4f4; /* Light grey background for content */
-    padding: 15px;
-}
-
-.accordion-item.active .accordion-content {
-    display: block; /* Show content when item is active */
-}
+ 
 
 .mobile-date-scroll {
   display: flex;
@@ -3081,6 +3074,121 @@ function hideTooltip() {}
 .mobile-toolbar #date-range-picker {
  background-color:#008080 !important;
  color: #ffffff !important;
+}
+
+/* entire header */
+.mobile-accordion-header {
+  background-color: #0c8687;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+.mobile-accordion-header.open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* title + arrow row */
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}
+.med-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.accordion-arrow {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* times row in header */
+.header-times {
+  background-color: #0c8687;
+  padding: 0.5rem 0 0.75rem; /* little top‐space above times */
+}
+/* horizontal scroll of times */
+.mobile-times {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-left: 1rem;
+}
+.mobile-times::-webkit-scrollbar {
+  height: 6px;
+}
+.mobile-times::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
+}
+
+/* style each time */
+.time-bubble {
+  flex: 0 0 auto;
+  background: rgba(255,255,255,0.8);
+  color: #0c8687;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  min-width: 48px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+.time-bubble.taken       { background: #b3f0b3; color: #000; }
+.time-bubble.refused     { background: #f9b3b3; color: #000; }
+.time-bubble.discontinue { opacity: 0.6; text-decoration: line-through; }
+
+/* white content box */
+.accordion-content {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-top: none;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+/* detail rows */
+.detail-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.detail-row .label {
+  flex: 0 0 30%;
+  color: #0c8687;
+  font-weight: 500;
+}
+.detail-row .value {
+  flex: 1;
+  color: #333;
+}
+.available-input {
+  width: 60px;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+/* buttons/select */
+.select-btn {
+  width: 100%;
+  background: #0c8687;
+  color: white;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+.status-select {
+  flex: 1;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
 
