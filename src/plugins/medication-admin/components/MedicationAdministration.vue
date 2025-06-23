@@ -129,6 +129,8 @@
                               backgroundColor:
                                 med.temporaryStatus ==='hold'
                                   ? '#fff3cd'
+                                  : med.temporaryStatus ==='new'
+                                  ? '#869ccd'
                                   : '#f8f9fa'
                             }">
                     <ExpandableDetails
@@ -212,6 +214,8 @@
                                   ? '#f9b3b3'
                                   : timeObj.locked && timeObj.status ==='hold'
                                   ? '#fff3cd'
+                                  : timeObj.status =='new'
+                                  ? '#869ccd'
                                   : 'transparent'
                                   
                             }"
@@ -249,7 +253,9 @@
                                   : timeObj.locked && timeObj.status === 'refused'
                                   ? '#f9b3b3'
                                   : timeObj.locked && timeObj.status ==='hold'
-                                  ? '#fff3cd'
+                                  ? '#fff3c'
+                                  : timeObj.status =='new'
+                                  ? '#869ccd'
                                   : 'transparent'
                             }"
                           >
@@ -1795,6 +1801,8 @@ function cancelTimeActionConfirmation() {
 // ---------- NEW MED ----------
 /* Keyon To make this function async to post the API endpoint */
 async function handleNewMedication(medication: Partial<Medication>) {
+  console.log("Need to see Admit");
+  console.log(medication);
   const newMedication: Medication = {
     name: medication.medicationName || '',
     dates: {},
@@ -1822,7 +1830,15 @@ async function handleNewMedication(medication: Partial<Medication>) {
     instructions: medication.instructions || '',
     status: 'active',
     discontinuedDate: undefined,
-    discontinuedTimes: {}
+    discontinuedTimes: {},
+    via: medication.via || '',
+    fluidType: medication.fluidType,
+    startTime: medication.startTime,
+    endTime: medication.endTime,
+    howLong: medication.howLong,
+    totalVolume: medication.totalVolume,
+    totalVolumeUnit: medication.totalVolumeUnit,
+    rate: medication.rate
   }
   let medsetting="";
   let content = {
@@ -1865,7 +1881,15 @@ async function handleNewMedication(medication: Partial<Medication>) {
     status: 'active',
     medsetting:medsetting,
     discontinuedDate: undefined,
-    discontinuedTimes: {}
+    discontinuedTimes: {},
+    via: medication.via || '',
+    fluidType: medication.fluidType,
+    startTime: medication.startTime,
+    endTime: medication.endTime,
+    howLong: medication.howLong,
+    totalVolume: medication.totalVolume,
+    totalVolumeUnit: medication.totalVolumeUnit,
+    rate: medication.rate
     
     }
     }

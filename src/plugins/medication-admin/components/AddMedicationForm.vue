@@ -98,6 +98,7 @@
               <select v-model="formData.route">
                 <option>Oral/Sublingual</option>
                 <option>IVI Intravaginal</option>
+                <option>IV (Intravenous)</option>
                 <option>SQ/IM/IV/ID</option>
                 <option>TOP Topical</option>
                 <!-- etc. -->
@@ -123,6 +124,104 @@
             />
           </div>
         </div>
+        <!-- IV Administration -->
+        <div v-if="formData.route === 'IV (Intravenous)'">
+            <h4>IV Administration</h4>
+
+            <!-- Fluid Type & VIA row -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Fluid Type</label>
+                <select v-model="formData.fluidType">
+                  <option value="">Select fluid type</option>
+                  <option>0.9% Normal Saline</option>
+                  <option>D5W (5% Dextrose in Water)</option>
+                  <option>Lactated Ringers (LR)</option>
+                  <option>Half Normal Saline (0.45% NaCl)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label>VIA</label>
+                <select v-model="formData.via">
+                  <option value="">Select an option</option>
+                  <option>Peripheral IV - Left Arm</option>
+                  <option>Peripheral IV - Right Arm</option>
+                  <option>PICC Line - Left</option>
+                  <option>PICC Line - Right</option>
+                  <option>Mid Line - Left</option>
+                  <option>Mid Line - Right</option>
+                  <option>Central Line - Left</option>
+                  <option>Central Line - Right</option>
+                </select>
+              </div>
+            </div>
+
+            <!-- Volume + Rate row -->
+            <div class="form-row volume-rate-row">
+              <div class="form-group volume-group">
+                <label>Total Volume</label>
+                <div class="volume-row">
+                  <input
+                    list="volumeOptions"
+                    v-model="formData.totalVolume"
+                    class="volume-dropdown"
+                    placeholder="e.g. 100"
+                  />
+                  <datalist id="volumeOptions">
+                    <option value="10"></option>
+                    <option value="100"></option>
+                    <option value="250"></option>
+                    <option value="500"></option>
+                    <option value="1000"></option>
+                  </datalist>
+                  <select
+                    class="volume-dropdown"
+                    v-model="formData.totalVolumeUnit"
+                  >
+                    <option value="ml">ml</option>
+                    <option value="liter">liter</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group">
+                <label>Rate</label>
+                <input
+                  type="text"
+                  v-model="formData.rate"
+                  placeholder="50 (ml/hr)"
+                />
+              </div>
+              <div class="form-group">
+                <label>How Long (hrs)</label>
+                <input
+                  type="text"
+                  :value="formData.howLong"
+                  disabled
+                  placeholder="Computed"
+                />
+              </div>
+            </div>
+
+            <!-- Start/End Time row -->
+            <div class="form-row">
+              <div class="form-group">
+                <label>Start Time</label>
+                <input
+                  type="time"
+                  v-model="formData.startTime"
+                  placeholder="HH:MM"
+                />
+              </div>
+              <div class="form-group">
+                <label>End Time</label>
+                <input
+                  type="time"
+                  :value="formData.endTime"
+                  disabled
+                />
+              </div>
+            </div>
+            </div>
 
         <!-- TAB 2: Prescription Information -->
         <div v-if="activeTab === 'prescriptionInfo'" class="tab-panel">
@@ -378,9 +477,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, defineEmits } from 'vue'
+import { ref, defineProps, defineEmits, watch} from 'vue'
 import { PastProvarItem } from '../types';
 import axios from 'axios';
+
+
 
 /** Define the structure of all form fields. */
 interface MedicationFormData {
@@ -394,7 +495,20 @@ interface MedicationFormData {
   route: string;
   prn: boolean;
   quantity: number;
+  rate:'';
+  unitType:'';
+  duration: '';
+  fluidType: '';
+  totalVolume: '';
+  totalVolumeUnit: 'ml';
+  howLong: '';
+  startTime: '';
+  endTime: '';
+  via: '';
 
+  sqInjectionSite: '';
+  idInjectionSite: '';
+  imInjectionSite: '';
   rxNumber: string;
   filledDate: string;
   refills: number;
@@ -455,7 +569,21 @@ const formData = ref<MedicationFormData>({
   route: 'Oral/Sublingual',
   prn: false,
   quantity: 0,
+  rate:'',
+  unitType:'',
+  duration: '',
+  fluidType: '',
+  totalVolume: '',
+  totalVolumeUnit: 'ml',
+  rate: '',
+  howLong: '',
+  startTime: '',
+  endTime: '',
+  via: '',
 
+  sqInjectionSite: '',
+  idInjectionSite: '',
+  imInjectionSite: '',
   rxNumber: '',
   filledDate: '',
   refills: 0,
@@ -481,6 +609,47 @@ const formData = ref<MedicationFormData>({
   pharmacyCell: '',
   pharmacyEmail: ''
 })
+
+watch(
+  [() => formData.value.totalVolume, () => formData.value.rate, () => formData.value.totalVolumeUnit],
+  () => {
+    const vol = parseFloat(formData.value.totalVolume) || 0
+    let numericRate = parseFloat(formData.value.rate) || 0
+    if (!numericRate) {
+      const match = formData.value.rate.match(/(\d+(\.\d+)?)/)
+      if (match) numericRate = parseFloat(match[1])
+    }
+    const finalVolumeInMl =
+      formData.value.totalVolumeUnit === 'liter' ? vol * 1000 : vol
+    let hours = numericRate > 0 ? finalVolumeInMl / numericRate : 0
+    formData.value.howLong = hours > 0 ? hours.toFixed(2) : ''
+  }
+)
+
+watch(
+  [() => formData.value.howLong, () => formData.value.startTime],
+  () => {
+    if (!formData.value.howLong || !formData.value.startTime) {
+      formData.value.endTime = ''
+      return
+    }
+    const [startH, startM] = formData.value.startTime.split(':').map(Number)
+    const hoursFloat = parseFloat(formData.value.howLong)
+    if (isNaN(hoursFloat) || isNaN(startH)) {
+      formData.value.endTime = ''
+      return
+    }
+    const totalMinutes = Math.round(hoursFloat * 60)
+    let newH = startH
+    let newM = startM + totalMinutes
+    newH += Math.floor(newM / 60)
+    newM = newM % 60
+    const hh = String(newH % 24).padStart(2, '0')
+    const mm = String(newM).padStart(2, '0')
+    formData.value.endTime = `${hh}:${mm}`
+  }
+)
+
 
 /** The four tabs: */
 const tabs = [
@@ -813,6 +982,8 @@ function loadPastProviders()
   border-radius: 8px;
   padding: 2rem;
   box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  height:800px;
+  overflow-y:scroll;
 }
 .modal-title {
   margin-top: 0;

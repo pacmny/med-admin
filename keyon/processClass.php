@@ -273,7 +273,7 @@ public function InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumbe
 $providername,$providerid,$medicationid,$administrated_at,$time,$status,$yearmedtime,$notes,$providersignature,$provinitials)
 {
 	
-	$insertMeds = $this->sclass->InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,$providername,$providerid,$medicationid,$administrated_at,
+	$insertMeds = $this->sclass->InsertMedLog($accountnumber,$patientid,$patientname,$ordernumber,$providername,$providerid,$medicationid,$administrated_at,
 	$time,$status,$yearmedtime,$notes,$providersignature,$provinitials);
 	return $insertMeds;
 }
@@ -382,11 +382,13 @@ public function InsertPerscription($accountnumber,$patientid,$medname, $rxnumber
 	$getdata = $sclass->InsertPerscription($accountnumber,$patientid,$medname, $rxnumber, $dtfilled,$refills,$startdate,$enddate,$refilreminderdt,$refillexpirationdt);
 	return $getdata;
 }
-public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype)
+public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
+$via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime)
 {
 	require_once("SqlClass.php");
 	$sclass= new SQLData();
-	$getdata = $sclass->InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype);
+	$getdata = $sclass->InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
+	$via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
 	return $getdata;
 }
 public function grabPatientAddressbyID($patientid)
