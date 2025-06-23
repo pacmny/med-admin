@@ -387,7 +387,7 @@ Signature
                                   : 'transparent'
                             }"
                           >
-                            {{ timeObj.time }}
+                            {{ formatTimeDisplay(timeObj.time) }}
                             <span v-if="timeObj.earlyReason">
                               ({{ timeObj.earlyReason }})
                             </span>
@@ -422,7 +422,7 @@ Signature
                                   : 'transparent'
                             }"
                           >
-                            {{ timeObj.time }}
+                            {{ formatTimeDisplay(timeObj.time) }}
                             <span v-if="timeObj.earlyReason">
                               ({{ timeObj.earlyReason }})
                             </span>
@@ -526,7 +526,7 @@ Signature
                   :class="timeObj.status"
                   @click.stop="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
                 >
-                  {{ timeObj.time }}
+                  {{ formatTimeDisplay(timeObj.time) }}
                 </span>
               </div>
             </div>
@@ -558,20 +558,6 @@ Signature
                 class="available-input"
                 
               />
-            </div>
-
-            <!-- Select Time & Dosage button -->
-            <div class="detail-row">
-              <button
-                class="select-btn"
-                @click="toggleSelectDropdown(med)"
-              >
-                Select Time & Dosage
-              </button>
-            </div>
-
-            <!-- Status -->
-            <div class="detail-row">
               <span class="label">Status</span>
               <select
                 v-model="med.status"
@@ -585,6 +571,17 @@ Signature
                   {{ opt.label }}
                 </option>
               </select>
+            </div>
+
+          
+            <!-- Select Time & Dosage button -->
+            <div class="detail-row">
+              <button
+                class="select-btn"
+                @click="toggleSelectDropdown(med)"
+              >
+                Select Time & Dosage
+              </button>
             </div>
           </div>
         </div>
@@ -1485,6 +1482,20 @@ function formatCategoryLabel(category: string): string {
     return `${h12}:${String(m).padStart(2,'0')} ${suffix}`
   }
   return category
+}
+
+/**
+ * Convert an HH:MM string (possibly with a suffix) into h:MM AM/PM,
+ * preserving any trailing text (e.g. “ (taken at 4:30 PM)”).
+ */
+function formatTimeDisplay(raw: string): string {
+  const m = raw.match(/^(\d{1,2}):(\d{2})(.*)$/)
+  if (!m) return raw
+  const [, hh, mm, rest] = m
+  const h = parseInt(hh, 10)
+  const suffix = h >= 12 ? 'PM' : 'AM'
+  const h12 = ((h + 11) % 12) + 1
+  return `${h12}:${mm} ${suffix}${rest}`
 }
 
 
