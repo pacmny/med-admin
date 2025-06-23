@@ -226,7 +226,7 @@ Signature
     </div> -->
 
     <!-- Center: clicked‐date display -->
-    <div class="mobile-sort-col mobile-sort-col-center">
+    <div class="mobile-sort-col mobile-sort-col-center mobile-date-box">
       {{ activeDate || ' ' }}
     </div>
 
@@ -243,7 +243,7 @@ Signature
       <template v-for="(medsInGroup, category) in groupedMedications" :key="category">
         <div v-if="medsInGroup.length > 0">
           <!-- Sticky category header -->
-          <h3 class="category-header">{{ category }}</h3>
+          <h3 class="category-header">{{ formatCategoryLabel (category) }}</h3>
           <div class="category-section">
             <table class="schedule-table">
               <thead>
@@ -492,7 +492,7 @@ Signature
       v-for="(medsInGroup, category) in groupedMedications"
       :key="category"
     >
-      <h3 class="category-header">{{ category }}</h3>
+      <h3 class="category-header">{{ formatCategoryLabel (category)}}</h3>
 
       <div class="accordion">
         <div
@@ -556,7 +556,7 @@ Signature
                 type="number"
                 v-model="med.tabsAvailable"
                 class="available-input"
-                readonly
+                
               />
             </div>
 
@@ -622,7 +622,7 @@ Signature
     </div>
 
     <!-- Time and Dosage Modal -->
-    <div v-if="showTimeModal" class="modal-overlay">
+    <div v-if="showTimeModal" class="modal-overlay td-modal">
       <div class="modal-content time-modal-content">
         <h3>Select Time and Dosage</h3>
         <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
@@ -1473,6 +1473,21 @@ const localEmit = defineEmits<{
   (e: 'tabsChange', medication: Medication, tabs: number): void;
 }>()
 
+/**
+ * If `category` is an HH:MM string, turn it into h:MM AM/PM;
+ * otherwise just return it verbatim.
+ */
+function formatCategoryLabel(category: string): string {
+  if (/^\d{1,2}:\d{2}$/.test(category)) {
+    const [h, m] = category.split(':').map(Number)
+    const suffix = h >= 12 ? 'PM' : 'AM'
+    const h12    = ((h + 11) % 12) + 1
+    return `${h12}:${String(m).padStart(2,'0')} ${suffix}`
+  }
+  return category
+}
+
+
 function getTimesCountFromFrequency(frequency: string): number {
   if (!frequency) return 0
   const dailyMatch = frequency.match(/(\d+)\s*times?\s*daily/)
@@ -1593,7 +1608,10 @@ function handleSave() {
     const todayMidnight = normalizeToMidnight(new Date())
     if (med.dates) {
       for (const dStr of Object.keys(med.dates)) {
-        const d = new Date(dStr)
+        //const d = new Date(dStr)//
+        const [y, m, da] = dStr.split('-').map(Number)
+        const d = new Date(y, m - 1, da)
+
         if (normalizeToMidnight(d).getTime() >= todayMidnight.getTime()) {
           med.dates[dStr] = med.dates[dStr].filter(slot =>
             slot.locked === true || slot.status === 'discontinue'
@@ -3078,7 +3096,7 @@ function hideTooltip() {}
 
 /* entire header */
 .mobile-accordion-header {
-  background-color: #0c8687;
+  background-color: #489898;
   color: #fff;
   border-radius: 8px;
   cursor: pointer;
@@ -3191,6 +3209,6 @@ function hideTooltip() {}
   border-radius: 4px;
 }
 
-
+.td-modal {overflow-y: scroll;}
 
 </style>
