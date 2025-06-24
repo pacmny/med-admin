@@ -554,13 +554,14 @@
       :show="showAddForm"
       :pastProvloaded="pastProvloaded"
       :pastProvar="pastProvar"
+      :existingMedication="editingMedication"
       @close="showAddForm = false"
       @updtPastProvbool="updatepastProvBoolean"
       @save="handleNewMedication"
       @loadprov="loadpastProv"
     />
 
-	<!-- Chris version
+	<!--- Chris version
 	<AddMedicationForm
       :show="showAddForm"
       :existingMedication="editingMedication"
@@ -975,7 +976,7 @@ const scannerContext = ref<{ med: Medication, timeObj: any, dateObj: Date } | nu
 
 const selectedDates = ref<string[]>([])
 
-const editingMedication = ref<any | null>(null)
+const editingMedication = ref<Object | null>(null)
 
 function onAddMedication() {
 	editingMedication.value = null
@@ -987,11 +988,11 @@ function openMedicationForm(med: Medication) {
     ...med,
     originalName: med.name,
 
-    medicationName: med.name,
+    medicationName: med.medname,
     quantity: med.tabsAvailable,
-    ndcNumber: med.ndcNumber || '',
+    ndcNumber: med.ndcnumber || '',
     rxNorm: med.rxNorm || '',
-
+    rate : med.rate,
     rxNumber: med.rxNumber || '',
     refills: med.refills ?? 0,
     pharmacy: med.pharmacy || '',
@@ -1007,7 +1008,42 @@ function openMedicationForm(med: Medication) {
   }
   showAddForm.value = true
 }
+/*6/23 New Function to Handle the Edit Medical Form Data (prepopulate data) */
+function EditMedicationForm(payload:any)
+{
+  //lets set the isEdit to true 
+  const isEdit = payload.isEdit
+  if(isEdit)
+  {
+    const idx = medications.value.findIndex(m => m.name === originalName)
+    if (idx !== -1) {
+      medications.value[idx].name = payload.medicationName
+      medications.value[idx].ndcNumber = payload.ndcNumber
+      medications.value[idx].rxNorm = payload.rxNorm
+      medications.value[idx].frequency = payload.frequency
+      medications.value[idx].dosage = payload.dosage
+      medications.value[idx].route = payload.route
+      medications.value[idx].tabsAvailable = payload.quantity
+      medications.value[idx].prn = payload.prn
+      medications.value[idx].diagnosis = payload.diagnosis
+      medications.value[idx].unitType = payload.unitType
+      medications.value[idx].rxNumber = payload.rxNumber
+      medications.value[idx].refills = payload.refills
+      medications.value[idx].pharmacy = payload.pharmacy
+      medications.value[idx].pharmacyNpi = payload.pharmacyNpi
+      medications.value[idx].pharmacyAddress = payload.pharmacyAddress
+      medications.value[idx].pharmacyPhone = payload.pharmacyPhone
+      medications.value[idx].pharmacyDea = payload.pharmacyDea
+      medications.value[idx].prescriberInfo = payload.prescriberInfo
+      medications.value[idx].prescriberDeaNpi = payload.prescriberDeaNpi
+      medications.value[idx].addedByNurse = nurseSignature
+      medications.value[idx].addedTimestamp = new Date().toISOString()
 
+      //populateMedicationTable()
+    }
+  }
+  
+}
 function handleMedicationFormSave(payload: any) {
   const isEdit = payload.isEdit
   const originalName = payload.originalName

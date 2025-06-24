@@ -1494,13 +1494,11 @@ const formData = ref<MedicationFormData>({
   pharmacyOffice: '',
   pharmacyCell: '',
   pharmacyEmail: '',
-
-  // New additions that might need to be accounted for
    unitType: '',
   fluidType: '',
    totalVolume: '',
    totalVolumeUnit: '',
-   rate: '',
+   rate:'',
    howLong: '',
    startTime: '',
    endTime: '',
@@ -1540,7 +1538,7 @@ function resetForm() {
 
     totalVolume: '',
     totalVolumeUnit: 'ml',
-    rate: '',
+    rate:'',
     howLong: '',
     startTime: '',
     endTime: '',
@@ -1600,8 +1598,10 @@ watch(
   () => {
     const vol = parseFloat(formData.value.totalVolume) || 0
     let numericRate = parseFloat(formData.value.rate) || 0
+    const mrate =0;
     if (!numericRate) {
-      const match = formData.value.rate.match(/(\d+(\.\d+)?)/)
+    
+      const match =formData.value.rate.match(/(\d+(\.\d+)?)/);
       if (match) numericRate = parseFloat(match[1])
     }
     const finalVolumeInMl =
