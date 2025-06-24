@@ -95,7 +95,9 @@
           <div class="form-row">
             <div class="form-group">
               <label>Route</label>
-              <select v-model="formData.route">
+              <select v-model="formData.route"
+              @change="checkRouteSelection(formData.route)"
+              >
                 <option>Oral/Sublingual</option>
                 <option>IVI Intravaginal</option>
                 <option>IV (Intravenous)</option>
@@ -125,7 +127,7 @@
           </div>
         </div>
         <!-- IV Administration -->
-        <div v-if="formData.route === 'IV (Intravenous)'">
+        <div v-if="showIvform==true">
             <h4>IV Administration</h4>
 
             <!-- Fluid Type & VIA row -->
@@ -668,6 +670,7 @@ const newProvider = ref<PastProvarItem[]>([]);
 const newProvloaded =ref<boolean>(false);
 const newpastPatPharcy = ref<boolean>(false);
 const  newPharmloaded = ref<boolean>(false);
+const showIvform = ref<boolean>(false);
 const searchTerm = ref<string>('');
 const newDiagloaded = ref<boolean>(false);
 const newDiagcodes = ref<PastProvarItem[]>([]);
@@ -680,12 +683,40 @@ const handleTabClick = (tabValue: string) => {
   //Run or emit event when the providerInfo tab is active 
   if(tabValue === 'providerInfo') {
     loadPastProviders();
+    showIvform.value = false;
   }
   if(tabValue==='pharmacyInfo')
   {
     loadPatientPharmacy();
+    showIvform.value = false;
+  }
+  if(tabValue==='prescriptionInfo')
+  {
+    showIvform.value=false;
+  }
+  if(tabValue==='medInfo')
+  {
+    if(formData.value.route=="IV (Intravenous)")
+    {
+      showIvform.value=true;
+    }
+    else{
+      showIvform.value=false;
+    }
   }
 };
+/** Checking Route Option */
+function checkRouteSelection(fdata)
+{
+ 
+  if(fdata=="IV (Intravenous)")
+  {
+    showIvform.value=true;
+  }
+  else{
+    showIvform.value=false;
+  }
+}
 /** Handler for the Save button. */
 function handleSave() {
   // You can do validation or other logic here

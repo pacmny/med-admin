@@ -103,7 +103,7 @@
                   <th class="sticky-header-1">Medication Details</th>
                   <!-- Hide these columns if collapsed -->
                   <th v-if="!collapsed" class="sticky-header-2">Status</th>
-                  <th v-if="!collapsed" class="sticky-header-3">Tabs Available</th>
+                  <th v-if="!collapsed && medsInGroup.route !='IV (Intravenous)'" class="sticky-header-3">Tabs Available</th>
                   <th v-if="!collapsed" class="sticky-header-4">Frequency</th>
                   <th v-if="!collapsed" class="sticky-header-5">Dosage</th>
                   <th v-if="!collapsed" class="sticky-header-6">Select Time and Dosage</th>
