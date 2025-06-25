@@ -452,7 +452,7 @@ Signature
                                 style="color: #ffe600; margin-left: 0.3rem;"
                                 title="Take Later"
                               >
-                                ⏳
+                                &#8987
                               </span>
                             </template>
 
@@ -523,10 +523,7 @@ Signature
             </div>
 
             <!-- Scrollable times row (only when open) -->
-            <div
-              v-if="openAccordions[med.name]"
-              class="header-times"
-            >
+            <div v-if="openAccordions[med.name]" class="header-times">
               <div class="mobile-times">
                 <span
                   v-for="timeObj in getTimesForDate(med, findDateObj(activeDate))"
@@ -535,7 +532,18 @@ Signature
                   :class="timeObj.status"
                   @click.stop="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
                 >
+                  <!-- display the time -->
                   {{ formatTimeDisplay(timeObj.time) }}
+                  <!-- mobile status icons -->
+                  <template v-if="timeObj.temporaryStatus === 'taken'">
+                    <span class="icon-immediate taken-icon">✔</span>
+                  </template>
+                  <template v-else-if="timeObj.temporaryStatus === 'refused'">
+                    <span class="icon-immediate refused-icon">✘</span>
+                  </template>
+                  <template v-else-if="timeObj.temporaryStatus === 'later'">
+                    <span class="icon-immediate later-icon">&#8987</span>
+                  </template>
                 </span>
               </div>
             </div>
@@ -593,13 +601,13 @@ Signature
               </button>
 
               <button
-    class="edit-icon"
-    @click="openMedicationForm(med)"
-    aria-label="Edit medication"
-    type="button"
-  >
-    ✎
-  </button>
+                class="edit-icon"
+                @click="openMedicationForm(med)"
+                aria-label="Edit medication"
+                type="button"
+              >
+                ✎
+              </button>
 
             </div>
           </div>
