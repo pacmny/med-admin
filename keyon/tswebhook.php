@@ -258,6 +258,29 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$admintimes = $mmdata->MedicationAdmin->slotedtimes;
 	$changereason = $mmdata->MedicationAdmin->changereason;
 	$changeorder = $mmdata->MedicationAdmin->changeorder;
+	/*6/24 Adding IV form params */
+	if($mmdata->MedicationAdmin->dosage !="")
+	{
+		$via =0;
+		$fluidrate = '';
+		$howLong = 0;
+		$fluidType = '';
+		$totalVolume = '';
+		$totalVolumeUnit = '';
+		$startTime = '';
+		$endTime = '';
+	}
+	else{ //The Else will come into play when we move this code to be the AddMedicationFrom
+		$via = $mmdata->MedicationAdmin->via;
+		$fluidrate = $mmdata->MedicationAdmin->rate;
+		$howLong = $mmdata->MedicationAdmin->howLong;
+		$fluidType = $mmdata->MedicationAdmin->fluidtype;
+		$totalVolume = $mmdata->MedicationAdmin->totalVolume;
+		$totalVolumeUnit = $mmdata->MedicationAdmin->totalVolumeUnit;
+		$startTime = $mmdata->MedicationAdmin->startTime;
+		$endTime = $mmdata->MedicationAdmin->endTime;
+	}
+	
 	//-------go get the patient information || But we should be able to have the EMR APP pass the patient name and ID over to the endpoint since The Admin App is based on the Clients Charts ------//
 	$getpatientInfo = $processData->GetPatientInfobyPatientId($accountnumber,$patientid);
 	//var_dump($getpatientInfo); debug
@@ -266,7 +289,8 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$provider = $processData->LookUpInternalProvider($providerid);
 	$providername = $provider["provider"][0]["firstname"]." ".$provider["provider"][0]["lastname"];
 	//-------go get the medication ID for the active medication (parameter - medname) -------//
-	$getmedid = $processData->DoesMedExist($accountnumber,$ordnumber,$providerid,$patientid,$medname,$status);
+	$medpastStat="Active";//set this becuase param status has the status that we are updating to. Any med we are updating should always be active
+	$getmedid = $processData->DoesMedExist($accountnumber,$ordnumber,$providerid,$patientid,$medname,$medpastStat);
 	//var_dump($getmedid); debug
 	$medicationid = $getmedid["records"][0]["medentryid"];
 	$providersignature = $providername;
@@ -278,7 +302,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	/* Step 1 Update the current Order status, Medication Status & Probably Medication Log Status */
 	$currentstatus="Active";
 	$changeOR = $processData->upatePrevOrder($accountnumber,$patientid,$ordnumber,$medicationid,$status,$changereason,$providername,$provinitials);
-	//var_dump($changeOR); debug
+	//var_dump($changeOR); //debug
 	if($changeOR !="" && $changeOR["results"]=="Updated")
 	{
 		/* Noting - Lets go ahead and grab the the Medication List Details from the DB and only Update Dosage, Frequency */
@@ -291,7 +315,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 		{
 			/* Step 3 Update the MedLog tble \ Important to update the list  and keep it associated with the original Order number for historical med information */
 			$updateMedlog = $processData->updatePrevMedlogTble($accountnumber,$ordnumber,$medicationid,$patientid,$status,$changereason);
-			var_dump($updateMedlog);
+			//var_dump($updateMedlog);
 			if($updateMedlog["results"]=="Updated")
 			{
 				/* Step 4 Now, lets create a new order */
@@ -323,7 +347,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				* go and grab all the current (about to degredate) order data - so that we can clone the order and udate just the dosage amount */
 				//var_dump($getNum); debug
 				$newordernumber = $getNum["ordernumber"];
-				$cloneorder = $processData->cloneOrderInfo($accountnumber,$patientid,$ordernumber);
+				$cloneorder = $processData->cloneOrderInfo($accountnumber,$patientid,$ordnumber);
 				 if(!empty($cloneorder) && is_array($cloneorder))
 				 {
 					$diagnosis ="";//$graboldmedlist["results"][0]["diagnosis"];
@@ -343,9 +367,9 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 							/*Step 5 We need to Add a new Medications with the updated times and frequency here */
 							$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$newordernumber,$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
 							$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$newfrequency,$newdosage,
-							$medname,$graboldmedlist["results"][0]["instruction"],$status);
+							$medname,$graboldmedlist["results"][0]["instruction"],$status,$via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
 							
-							//var_dump($insertmed);  debug
+							//var_dump($insertmed); // debug
 							if($insertmed["result"]=="Inserted")
 							{
 										/* Step 6: Now Lets go Step 5 and crate the Medlog Table and then insert the medtimes into the medtimes table  - Side Note The Medid needs to be the new medentryid from Medications tbl*/
@@ -1021,10 +1045,18 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				//now Insert Medecation Info
 				$newmedsettings="Administered";
 				$medchangetype="New";
+				if($startTime =="")
+				{
+					$startTime = date("H:i:s"); //setting default time if its empty
+				}
+				if($endTime =="")
+				{
+					$endTime = date("H:i:s"); //same setting default time if it's empty
+				}
 				$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
 			    $via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
 				
-				//var_dump($insertmed);
+				//var_dump($insertmed); debug
 				if($insertmed["result"]=="Inserted")
 				{
 					//Now Insert Prescreption Information 

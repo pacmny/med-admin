@@ -992,7 +992,7 @@ function openMedicationForm(med: Medication) {
     quantity: med.tabsAvailable,
     ndcNumber: med.ndcnumber || '',
     rxNorm: med.rxNorm || '',
-    rate : med.rate,
+    rate : med.rate || '',
     rxNumber: med.rxNumber || '',
     refills: med.refills ?? 0,
     pharmacy: med.pharmacy || '',
@@ -1774,6 +1774,8 @@ async function handleSave() {
   const ismedlocked = ref<boolean>(false);
   ismedlocked.value =  changeActiveMed.value
   const med = selectedMedicationForTime.value
+  console.log("Keyon Check Med item");
+  console.log(med);
   med.frequency = selectedFrequency.value
   med.dosage = selectedDosage.value
   const medname =med.medname;//setting this so that I can grab the actual MedId that's needed to lo
@@ -1877,7 +1879,7 @@ async function handleSave() {
           slotedtimes:newTimeArray,
           adminDate:todaydt,
           medname:medname,
-          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          ordernumber:med.ordernumber, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:changeorder.value,
           changereason:Reasaon4change.value ||'',
@@ -1922,7 +1924,7 @@ async function handleSave() {
           slotedtimes:newTimeArray,
           adminDate:todaydt,
           medname:medname,
-          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          ordernumber:med.ordernumber, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:false,
           changereason:Reasaon4change.value || ''
@@ -2146,7 +2148,11 @@ const length = ref<number>(0);
    else{
     acttakentimes=[];
    }
-  
+  //6/24 -- lets set the rate to empty string if its null 
+  if(med.rate==null)
+  {
+    med.rate='';
+  }
    console.log(acttakentimes);
    let medtakenstats;
     dateList.value.forEach(d => {
@@ -2755,7 +2761,15 @@ async function handleNewMedication(medication: Partial<Medication>) {
     status: 'active',
     medsetting:medsetting,
     discontinuedDate: undefined,
-    discontinuedTimes: {}
+    discontinuedTimes: {},
+    via: medication.via || 0,
+    fluidType: medication.fluidType,
+    startTime: medication.startTime,
+    endTime: medication.endTime,
+    howLong: medication.howLong || 0,
+    totalVolume: medication.totalVolume,
+    totalVolumeUnit: medication.totalVolumeUnit,
+    rate: medication.rate 
     
     }
     }
