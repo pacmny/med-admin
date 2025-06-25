@@ -864,6 +864,18 @@ Signature
     />
   </div>
 </div>
+<!-- NDC?mismatch modal -->
+<div v-if="showNdcMismatchPopup" class="modal-overlay">
+  <div class="modal-content">
+    <span style="display:block; margin-bottom:1rem; color:#dc3545;">
+      Scanned NDC ({{ mismatchScannedValue }}) does not match expected NDC ({{ mismatchExpectedNdc }}).
+    </span>
+    <div class="button-row">
+      <button class="btn-save"   @click="retryScan">Retry</button>
+      <button class="btn-cancel" @click="closeMismatchPopup">Close</button>
+    </div>
+  </div>
+</div>
 
 </template>
 <script setup lang="ts">
@@ -976,6 +988,10 @@ function toggleAccordion(key: string) {
 }
 
 const selectedSort = ref('')
+
+const showNdcMismatchPopup = ref(false)
+const mismatchScannedValue  = ref('')
+const mismatchExpectedNdc   = ref('')
 
 // when it changes, call your existing sort functions
 function onSortChange() {
@@ -1938,13 +1954,51 @@ function getTimesForDate(med: Medication, dateObj: Date) {
   return slots
 }
 
-
+// function onBarcodeScanned(barcode: string) {
+//   // if somehow we lost context, just bail
+//   if (!scannerContext.value) return
+//   const { med, timeObj, dateObj } = scannerContext.value
+//   const expected = med.ndcNumber ?? ''
+//   // if they match, go straight to the normal MedicationActionPopup
+//   if (barcode === expected) {
+//     selectedDateAndTime.value = { medication: med, timeObj, dateObj }
+//     showTimeActionPopup.value    = true
+//   // otherwise, show our new ?mismatch? popup
+//   } else {
+//     mismatchScannedValue.value = barcode
+//     mismatchExpectedNdc.value  = expected
+//     showNdcMismatchPopup.value = true
+//   }
+//   // reset scanner UI in either case
+//   scannerContext.value   = null
+//   showBarcodeScanner.value = false
+// }
 function onBarcodeScanned(barcode: string) {
-  if (scannerContext.value) {
-    scannerContext.value.timeObj.temporaryStatus = 'taken'
-    alert('Scanned barcode: ' + barcode)
+  if (!scannerContext.value) return
+  const { med, timeObj, dateObj } = scannerContext.value
+  const expected = med.ndcNumber ?? ''
+  // consider it a match if expected is non?empty and is contained within the scanned barcode
+  if (expected && barcode.includes(expected)) {
+    selectedDateAndTime.value = { medication: med, timeObj, dateObj }
+    showTimeActionPopup.value = true
+  } else {
+    // mismatch
+    mismatchScannedValue.value = barcode
+    mismatchExpectedNdc.value  = expected
+    showNdcMismatchPopup.value = true
   }
-  scannerContext.value = null
+  // reset scanner UI
+  scannerContext.value     = null
+  showBarcodeScanner.value = false
+}
+
+function retryScan() {
+  showNdcMismatchPopup.value = false
+  // re-open the camera
+  showBarcodeScanner.value = true
+}
+function closeMismatchPopup() {
+  showNdcMismatchPopup.value = false
 }
 
 function handleTimeClick(dateObj: Date, timeObj: any, med: Medication) {
