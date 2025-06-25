@@ -80,7 +80,7 @@ Add Manually
         type="text"
         id="date-range-picker"
         class="mobile-action-btn"
-        placeholder="Date Range"
+        value="Date Range"
       />
 <button class="mobile-action-btn" @click="showSignOffPopup = true">
 Signature
@@ -97,11 +97,11 @@ Signature
   <div class="mobile-filter-sort-row">
     <!-- Filter by Status -->
     <div class="mobile-filter-dropdown">
-      <label for="mobileFilter">Filter by Status:</label>
+      <label for="mobileFilter" class="mobile-text">Filter by Status:</label>
       <select
         id="mobileFilter"
         @change="e => handleStatusFilter(e.target.value === '' ? null : e.target.value)"
-        class="mobile-filter-select"
+        class="mobile-sort-select"
       >
         <option value="">Show All</option>
         <option value="active">Active</option>
@@ -117,7 +117,7 @@ Signature
 
     <!-- Sort by -->
     <div class="mobile-sort-dropdown">
-      <label for="mobileSort">Sort by:</label>
+      <label for="mobileSort" class="mobile-text">Sort by:</label>
       <select
         id="mobileSort"
         v-model="selectedSort"
@@ -3275,5 +3275,9 @@ function hideTooltip() {}
 }
 
 .td-modal {overflow-y: scroll;}
+
+.mobile-text {color: #3e9394;}
+
+
 
 </style>
