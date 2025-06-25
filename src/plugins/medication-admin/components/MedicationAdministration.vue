@@ -345,7 +345,7 @@
         <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
         <div class="form-group">
           <label>Frequency:</label>
-          <select v-model="selectedFrequency" class="form-select" @change="checkMedActiveStatus(selectedMedicationForTime,selectedFrequency)">
+          <!--<select v-model="selectedFrequency" class="form-select" @change="checkMedActiveStatus(selectedMedicationForTime,selectedFrequency)">
             <option value="">Select frequency</option>
             <option
               v-for="option in frequencyOptions"
@@ -355,17 +355,19 @@
             >
               {{ option }}
             </option>
-          </select>
+          </select> -->
+          <h4>{{ selectedFrequency }}</h4>
         </div>
         <div class="form-group">
           <label>Dosage (tabs per admin time):</label>
-          <input
+          <!---<input
             type="number"
             v-model="selectedDosage"
             min="1"
             step="1"
             @change="checkMedActiveDosageStatus(selectedMedStatusForTime,selectedDosage)"
-          />
+          />-->
+          <h4>{{ selectedDosage}}</h4>
         </div>
         <div v-if="timeInputs.length > 0" class="form-group">
           <label>Administration Times:</label>

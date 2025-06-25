@@ -338,7 +338,8 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 						$jdata = json_decode($createOrder);
 						if($jdata->result=="Inserted")
 						{
-							
+							/*Sending Out Email Notification now */
+							$sendemail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
 							/*Step 5 We need to Add a new Medications with the updated times and frequency here */
 							$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$newordernumber,$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
 							$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$newfrequency,$newdosage,
@@ -806,6 +807,8 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 					
 					if($jdata->result == "Inserted")
 					{
+						//Send Email Notification 
+						$sendemail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
 						//Now Add the New Medication that corresponds with the new Order that was created (medID and Order ID should match n order for the admin app to pull )
 						/*Step 5 We need to Add a new Medications with the updated times and frequency here */
 						$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
@@ -1007,13 +1010,14 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
  		 "nursesigname"=>$nurseSignature,"nursesigdate"=>$orderdate,"providersignature"=>'',"provsigdate"=>$provsigdate);
 			$createOrder =  $processData->InsertOrderTemplate($patientid,$ordar);
 			//var_dump($createOrder); debugh
-			//now send out notification via Mandrill 
+			 
 			$jdata = json_decode($createOrder);
 			
 			if($jdata->result == "Inserted")
 			{
-				//send Email later 
-
+				
+				//now send out notification via Mandrill
+				$sendEmail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
 				//now Insert Medecation Info
 				$newmedsettings="Administered";
 				$medchangetype="New";
