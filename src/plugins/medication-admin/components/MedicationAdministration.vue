@@ -64,7 +64,7 @@
         <label for="date-range-picker">Select Date Range:</label>
         <input type="text" id="date-range-picker" placeholder="Select date range" />
         <button class="add-manually-btn" @click="onAddMedication">
-          Add Manually
+          Add Medication
         </button>
       </div>
       </template>
@@ -74,7 +74,7 @@
   <div class="mobile-toolbar">
     <div class="date-range-selector">
       <button class="mobile-action-btn" @click="onAddMedication">
-Add Manually
+Add Med
 </button>
 <input
         type="text"
@@ -582,6 +582,16 @@ Signature
               >
                 Select Time & Dosage
               </button>
+
+              <button
+    class="edit-icon"
+    @click="openMedicationForm(med)"
+    aria-label="Edit medication"
+    type="button"
+  >
+    ✎
+  </button>
+
             </div>
           </div>
         </div>
@@ -3277,6 +3287,26 @@ function hideTooltip() {}
 .td-modal {overflow-y: scroll;}
 
 .mobile-text {color: #3e9394;}
+
+.detail-row .select-btn {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0;
+}
+
+/* 3) Style the edit icon so you can actually see it */
+.detail-row .edit-icon {
+  display: inline-block;
+  margin-left: 0.25rem;
+  font-size: 1.2rem;
+  color: #3e9394;       /* your teal text color */
+  cursor: pointer;
+  transition: opacity .2s;
+  opacity: 0.85;
+}
+.detail-row .edit-icon:hover {
+  opacity: 1;
+}
 
 
 
