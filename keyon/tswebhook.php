@@ -338,7 +338,8 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 						$jdata = json_decode($createOrder);
 						if($jdata->result=="Inserted")
 						{
-							
+							/*Sending Out Email Notification now */
+							$sendemail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
 							/*Step 5 We need to Add a new Medications with the updated times and frequency here */
 							$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$newordernumber,$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
 							$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$newfrequency,$newdosage,
@@ -771,7 +772,61 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 			//var_dump($updatemedlog);
 			if(!empty($updatemedlog) && $updatemedlog["results"]=="Updated")
 			{
-				print(json_encode($updatemedlog,JSON_PRETTY_PRINT));
+				/* Now Lets Create a new Change Order to Actually Hold the Order (Prev code just updated the prev order status) */
+				$cloneprevorder = $processData->cloneOrderInfo($accountnumber,$patientid,$ordernumber);
+				$graboldmedlist = $processData->grabOldMedListByMedId($accountnumber,$ordnumber,$medentryid,$patientid);
+				$getNum = $processData->GetGlobalOrderNumber();
+				$ordsendtophyscians="1";
+				$verbalorder="1";
+				$verbalorderdt = date("Y-m-d");
+				
+				$getnursesig = $processData->GetIndividualNurse($accountnumber,$proflicense);
+				if(!empty($getnursesig))
+				{
+					$nurseSignature = $getnursesig["records"]["firstname"]." ".$getnursesig["records"]["lastname"];
+				}
+				else{
+					$nurseSignature="Signature Needed";
+				}
+				//now build the order Array 
+				$ordertime = date('H:i:s');
+				$ordertype ="Nurses Order";
+				$abndelivered=0;
+				$ordstatus="Hold";
+				$provsigdate ="0000-00-00";
+				$ordar = array("accountnumber"=>$accountnumber,"ordDate"=>$cloneprevorder["records"]["orderdate"],"ordTime"=>$ordertime,"ordtype"=>$ordertype,"abndeliv"=>$abndelivered,"readback"=>$cloneprevorder["records"]["readorderback"],
+				"primephysician"=>$cloneprevorder["records"]["primary_physician"],"secphysician"=>$cloneprevorder["records"]["sec_physician"],"email"=>$cloneprevorder["records"]["email"],"npi"=>$cloneprevorder["records"]["npinumber"],
+				"address"=>$cloneprevorder["records"]["address"],"phone"=>$cloneprevorder["records"]["phone"],"fax"=>$cloneprevorder["records"]["fax"],"sendtophysician"=>$cloneprevorder["records"]["sendtophys"],"woundcare"=>$cloneprevorder["records"]["woundcare"],
+				"verbaloffer"=>$verbalorder,"verbalOrderDt"=>$verbalorderdt,"verbalOrderTime"=>$ordertime,"hasmed"=>$medname,
+				"hasdiag"=>$cloneprevorder["records"]["diagnosis"],"hassupplies"=>'',"hasValueSign"=>'',"description"=>$cloneprevorder["records"]["orderdescription"],"status"=>$ordstatus,"ordernumber"=>$getNum["ordernumber"],"writer"=>'system',
+				  "nursesigname"=>$nurseSignature,"nursesigdate"=>$verbalorderdt,"providersignature"=>'',"provsigdate"=>$provsigdate);
+					$createOrder =  $processData->InsertOrderTemplate($patientid,$ordar);
+					//var_dump($createOrder); debugh
+					//now send out notification via Mandrill 
+					$jdata = json_decode($createOrder);
+					
+					if($jdata->result == "Inserted")
+					{
+						//Send Email Notification 
+						$sendemail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
+						//Now Add the New Medication that corresponds with the new Order that was created (medID and Order ID should match n order for the admin app to pull )
+						/*Step 5 We need to Add a new Medications with the updated times and frequency here */
+						$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
+						$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$graboldmedlist[0]["med_frequency"],$graboldmedlist[0]["med_amount"],
+						$medname,$graboldmedlist["results"][0]["instruction"],$ordstatus,$graboldmedlist["results"][0]["via_med"],$graboldmedlist["results"][0]["rate"],$graboldmedlist["results"][0]["ivhowlong"],$$graboldmedlist["results"][0]["fluidType"],
+						$graboldmedlist["results"][0]["totalVolum"],$graboldmedlist["results"][0]["totalVolumnUnit"],$graboldmedlist["results"][0]["ivstarttime"],$graboldmedlist["results"][0]["ivendtime"]);
+						
+						//var_dump($insertmed);  debug
+						if($insertmed["result"]=="Inserted")
+						{
+							//All is done and Add Successfully
+							print(json_encode($updatemedlog,JSON_PRETTY_PRINT));
+						}
+					}
+					else{
+						var_dump($jdata);
+					}
+				
 			}
 			else{
 				print(json_encode($updatemedlog,JSON_PRETTY_PRINT));
@@ -791,6 +846,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
   elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="InsertAdminMecationInfo")
   {
 	  //Medication Paramaters 
+	  //var_dump($mmdata->MedicationAdmin);exit();
 	  $accountnumber = $mmdata->MedicationAdmin->accountnumber;
 	  $ordernumber = $mmdata->MedicationAdmin->ordernumber;
 	  $patientid = $mmdata->MedicationAdmin->patientid;
@@ -823,7 +879,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	 //provider information 
 	 $providername = $physican;
 	 $deanumber="k55534343";
-	 $npinumber=$npinumber;
+	 $provnpinumber=$npinumber;
 	 $licensenumber=$proffisionalicense;
 	 $provaddress="";
 	 $officenumber="";
@@ -838,6 +894,16 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	 $pharmacyCell = $mmdata->MedicationAdmin->pharmacyCell;
 	 $pharmacyEmail = $mmdata->MedicationAdmin->pharmacyEmail;
 	 $pharmdeanumber = $mmdata->MedicationAdmin->pharmacyDea;
+
+	 //Iv Information 
+	 $via = $mmdata->MedicationAdmin->via;
+	 $fluidType = $mmdata->MedicationAdmin->fluidType;
+	 $fuildrate = $mmdata->MedicationAdmin->rate;
+	 $startTime = $mmdata->MedicationAdmin->startTime;
+	 $endTime = $mmdata->MedicationAdmin->endTime;
+	 $howLong = $mmdata->MedicationAdmin->howLong;
+	 $totalVolume = $mmdata->MedicationAdmin->totalVolume;
+	 $totalVolumeUnit = $mmdata->MedicationAdmin->totalVolumeUnit;
 	
 	 //lets insert the Prescription information 
 	 $checkifmedExist = $processData->DoesMedExist($accountnumber,$ordernumber,$npinumber,$patientid,$medname,'Active');
@@ -944,24 +1010,26 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
  		 "nursesigname"=>$nurseSignature,"nursesigdate"=>$orderdate,"providersignature"=>'',"provsigdate"=>$provsigdate);
 			$createOrder =  $processData->InsertOrderTemplate($patientid,$ordar);
 			//var_dump($createOrder); debugh
-			//now send out notification via Mandrill 
+			 
 			$jdata = json_decode($createOrder);
 			
 			if($jdata->result == "Inserted")
 			{
-				//send Email later 
-
+				
+				//now send out notification via Mandrill
+				$sendEmail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
 				//now Insert Medecation Info
 				$newmedsettings="Administered";
 				$medchangetype="New";
-				$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype);
+				$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
+			    $via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
 				
 				//var_dump($insertmed);
 				if($insertmed["result"]=="Inserted")
 				{
 					//Now Insert Prescreption Information 
 					$insertPrescription = $processData->InsertPerscription($accountnumber,$patientid,$medname,$rxnumber,$dtfilled,$refills,$startdate,$enddate,$refilreminderdt,$refillexpirationdt);
-					//var_dump($insertPrescription); debug
+					//var_dump($insertPrescription); //debug
 					if($insertPrescription["results"]=="Inserted")
 					{
 						//double cross check to ensure the provider exist and attached to the change order | then we need to add the provider through Register function 
@@ -982,13 +1050,13 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 								$fax = $checkprovider["provider"][0]["fax"];
 								$licensenumber="";
 								$logProviderInfo = $processData->logpaProvider($accountnumber,$subaccountnumber,$firstname,$lastname,$npinumber,$provemail,$deanumber,$taxonomy,
-								$ordernumber,$patientid,$addr1,$phone,$fax,$licensenumber);
-								
-								//var_dump($logProviderInfo);debug
+								$getNum["ordernumber"],$patientid,$addr1,$phone,$fax,$licensenumber);
+								//var_dump("LogProvider Success");
+								//var_dump($logProviderInfo);//debug
 								//check to see if the successfull result is there 
 								if($logProviderInfo["results"]=="Inserted")
 								{
-									//var_dump("Now Insert the Pharmacy Information");
+									//var_dump("Now Insert the Pharmacy Information"); debug
 									/*$pharmacyname
 									$pharmnpi 
 									$pharmaddr
@@ -999,11 +1067,12 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 									$assigndt=date("Y-m-d");
 									$notes="Notes go here";
 									//lets check to see if Pharmacy exist and if not lets add it to our overarching Pharmacy table 
-									$doesphrmexist = $processData->findPharmacy($accountnumber,$pharmacyname,$npinumber);
+									$doesphrmexist = $processData->findPharmacy($accountnumber,$pharmacyname,$npinumber); //NPI (Pharm) not accounted for as of 6/23/25 - Need to revisit
 									
 									//var_dump($doesphrmexist); //debug
 									if($doesphrmexist["count"] < 1) //pharmacy doesn't exist, lets put it into the table 
 									{
+										//var_dump("No recs found - Lets Insert the Pharmacy");
 										$insertpharm = $processData->InsertPharmacy($accountnumber,$pharmacyname,$pharmnpi,$pharmaddr,$pharmacyOffice,$pharmacyCell,$pharmdeanumber,$pharmacyEmail);
 										//var_dump($insertpharm); //debug
 										if($insertpharm["results"]=="Inserted")
@@ -1022,7 +1091,8 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 									}
 									else{
 										//Pharmacy Alreay exist and now we just need to log that information 
-										$insertpharm  = $processData->logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $npinumber, $pharmacyname,$pharmdeanumber,$pharmnpi,$assigndt,$notes);
+										//var_dump("Pharmacy Already Exist");
+										$insertpharm  = $processData->logpaPharmacy($accountnumber,$subaccountnumber,$patientid, $npinumber, $pharmacyname,$doesphrmexist["records"][0]["address"],$pharmdeanumber,$pharmnpi,$assigndt,$notes);
 										//var_dump($insertpharm);//debug
 										if($insertpharm["results"]=="Inserted")
 										{

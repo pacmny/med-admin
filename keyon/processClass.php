@@ -4,13 +4,13 @@ class ProcessData{
 	//private $sqlightPath = "eventsdb.db";
 
 	private $sclass=null; 
-    
+    private $MandrillPW=null;
 public function __construct()
 {
 	//Initialize Class so that its operational 
 		require_once("SqlClass.php");
 		$this->sclass = new SQLData();
-	
+	    $this->MandrillPW ="md-B9mxf8Wx1Ipq23BU6MHv2A";
 
 } 
 private function dbConnect()
@@ -273,7 +273,7 @@ public function InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumbe
 $providername,$providerid,$medicationid,$administrated_at,$time,$status,$yearmedtime,$notes,$providersignature,$provinitials)
 {
 	
-	$insertMeds = $this->sclass->InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,$providername,$providerid,$medicationid,$administrated_at,
+	$insertMeds = $this->sclass->InsertMedLog($accountnumber,$patientid,$patientname,$ordernumber,$providername,$providerid,$medicationid,$administrated_at,
 	$time,$status,$yearmedtime,$notes,$providersignature,$provinitials);
 	return $insertMeds;
 }
@@ -382,11 +382,13 @@ public function InsertPerscription($accountnumber,$patientid,$medname, $rxnumber
 	$getdata = $sclass->InsertPerscription($accountnumber,$patientid,$medname, $rxnumber, $dtfilled,$refills,$startdate,$enddate,$refilreminderdt,$refillexpirationdt);
 	return $getdata;
 }
-public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype)
+public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
+$via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime)
 {
 	require_once("SqlClass.php");
 	$sclass= new SQLData();
-	$getdata = $sclass->InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype);
+	$getdata = $sclass->InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
+	$via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
 	return $getdata;
 }
 public function grabPatientAddressbyID($patientid)
@@ -1003,10 +1005,10 @@ public function SendInternalMessagingNotication($contact,$provider)
 {
 	require_once('Mandrill.php');
 	require_once("EmailTemplate.php");
-	require("consts.php");
+	//require("consts.php");
 	$emailtemp = new EmailTemplates();
 	//var_dump($emailtemp);
-	$mandrill = new Mandrill('md-s1z0SU7cJO2IqKUV10TPQw');
+	$mandrill = new Mandrill($this->MandrillPW);
 	//$e = new EmailTemplates();
 	$pretext="You Have A Message From Park Avenue Concierge Medicine | Sent From ".$provider." ";
 	$headtext="<h1>You have a message from ".$provider."</h1>";
@@ -1026,7 +1028,7 @@ public function SendInternalMessagingNotication($contact,$provider)
 	$message2->html =$email;
 	//$message->text = "text body";
 	$message2->subject =$subject;
-	$message2->from_email = "developers@willowmarketing.com";
+	$message2->from_email = "keyon@touchpointsolutionsinc.com";
 	$message2->from_name  = "PACM Patient Portal";
 		$i=0;
 		 //var_dump($e);
@@ -1072,7 +1074,7 @@ public function EmailProvider($toemail,$subject,$message,$fromprovider)
 	require_once("EmailTemplate.php");
 	require_once("consts.php");
 	$emailtemp = new EmailTemplates();
-	$mandrill = new Mandrill($MandrillPW);
+	$mandrill = new Mandrill($this->MandrillPW);
 	$e = new EmailTemplates();
 	$pretext="You Have A Message From Park Avenue Concierge Medicine | Login To Your Account To Review";
 	$headtext="<h1>You have a message from ".$fromprovider."</h1>";
@@ -1091,7 +1093,7 @@ public function EmailProvider($toemail,$subject,$message,$fromprovider)
 		$message2->html =$email;
 		//$message->text = "text body";
 		$message2->subject =$subject;
-		$message2->from_email = "developers@willowmarketing.com";
+		$message2->from_email = "keyon@touchpointsolutionsinc.com";
 		$message2->from_name  = "PACM Patient Portal";
 		$i=0;
 		foreach($emailar as $e)
@@ -1194,9 +1196,10 @@ public function QueSubEmailTemplate($adminemail,$useremail,$name,$accounttype, $
 	//var_dump("here");
 	require_once('Mandrill.php');
 	require_once("EmailTemplate.php");
-	require("consts.php");
+	//require("consts.php");
+
 $emailtemp = new EmailTemplates();
-$mandrill = new Mandrill($MandrillPW);
+$mandrill = new Mandrill($this->MandrillPW);
 
 	$pretext="You Have A Message From Park Avenue Concierge Medicine | Finalize Your".$accounttype." Account.";
 	$subjectline="Account Pending, Please Finalize Your New EMR Account";
@@ -1219,7 +1222,7 @@ $mandrill = new Mandrill($MandrillPW);
 		
 		//$message->text = "text body";
 		$message2->subject =$subjectline;
-		$message2->from_email = "developers@willowmarketing.com";
+		$message2->from_email = "keyon@touchpointsolutinsinc.com";
 		$message2->from_name  = "PACM EMR Portal";
 		$message2->to = array(
 			array(
@@ -1232,11 +1235,11 @@ $mandrill = new Mandrill($MandrillPW);
             	'name' =>'Trishant',
             	'type' =>'cc'
 			),
-			// array(
-            //     'email' => 'jmulvehill@pacmny.com',
-            //     'name' => 'Dr. Mulvehill',
-            //     'type' => 'cc'
-            // ),
+			 array(
+                 'email' => 'keyon5052l@gmail.com',
+                 'name' => 'Keyon Whiteside',
+                 'type' => 'cc'
+             ),
             array(
             	'email' =>$useremail,
             	'name' =>$name,
@@ -1264,9 +1267,9 @@ public function QueEmailTemplate($emailAddr,$name,$type,$writer)
 	//var_dump("here");
 	require_once('Mandrill.php');
 	include("EmailTemplate.php");
-	require("consts.php");
+	//require("consts.php");
 	$emailtemp = new EmailTemplates();
-	$mandrill = new Mandrill($MandrillPW);
+	$mandrill = new Mandrill($this->MandrillPW);
 	$pretext="You Have A Message From Park Avenue Concierge Medicine";
 	$subjectline=" Note - " . date("m/d/Y");
 	if ($type == "Nursing" || $type == "Providers"){
@@ -1293,7 +1296,7 @@ public function QueEmailTemplate($emailAddr,$name,$type,$writer)
 		
 		//$message->text = "text body";
 		$message2->subject =$subjectline;
-		$message2->from_email = "developers@willowmarketing.com";
+		$message2->from_email = "keyon@touchpointsolutionsinc.com";
 		$message2->from_name  = "PACM Patient Portal";
 		$message2->to = array(
 			array(
@@ -1323,9 +1326,9 @@ public function SendPhysicianEmailTemplate($ordernumber,$primephysician)
 	//var_dump("here");
 	require_once('Mandrill.php');
 	include("EmailTemplate.php");
-	require("consts.php");
+	//require("consts.php");
 $emailtemp = new EmailTemplates();
-$mandrill = new Mandrill('md-s1z0SU7cJO2IqKUV10TPQw');
+$mandrill = new Mandrill($this->MandrillPW);
 	$e = new EmailTemplates();
 	$pretext="Pacmny Notifiction - Dr. ".$primephysician." "." You Have A New Order That Needs to Be Signed. Priority Level - Urgent";
 	$subjectline="Verbal Order Needs Approval/Signed";
@@ -1347,7 +1350,7 @@ $mandrill = new Mandrill('md-s1z0SU7cJO2IqKUV10TPQw');
 		
 		//$message->text = "text body";
 		$message2->subject =$subjectline;
-		$message2->from_email = "developers@willowmarketing.com";
+		$message2->from_email = "keyon@touchpointsolutionsinc.com";
 		$message2->from_name  = "PACM Patient Portal";
 		$message2->to = array(
 			// array(

@@ -338,10 +338,10 @@ class SQLData{
     }
     public function holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid)
     {
-       var_dump($medentryid);
-       var_dump($accountnumber);
-       var_dump($medchangestat);
-       var_dump($patientid);
+       //var_dump($medentryid);
+      // var_dump($accountnumber);
+      // var_dump($medchangestat);
+      // var_dump($patientid);
         $sql="UPDATE `medicationlog` SET status=:medchngstatus WHERE accountnumber=:accnt AND patientid=:patid AND medicationid=:mid";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":medchngstatus",$medchangestat);
@@ -578,10 +578,11 @@ class SQLData{
     /*5/13/25 Lookup Existing */
     public function findPharmacy($accountnumber, $pharmacyname,$npinumber)
     {
-        $sql="SELECT * FROM `pharmacy` WHERE `pharmacyname`=:phrmname AND npi=:npi AND accountnumber=:accnt";
+        //$sql="SELECT * FROM `pharmacy` WHERE `pharmacyname`=:phrmname AND npi=:npi AND accountnumber=:accnt"; Pharmacy NPI isn't available right now, so lets just look by name and accnt
+        $sql="SELECT * FROM `pharmacy` WHERE `pharmacyname`=:phrmname AND accountnumber=:accnt";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":phrmname",$pharmacyname);
-        $stmnt->bindParam(":npi",$npinumber);
+       // $stmnt->bindParam(":npi",$npinumber);
         $stmnt->bindParam(":accnt",$accountnumber);
         try{
             if($stmnt->execute())
@@ -608,6 +609,10 @@ class SQLData{
         $city="";
         $state="";
         $zip=""; 
+        if($pharmdeanumber =='')
+        {
+            $pharmdeanumber =0;
+        }
         $sql="INSERT INTO `pharmacy`(`accountnumber`,`pharmacyname`, `deanumber`, `npi`, `address`, `city`, `state`, `zip`, `officenumber`, `cellphone`, `email`)
          VALUES (:accnt,:phrmname,:deanum,:npi,:addr,:city,:states,:zip,:officephn,:officeCell,:phrmemail)";
          $stmnt = $this->con->prepare($sql);
@@ -708,6 +713,26 @@ class SQLData{
     /*5/10/2025 - Insert Perscription */
     public function InsertPerscription($accountnumber,$patientid,$medname, $rxnumber, $dtfilled,$refills,$startdate,$enddate,$refillreminderdt,$refillexpirationdt)
     {
+        if($dtfilled =='')
+        {
+            $dtfilled="0000-00-00";
+        }
+        if($startdate =='')
+        {
+            $startdate ="0000-00-00";
+        }
+        if($enddate =='')
+        {
+            $enddate ="0000-00-00";
+        }
+        if($refillreminderdt =='')
+        {
+            $refillreminderdt ="0000-00-00";
+        }
+        if($refillexpirationdt =='')
+        {
+            $refillexpirationdt ="0000-00-00";
+        }
         $sql="INSERT INTO prescription (accountnumber,patientid,medicationame,rxnumber,filldate,numofrefills,startdate,enddate,refill_reminderDate,expiration_refillDate)
         VALUES (:accnt,:patid,:medname,:rxnum,:filldt,:refills,:strtdt,:enddt,:refilldt,:refillexpdt)";
         $stmnt = $this->con->prepare($sql);
@@ -736,18 +761,25 @@ class SQLData{
         }
     }
     /*5/9/2025 Adding Administration Medication Function */
-    public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype)
+    public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
+    $via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime)
     {
         $shorthand=$medname;
         $status="pending";
         $writer="System";// Laster we need to go back and pass in the writer | Should be an Office Admin, Nurse and or Provider vs System
+        $viamedtype=false;
         if($prn==null || $prn==Null)
         {
             $prn="";
         }
+        if($via !="")
+        {
+            $viamedtype=true;
+        }
         $sql="INSERT INTO medications (accountnumber,order_number,patient_id,ndcnumber,rxnorns,prn,additional_settings,total,`route`,diagnose_code,med_frequency,alt_route,med_amount,med_doseuom,medname,med_startdate,shorthand,
-        instruction,medchangetype,status,writer)
-        VALUES(:accnt,:ordnum,:patid,:ndcnum,:rxnum,:prn,:adminsetting,:totaltabs,:route,:diag,:freq,:altroute,:medamnt,:dosage,:medname,:medstrtdt,:shorthand,:instruction,:medchange,:stat,:writer)";
+        instruction,medchangetype,status,writer,via_med,fluidtype,viatype,totalVolumn,totalVolumnUnit,rate,ivhowlong,ivstarttime,ivendtime)
+        VALUES(:accnt,:ordnum,:patid,:ndcnum,:rxnum,:prn,:adminsetting,:totaltabs,:route,:diag,:freq,:altroute,:medamnt,:dosage,:medname,:medstrtdt,:shorthand,:instruction,:medchange,:stat,:writer,
+        :viabool,:fluidtype,:viatype,:ttlvol,:ttlvolunit,:rate,:ivhowlong,:ivstrttime,:ivendtime)";
         $startdate = date('Y-m-d');
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
@@ -771,6 +803,15 @@ class SQLData{
         $stmnt->bindParam(":medchange",$medchangetype);
         $stmnt->bindParam(":stat",$status);
         $stmnt->bindParam(":writer",$writer);
+        $stmnt->bindParam(":viabool",$viamedtype);
+        $stmnt->bindParam(":fluidtype",$fluidType);
+        $stmnt->bindParam(":viatype",$via);
+        $stmnt->bindParam(":ttlvol",$totalVolume);
+        $stmnt->bindParam(":ttlvolunit",$totalVolumeUnit);
+        $stmnt->bindParam(":rate",$rate);
+        $stmnt->bindParam(":ivhowlong",$howLong);
+        $stmnt->bindParam(":ivstrttime",$startTime);
+        $stmnt->bindParam(":ivendtime",$endTime);
 
         try{
             if($stmnt->execute())
