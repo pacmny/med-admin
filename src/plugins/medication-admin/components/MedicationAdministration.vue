@@ -507,7 +507,16 @@ Signature
             @click="toggleAccordion(med.name)"
           >
             <div class="header-main">
-              <span class="med-name">{{ med.name }}</span>
+              <!-- truncate when closed, full name when open -->
+              <span class="med-name">
+                {{ openAccordions[med.name]
+                    ? med.name
+                    : (med.name.length > 32
+                        ? med.name.slice(0,32) + '…'
+                        : med.name
+                      )
+                }}
+              </span>
               <span class="accordion-arrow">
                 {{ openAccordions[med.name] ? '▾' : '▸' }}
               </span>
@@ -2321,6 +2330,12 @@ function getTooltipText(timeObj: any) {
 }
 function showTooltip(_timeObj: any) {}
 function hideTooltip() {}
+
+// at the top of your <script setup>
+const truncate = (str: string, len = 32) => 
+  str.length > len ? str.slice(0, len) + '…' : str
+
+
 </script>
 <style scoped>
 /* Make the medication name clickable */
