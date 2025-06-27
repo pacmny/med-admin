@@ -47,46 +47,78 @@
 
 <script setup lang="ts">
 import { ref, watch, onUnmounted, nextTick, defineProps, defineEmits } from 'vue'
-import { BrowserMultiFormatReader, NotFoundException, Result } from '@zxing/library'
+import {
+  BrowserMultiFormatReader,
+  DecodeHintType,
+  BarcodeFormat,
+  NotFoundException,
+  Result
+} from '@zxing/library'
 
-/* ---------- props ---------- */
 const props = defineProps<{
   active: boolean
   scanRegion?: { x: number; y: number; width: number; height: number } | null
   rapidScanMode?: boolean
 }>()
-
-/* ---------- emits ---------- */
 const emit = defineEmits<{
   scanned: (code: string) => void
   close: () => void
 }>()
 
-/* ---------- refs & state ---------- */
 const videoEl = ref<HTMLVideoElement | null>(null)
 let codeReader: BrowserMultiFormatReader | null = null
 
-/* ---------- camera helpers ---------- */
 async function startCamera() {
   if (!videoEl.value) return
 
-  // 1) instantiate ZXing reader
-  codeReader = new BrowserMultiFormatReader()
+  // Configure ZXing for higher accuracy on small barcodes
+  const hints = new Map()
+  hints.set(DecodeHintType.TRY_HARDER, true)
+  hints.set(DecodeHintType.POSSIBLE_FORMATS, [
+    BarcodeFormat.CODE_128,
+    BarcodeFormat.EAN_13,
+    BarcodeFormat.EAN_8,
+    BarcodeFormat.UPC_A,
+    BarcodeFormat.UPC_E
+  ])
+  codeReader = new BrowserMultiFormatReader(hints)
 
-  // 2) enumerate all devices, pick only videoinput
+  // Pick the back-facing camera if available
   const devices = await navigator.mediaDevices.enumerateDevices()
   const videoDevices = devices.filter(d => d.kind === 'videoinput')
   if (!videoDevices.length) {
     console.error('No video inputs found')
     return
   }
-
-  // 3) prefer a back-facing camera if labeled
   const chosen =
     videoDevices.find(d => /back|rear|environment/i.test(d.label)) ||
     videoDevices[0]
 
-  // 4) start decoding from that device into our <video>
+  // Request a high-resolution stream with continuous focus/exposure
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: {
+      deviceId: chosen.deviceId,
+      facingMode: 'environment',
+      width: { ideal: 1280, max: 1920 },
+      height: { ideal: 720, max: 1080 },
+      focusMode: 'continuous',
+      exposureMode: 'continuous'
+    }
+  })
+  videoEl.value.srcObject = stream
+
+  // If supported, push zoom and continuous modes to the camera
+  const [track] = stream.getVideoTracks()
+  if (track.getCapabilities) {
+    const caps = track.getCapabilities()
+    const adv: any[] = []
+    if (caps.zoom) adv.push({ zoom: caps.zoom.max })
+    if (caps.focusMode) adv.push({ focusMode: 'continuous' })
+    if (caps.exposureMode) adv.push({ exposureMode: 'continuous' })
+    if (adv.length) await track.applyConstraints({ advanced: adv })
+  }
+
+  // Start decoding frames
   codeReader.decodeFromVideoDevice(
     chosen.deviceId,
     videoEl.value,
@@ -95,9 +127,8 @@ async function startCamera() {
         const text = result.getText()
         console.log('📦 scanned barcode:', text)
         emit('scanned', text)
-        stopCamera() // stop after first scan
+        stopCamera()
       }
-      // ignore “no barcode in this frame”–type errors
       if (err && !(err instanceof NotFoundException)) {
         console.warn(err)
       }
@@ -106,19 +137,16 @@ async function startCamera() {
 }
 
 function stopCamera() {
-  // reset ZXing
   if (codeReader) {
     codeReader.reset()
     codeReader = null
   }
-  // stop video tracks
   if (videoEl.value?.srcObject) {
     ;(videoEl.value.srcObject as MediaStream).getTracks().forEach(t => t.stop())
     videoEl.value.srcObject = null
   }
 }
 
-/* ---------- react to prop changes ---------- */
 watch(
   () => props.active,
   async active => {
@@ -132,15 +160,14 @@ watch(
   { immediate: true }
 )
 
-/* ---------- lifecycle ---------- */
 onUnmounted(stopCamera)
 
-/* ---------- UI events ---------- */
 function handleClose() {
   stopCamera()
   emit('close')
 }
 </script>
+
 
 <style scoped>
 .scanner-container {
