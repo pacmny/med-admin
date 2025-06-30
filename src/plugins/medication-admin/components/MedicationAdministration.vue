@@ -873,24 +873,35 @@ Signature
 
   </div>
 
-  <!-- SCANNER MODAL -->
-<div
-  v-if="scannerContext"
-  class="scanner-modal-overlay"
-  @click.self="scannerContext = null"
->
-  <div class="scanner-modal-content">
-    
+  <!-- MOBILE SCANNER -->
+  <template>
+    <div class="scanner-modal-overlay" @click.self="handleClose">
+      <div class="scanner-modal-content">
+        <NativeBarcodeScanner
+          :active="!!scannerContext"
+          @scanned="onBarcodeScanned"
+          @close="handleClose"
+        />
+      </div>
+    </div>
+  </template>
 
-    <BarcodeScanner
-      :active="true"
-      :scanRegion="scanRegion"
-      :rapidScanMode="rapidScanMode"
-      @scanned="onBarcodeScanned"
-      @close="scannerContext = null"
-    />
-  </div>
-</div>
+  <!-- DESKTOP / WEB SCANNER -->
+  <!-- <template v-else-if="scannerContext && !isMobile">
+    <div class="scanner-modal-overlay" @click.self="handleClose">
+      <div class="scanner-modal-content">
+        <BarcodeScanner
+          :active="!!scannerContext"
+          :scanRegion="scanRegion"
+          :rapidScanMode="rapidScanMode"
+          @scanned="onBarcodeScanned"
+          @close="handleClose"
+        />
+      </div>
+    </div>
+  </template> -->
+
+
 <!-- NDC?mismatch modal -->
 <div v-if="showNdcMismatchPopup" class="modal-overlay">
   <div class="modal-content">
@@ -914,6 +925,7 @@ import flatpickr from 'flatpickr'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
 import BarcodeScanner from './barcode-scanner/BarcodeScanner.vue'
+import NativeBarcodeScanner from './barcode-scanner/NativeBarcodeScanner.vue'
 
 
 /** How many future days to populate scheduled times. */
@@ -2343,6 +2355,10 @@ function hideTooltip() {}
 const truncate = (str: string, len = 32) => 
   str.length > len ? str.slice(0, len) + '…' : str
 
+// unified close:
+function handleClose() {
+  scannerContext.value = null
+}
 
 </script>
 <style scoped>
