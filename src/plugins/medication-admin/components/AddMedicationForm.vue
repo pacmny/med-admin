@@ -1816,7 +1816,7 @@ async function fetchDiagnosis()
    try{
 
     await axios
-        .post( "https://medadministration:8890/keyon/icd_calls.php", content, {
+        .post( "http://20.231.24.137/med-admin/keyon/icd_calls.php", content, {
           headers: { "Content-Type": "application/json;" },
         })
         .then((res) => {
@@ -1876,7 +1876,7 @@ async function showPharmacyResult()
       };
       // this.showPreloader()
       await axios
-        .post( "https://medadministration:8890/keyon/NPILookup.php", content, {
+        .post( "http://20.231.24.137/med-admin/keyon/NPILookup.php", content, {
           headers: { "Content-Type": "application/json;" },
         })
         .then((res) => {
@@ -1907,7 +1907,7 @@ async function loadPatientPharmacy()
      }
    };
    await axios
-        .post( "https://medadministration:8890/keyon/tswebhook.php", content, {
+        .post( "http://20.231.24.137/med-admin/keyon/tswebhook.php", content, {
           headers: { "Content-Type": "application/json;" },
         })
         .then((res) => {
@@ -1937,7 +1937,7 @@ async function showNpiResult()
       };
       // this.showPreloader()
       await axios
-        .post( "https://medadministration:8890/keyon/NPILookup.php", content, {
+        .post( "http://20.231.24.137/med-admin/keyon/NPILookup.php", content, {
           headers: { "Content-Type": "application/json;" },
         })
         .then((res) => {

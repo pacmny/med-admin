@@ -171,7 +171,7 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 		{
 			//var_dump($s);
 			$medid = $s->medication->medentryid;
-			if($s->medication->medentryid ==$medid)
+			//if($s->medication->medentryid ==$medid)
 			$medname = $s->medication->medname;//just in case 
 			$admintimes = explode(",",$s->medication->administrationTimes);
 			$timeslot = explode("(",$s->timeObj->time);
@@ -193,7 +193,7 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 				$earlyreason = $s->timeObj->earlyReason;
 			}
 
-			var_dump($admintimes);
+			/*var_dump($admintimes);
 			var_dump($medname);
 			var_dump($finltimeslot);
 			var_dump($finlslotreason);
@@ -202,14 +202,15 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 			var_dump($signoffdate);
 			var_dump($signoffnurse);
 			var_dump($earlyreason);
-			var_dump($remainingtablets );
+			var_dump($remainingtablets ); debug*/
 			 /* Lets Update each Administration Record Now */
 			 $updaterec = $this->sclass->UpdateMedLogandLogtimes($accountnumber,$patientid,$medid,$finltimeslot,$finlslotreason,$takentime,$status,$signoffdate,$signoffnurse,$signoffinit,$earlyreason);
-			var_dump($updaterec);
+			//var_dump($updaterec); debug
 			 if(!empty($updaterec["results"]) && is_array($updaterec) && $updaterec["results"]=="Updated")
 			 {
 				//now lets update the medication table (column - available) to keep the remainin tabs Available 
 				$updatetabremaining = $this->sclass->updateRemainingTabs($accountnumber,$patientid,$medid,$remainingtablets);
+       // var_dump($updatetabremaining);debug
 				if(!empty($updatetabremaining) && is_array($updatetabremaining) && $updatetabremaining["results"]=="Updated")
 				{
 					return $updatetabremaining;
@@ -235,7 +236,7 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 
 
 		}
-		var_dump($finaladmintimes);
+		//var_dump($finaladmintimes); debug
 	}
 }
 public function GetPatientInfoByPatientId($accountnumber,$patientid)

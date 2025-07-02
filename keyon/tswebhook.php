@@ -307,10 +307,10 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	{
 		/* Noting - Lets go ahead and grab the the Medication List Details from the DB and only Update Dosage, Frequency */
 		$graboldmedlist = $processData->grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$patientid);
-		//var_dump($graboldmedlist); debug
+		//var_dump($graboldmedlist); //debug
 		/*Step 2 Lets Update the Previous Medication/ Med on the Medlist and change the status | Update , med_enddate, medchangetype, dt_medchanged, medchangereason */
 		$changeMedlst = $processData->pastMedList($ordnumber,$accountnumber,$patientid,$medendDt,$status,$administrated_at,$changereason,$medicationid);
-		//var_dump($changeMedlst); debug
+		//var_dump($changeMedlst); //debug
 		if($changeMedlst !="" && $changeMedlst["results"]=="Updated")
 		{
 			/* Step 3 Update the MedLog tble \ Important to update the list  and keep it associated with the original Order number for historical med information */
@@ -338,7 +338,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				$nurseSignature=$providersignature; //call the nurses table and get the nurses name
 				$orderDescrip="New Order created due to frequency and or dose change in perscription Medicative";
 				$orderstatus="Pending"; //has tp be until provider signs off on the order
-				$provsigdate="0000-00-00";
+				$provsigdate="1979-01-01";
 				$note="System Generated Order - Account for Change Order";
 
 
@@ -358,7 +358,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 						"hasdiag"=>$diagnosis,"hassupplies"=>'',"hasValueSign"=>'',"description"=>$orderDescrip,"status"=>$orderstatus,"ordernumber"=>$getNum["ordernumber"],"writer"=>'system',
 						"nursesigname"=>$nurseSignature,"nursesigdate"=>$orderdate,"providersignature"=>'',"provsigdate"=>$provsigdate);
 						$createOrder =  $processData->InsertOrderTemplate($patientid,$ordar);
-						//var_dump($createOrder); debug
+						//var_dump($createOrder); //debug
 						$jdata = json_decode($createOrder);
 						if($jdata->result=="Inserted")
 						{
@@ -457,7 +457,6 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$getmedid = $processData->DoesMedExist($accountnumber,$ordnumber,$providerid,$patientid,$medname,$status);
 	$medicationid = $getmedid["records"][0]["medentryid"];
 	$checkstatus = $processData->checkMedlogtablenfo($accountnumber,$patientid,$administrated_at,$medicationid);
-	//var_dump($checkstatus);
 	
 	$providersignature = $providername;
 	$initval = explode(" ",$providersignature);
@@ -468,11 +467,9 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	if($checkstatus["count"] <=0) //emplty so lets insert the Medlog table data
 	{
 		 
-		
 		//lets Insert the Medication Information that we need to log
 		$loginfo = $processData->InsertMedLog( $accountnumber,$patientid,$patientname,$ordnumber,
 		$providername,$providerid,$medicationid,$administrated_at,$time,$status,json_encode($admintimes),$notes,$providersignature,$provinitials);
-		//var_dump($loginfo);
 		//check to see if it was successfull
 		if(!empty($loginfo) && $loginfo["results"]=="Inserted")
 		{
@@ -486,7 +483,6 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				{
 					
 					$insertlog = $processData->insertMedlogtableInfo($accountnumber,$patientid,$medicationid,$administrated_at,$stime->time,$provinitials,$providersignature);
-					//var_dump($insertlog);
 					if(!empty($insertlog) && $insertlog["results"]=="Insert")
 					{
 						array_push($insttimes,$insertlog["results"]);
@@ -788,7 +784,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	{
 		//Now lets update the automated framework (orders,)
 		$holdorder = $processData->HoldOrderByOrdnumPatId($accountnumber,$patientid,$ordernumber,$medchangestat);
-		
+		//var_dump($holdorder);
 		if(!empty($holdorder) && $holdorder["results"]=="Updated")
 		{
 			//now update the medicationlog table 
@@ -817,15 +813,16 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				$ordertype ="Nurses Order";
 				$abndelivered=0;
 				$ordstatus="Hold";
-				$provsigdate ="0000-00-00";
-				$ordar = array("accountnumber"=>$accountnumber,"ordDate"=>$cloneprevorder["records"]["orderdate"],"ordTime"=>$ordertime,"ordtype"=>$ordertype,"abndeliv"=>$abndelivered,"readback"=>$cloneprevorder["records"]["readorderback"],
-				"primephysician"=>$cloneprevorder["records"]["primary_physician"],"secphysician"=>$cloneprevorder["records"]["sec_physician"],"email"=>$cloneprevorder["records"]["email"],"npi"=>$cloneprevorder["records"]["npinumber"],
-				"address"=>$cloneprevorder["records"]["address"],"phone"=>$cloneprevorder["records"]["phone"],"fax"=>$cloneprevorder["records"]["fax"],"sendtophysician"=>$cloneprevorder["records"]["sendtophys"],"woundcare"=>$cloneprevorder["records"]["woundcare"],
+				$provsigdate ="1971-01-01";
+      
+				$ordar = array("accountnumber"=>$accountnumber,"ordDate"=>$verbalorderdt,"ordTime"=>$ordertime,"ordtype"=>$ordertype,"abndeliv"=>$abndelivered,"readback"=>$cloneprevorder["records"][0]["readorderback"],
+				"primephysician"=>$cloneprevorder["records"][0]["primary_physician"],"secphysician"=>$cloneprevorder["records"][0]["sec_physician"],"email"=>$cloneprevorder["records"][0]["email"],"npi"=>$cloneprevorder["records"][0]["npinumber"],
+				"address"=>$cloneprevorder["records"][0]["address"],"phone"=>$cloneprevorder["records"][0]["phone"],"fax"=>$cloneprevorder["records"][0]["fax"],"sendtophysician"=>$cloneprevorder["records"][0]["sendtophys"],"woundcare"=>$cloneprevorder["records"][0]["woundcare"],
 				"verbaloffer"=>$verbalorder,"verbalOrderDt"=>$verbalorderdt,"verbalOrderTime"=>$ordertime,"hasmed"=>$medname,
-				"hasdiag"=>$cloneprevorder["records"]["diagnosis"],"hassupplies"=>'',"hasValueSign"=>'',"description"=>$cloneprevorder["records"]["orderdescription"],"status"=>$ordstatus,"ordernumber"=>$getNum["ordernumber"],"writer"=>'system',
+				"hasdiag"=>$cloneprevorder["records"][0]["diagnosis"],"hassupplies"=>'',"hasValueSign"=>'',"description"=>$cloneprevorder["records"][0]["orderdescription"],"status"=>$ordstatus,"ordernumber"=>$getNum["ordernumber"],"writer"=>'system',
 				  "nursesigname"=>$nurseSignature,"nursesigdate"=>$verbalorderdt,"providersignature"=>'',"provsigdate"=>$provsigdate);
 					$createOrder =  $processData->InsertOrderTemplate($patientid,$ordar);
-					//var_dump($createOrder); debugh
+					//var_dump($createOrder); //debugh
 					//now send out notification via Mandrill 
 					$jdata = json_decode($createOrder);
 					
@@ -949,7 +946,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 		/*Mecication Does not exist and we should be ready to update 
 		*We are going to update each seaction in seperate functions 
 		*/
-		//var_dump("Ready to run the insert code"); debug
+		//var_dump("Ready to run the insert code"); //debug
 		 $orderdate = date('Y-m-d');  //current date 
 		 $ordertime= date('Y-m-d h:i:s'); //current time
 		 $ordertype="Nurse Order";
@@ -969,7 +966,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 		 $nurseSignature=""; //call the nurses table and get the nurses name
 		 $orderDescrip="Adding a new medication from the Medication Administration Application - Order created in the automated workflow";
 		 $orderstatus="Pending"; //has tp be until provider signs off on the order
-		 $provsigdate="0000-00-00";
+		 $provsigdate="1970-01-01";
 
 
 		/* Create An Order before we Insert Medication Infformation */ 
@@ -1033,7 +1030,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 		"hasdiag"=>$diagnois,"hassupplies"=>'',"hasValueSign"=>'',"description"=>$orderDescrip,"status"=>$orderstatus,"ordernumber"=>$getNum["ordernumber"],"writer"=>'system',
  		 "nursesigname"=>$nurseSignature,"nursesigdate"=>$orderdate,"providersignature"=>'',"provsigdate"=>$provsigdate);
 			$createOrder =  $processData->InsertOrderTemplate($patientid,$ordar);
-			//var_dump($createOrder); debugh
+			//var_dump($createOrder); //debugh
 			 
 			$jdata = json_decode($createOrder);
 			
@@ -1056,7 +1053,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
 			    $via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
 				
-				//var_dump($insertmed); debug
+				//var_dump($insertmed); //debug
 				if($insertmed["result"]=="Inserted")
 				{
 					//Now Insert Prescreption Information 
@@ -1132,6 +1129,10 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 											$success= array("status"=>"200 Successfull","message"=>"Medication Added Successfully");
 											print(json_encode($success,JSON_PRETTY_PRINT));
 										}
+                    else{
+                      $msg="Error"." ".$insertpharm;
+                      print(json_encode(array("message"=>$msg)));
+                    }
 									}
 									
 								}

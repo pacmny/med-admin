@@ -248,6 +248,14 @@
 									<span
 									class="medication-link"
 									@click="openMedicationForm(med)"
+                  :style="{
+                    backgroundColor:
+                    med.temporaryStatus ==='hold'
+                                  ? '#fff3cd'
+                                  : med.temporaryStatus ==='new'
+                                  ? '#869ccd'
+                                  : '#f8f9fa'
+                  }"
 									>
 									{{ med.medname }}
 									</span>
@@ -302,7 +310,7 @@
 										{{ option }}
 										</option>
 									</select>
-									</div>
+									</div> 
 								</td>
 
 								<!-- Frequency & Dosage (hidden if collapsed) -->
@@ -344,7 +352,7 @@
 												? '#b3f0b3'
 												: timeObj.locked && timeObj.status === 'refused'
 												? '#f9b3b3'
-												: timeObj.locked && timeObj.status ==='hold'
+												:  timeObj.status ==='hold'
 												? '#fff3cd'
                         :timeObj.locked && timeObj.status =='discontinued'
                         ? '#f8d7da'
@@ -384,7 +392,7 @@
 												? '#b3f0b3'
 												: timeObj.locked && timeObj.status === 'refused'
 												? '#f9b3b3'
-												: timeObj.locked && timeObj.status ==='hold'
+												: timeObj.status ==='hold'
 												? '#fff3cd'
                         :timeObj.locked && timeObj.status ==='discontinued'
                         ? '#f8d7da'
@@ -831,7 +839,7 @@ export interface Provider {
   name:string;
 }
 export interface Medication {
-  name: string
+  medname: string
   dates?: Record<string, {
     time: string
     status?: string
@@ -849,6 +857,7 @@ export interface Medication {
   route?: string
   dosageForm?: string
   diagnosis?: string
+  diagnose_code?: string
   prn?: boolean
   startDate?: Date
   endDate?: Date
@@ -1147,15 +1156,7 @@ onUnmounted(() => {
 	}
 })
 
-const localProps = withDefaults(defineProps<{ medications?: Medication[] }>(), {
-  medications: () => []
-})
 
-watch(() => localProps.medications, (newMeds) => {
-  if (!localStorage.getItem('medications')) {
-    medications.value = [...newMeds]
-  }
-}, { immediate: true })
 
 /*const localEmit = defineEmits<{
   (e: 'statusChange', medication: Medication, status: string): void;
@@ -1357,7 +1358,7 @@ async function loadpastProv()
       patientid: "709081242", //"70894333",
       }
     };
-    axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+    axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
          pastProvar.value = response.data.provider;
@@ -1492,7 +1493,7 @@ const routeCategories = [
 function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medication[]> {
   const grouped: Record<string, Medication[]> = {}
   meds.forEach(med => {
-    const diag = med.diagnosis || 'Unspecified Diagnosis'
+    const diag = med.diagnose_code || 'Unspecified Diagnosis'
     if (!grouped[diag]) {
       grouped[diag] = []
     }
@@ -1562,7 +1563,7 @@ const groupedMedications = computed(() => {
     const groupedByDiagnosis = groupMedicationsByDiagnosis(sortedMeds)
     Object.assign(groups, groupedByDiagnosis)
   } else if (sortBy.value === 'medication') {
-    sortedMeds.sort((a, b) => a.name.localeCompare(b.name))
+    sortedMeds.sort((a, b) => a.medname.localeCompare(b.medname))
     groups['All Medications'] = sortedMeds
   } else {
     groups['All Medications'] = sortedMeds
@@ -1604,7 +1605,7 @@ async function loadMedications() {
         }
       };
     
-        axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+        axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
           medications.value = response.data.records;
@@ -1636,6 +1637,8 @@ async function loadMedications() {
 }
 watch(medications, (newVal) => {
   localStorage.setItem('medications', JSON.stringify(newVal));
+  console.log("Keyon watching localStorate");
+  console.log(localStorage.getItem("medications"));
   if(newVal.length >0)
   {
     medications.value = newVal;
@@ -1645,14 +1648,14 @@ watch(medications, (newVal) => {
   
 }, { deep: true })
 
-/*const props = withDefaults(defineProps<{ medications?: Medication[] }>(), {
+const props = withDefaults(defineProps<{ medications?: Medication[] }>(), {
   medications: () => []
 })
 watch(() => props.medications, (newMeds) => {
   if (!localStorage.getItem('medications')) {
     medications.value = [...newMeds]
   }
-}, { immediate: true }) */
+}, { immediate: true }) 
 
 const emit = defineEmits<{
   (e: 'statusChange', medication: Medication, status: string): void;
@@ -1663,11 +1666,12 @@ const emit = defineEmits<{
 
 // ---------- FREQUENCY WATCH ----------
 watch(selectedFrequency, (newFreq) => {
-  if (!newFreq || (selectedMedicationForTime.value && selectedMedicationForTime.value.prn)) {
-    timeInputs.value = []
+  if ( !newFreq || (selectedMedicationForTime.value && selectedMedicationForTime.value.prn)) {
+    timeInputs.value = [];
     return
   }
   const timesCount = getTimesCountFromFrequency(newFreq)
+  //alert("Time Count"+ " "+ timesCount);
   timeInputs.value = Array(timesCount).fill('')
 })
 // Chris version below, might need to be adjusted
@@ -1685,7 +1689,8 @@ watch(selectedFrequency, (newFreq) => {
 
 function getTimesCountFromFrequency(frequency: string): number {
   if (!frequency) return 0
-  const dailyMatch = frequency.match(/(\d+)\s*times?\s*daily/)
+  const dailyMatch = frequency.match(/(\d+)\s*times?\s*daily/);
+  //alert(dailyMatch);
   if (dailyMatch) {
     return parseInt(dailyMatch[1], 10)
   }
@@ -1696,10 +1701,10 @@ function getTimesCountFromFrequency(frequency: string): number {
   }
   switch (frequency) {
     case 'every hour': return 24
-    case 'daily':
-    case 'at bedtime':
-    case 'every 24 hours':
-    case 'every other day': return 1
+    case 'daily':return 1
+    case 'at bedtime': return 1
+    case 'every 24 hours': return 1
+    case 'every other day': return 4
     case 'monday, wednesday, friday, sunday': return 4
     case 'tuesday, thursday, saturday': return 3
     default: return 1
@@ -1713,8 +1718,9 @@ function toggleSelectDropdown(medication: Medication) {
     showErrorModal.value = true
     return
   }
-  selectedMedicationForTime.value = medication;
-  selectedFrequency.value = medication.med_frequency || ''
+ selectedMedicationForTime.value = medication;
+  selectedFrequency.value = medication.med_frequency || '';
+ // alert(selectedFrequency.value);
   selectedDosage.value = medication.med_amount || '1'
   if(!selectedMedStatusForTime.value ) //if this is empty lets set the status to Active 
   {
@@ -1727,8 +1733,11 @@ function toggleSelectDropdown(medication: Medication) {
     const splitted = medication.administrationTimes.split(',')
     timeInputs.value = splitted.map(t => t.trim())
   } else {
-    timeInputs.value = []
+    
+    
+    timeInputs.value = [];
   }
+  
   showTimeModal.value = true
 }
 // Chris version below, might need to be adjusted
@@ -1759,17 +1768,23 @@ function toggleSelectDropdown(medication: Medication) {
 // }
 
 async function handleSave() {
+  
   if (!selectedMedicationForTime.value) {
+    
     showTimeModal.value = false
     return
   }
-  console.log(selectedMedicationForTime.value);
+  console.log("Do this"+" "+ selectedMedicationForTime.value.med_frequency);
   if (!selectedMedicationForTime.value.prn && timeInputs.value.length > 0) {
     if (timeInputs.value.some(t => !t)) {
       errorMessage.value = "Please select all required times."
       showErrorModal.value = true
       return
     }
+  }
+  else{
+   
+    console.log("Keyon Check SelectedMedstatus:"+" "+ selectedMedStatusForTime.value);
   }
   const ismedlocked = ref<boolean>(false);
   ismedlocked.value =  changeActiveMed.value
@@ -1784,6 +1799,7 @@ async function handleSave() {
     med.status="Change";
   }
   else{
+    
     med.status="Active";
   }
   
@@ -1791,9 +1807,11 @@ async function handleSave() {
   console.log(medname);
   console.log(medstatus);
   if (med.prn) {
+   
     med.administrationTimes = 'As needed'
     med.dates = {}
   } else {
+    
     const newTimeArray = timeInputs.value.filter(t => t).map(t => ({
       time: t,
       status: 'pending',
@@ -1808,6 +1826,7 @@ async function handleSave() {
     //checking to see date times is greater than todayMidnight and if so lable status as discountinued
     const todayMidnight = normalizeToMidnight(new Date())
     if (med.dates) {
+    
       for (const dStr of Object.keys(med.dates)) {
         const d = new Date(dStr)
         if (normalizeToMidnight(d).getTime() >= todayMidnight.getTime()) {
@@ -1816,7 +1835,7 @@ async function handleSave() {
           )
         }
       }
-    }
+    }else{console.log("no med dates");}
 
     for (let i = 0; i < FUTURE_DAYS_TO_POPULATE; i++) {
       const futureDate = new Date(todayMidnight)
@@ -1860,7 +1879,7 @@ async function handleSave() {
      console.log(todaydt);
      const changeorder = ref<boolean>(false)
      //lets check to see if this med (normally setting the log time and date) is currenly logged and ative. If so the change will require a change order 
-     alert(changeActiveMed.value);
+     //alert(changeActiveMed.value);debug
      if(changeActiveMed.value==true )
      {
       
@@ -1888,7 +1907,7 @@ async function handleSave() {
           }
         };
     
-        axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+        axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
           if(response.data && response.data.results=="Changed")
@@ -1931,7 +1950,7 @@ async function handleSave() {
           }
         };
     
-        axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+        axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
           if(response.data && response.data.results=="Insert")
@@ -1970,13 +1989,13 @@ async function handleSave() {
           slotedtimes:newTimeArray,
           adminDate:todaydt,
           medname:medname,
-          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          ordernumber:med.order_number, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:false
           }
         };
     
-        axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+        axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
           if(response.data && response.data.results=="Insert")
@@ -2146,8 +2165,10 @@ const length = ref<number>(0);
     acttakentimes =med.takentimes.split(',');
    } 
    else{
-    acttakentimes=[];
+    //acttakentimes=[];
    }
+  // alert("Actual Takne Time");
+   console.log(acttakentimes);
   //6/24 -- lets set the rate to empty string if its null 
   if(med.rate==null)
   {
@@ -2184,16 +2205,30 @@ const length = ref<number>(0);
           lockedstatus = true;
         }
         const dosageNum = parseInt(med.med_amount || '1', 10);
-        med.dates![dStr] = splitted.map(t => ({
-          time:t +" (taken at"+" "+acttakentimes[0]+")",
-          status: medtakenstats.value,//med.temporaryStatus,
-          dosage: dosageNum,
-          earlyReason: med.earlyReason,
-          locked:lockedstatus,
-          temporaryStatus:medtakenstats.value
-        }));
-        console.log("Supposed to be here");
-        console.log(med.dates[dStr]);
+        if(acttakentimes.length ==0 || acttakentimes =='')
+        {
+            med.dates![dStr] = splitted.map(t => ({
+            time:t,
+            status: medtakenstats.value,//med.temporaryStatus,
+            dosage: dosageNum,
+            earlyReason: med.earlyReason,
+            locked:lockedstatus,
+            temporaryStatus:medtakenstats.value
+          }));
+        }
+        else{
+            med.dates![dStr] = splitted.map(t => ({
+            time:t +" (taken at"+" "+acttakentimes[0]+")",
+            status: medtakenstats.value,//med.temporaryStatus,
+            dosage: dosageNum,
+            earlyReason: med.earlyReason,
+            locked:lockedstatus,
+            temporaryStatus:medtakenstats.value
+          }));
+          console.log("Supposed to be here");
+          console.log(med.dates[dStr]);
+        }
+       
       } 
       else{
         console.log(med.dates![dStr]);
@@ -2775,7 +2810,7 @@ async function handleNewMedication(medication: Partial<Medication>) {
     }
   
   let errorMessage="";
-  axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+  axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
           if(response.data && response.data.count >=1)
@@ -2833,7 +2868,7 @@ async function handleNewMedication(medication: Partial<Medication>) {
 async function updateMedAdminSetting(payload)
 {
   let errorMessage="";
-  axios.post('https://medadministration:8890/keyon/tswebhook.php', payload)
+  axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', payload)
          .then(response => {        
           console.log('Past Update parmaaters successfully:', response.data);  
           if(response.data && response.data.message =="Updated Successfully")
@@ -2947,7 +2982,7 @@ async function holdMedication(medholddata:object)
       holdobjec:medholddata
     }
    }
-   axios.post('https://medadministration:8890/keyon/tswebhook.php',content)
+   axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php',content)
    .then(response => {
     console.log(response.data);
     if(response.data && response.data.result =="Updated")
@@ -2996,10 +3031,10 @@ async function medFinalSignOff(pendingTrans:object)
       signoffObj:pendingTrans
     }
   }
-  axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
+  axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Meds signed off successfully:', response.data);  
-          if(response.data && response.data.message =="Updated")
+          if(response.data && response.data.results =="Updated")
          {
            let returnmsg="";
            returnmsg="Medication Signed off Successfully";

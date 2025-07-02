@@ -1,9 +1,8 @@
 <?php 
 class SQLData{
-    const host ="localhost";
-    const DatabaseName ="eventdb2";
-    const SQLUsername ="keyon";
-    const SQLPassword ="500452k";
+  const DatabaseName ="pacmnymysql1.mysql.database.azure.com";
+  const SQLUsername ="phpmyadmin";
+  const SQLPassword ="phpmyadmin";
 
     
     private $con;
@@ -13,8 +12,7 @@ class SQLData{
     public function __construct()
     {
        //require("consts.php");
-       $con =new PDO("mysql:host=localhost;dbname=eventsdb2;charset=utf8mb4", "keyon", "500452k");//new PDO("mysql:host=$host;dbname=$DatabaseName;charset=utf8mb4", $SQLUsername, $SQLPassword);
-       
+       $con = new PDO("mysql:host=".self::DatabaseName.";dbname=eventsdb2",self::SQLUsername,self::SQLPassword,[PDO::MYSQL_ATTR_SSL_VERIFY_SERVER_CERT=>false,PDO::MYSQL_ATTR_SSL_CAPATH=>'/etc/mysql/ssl']);
        $con->setAttribute(PDO::ATTR_ERRMODE,PDO::ERRMODE_EXCEPTION);
        $this->con =$con;
       // return $con;
@@ -142,7 +140,7 @@ class SQLData{
         var_dump($changereason);
         var_dump($ordernumber);
         var_dump($accountnumber);
-        $sql="UPDATE `medications` SET med_enddate=:medendDt, medchangetype=:stat, dt_medchanged=:endDt, medchangreason=:chngreason, `status`=:stat WHERE patient_id=:patid AND order_number=:ordnumb
+        $sql="UPDATE `medications` SET med_enddate=:medendDt, medchangetype=:stat, dt_medchanged=:endDt, medchangereason=:chngreason, `status`=:stat WHERE patient_id=:patid AND order_number=:ordnumb
         AND medentryid=:meid";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":medendDt",$medendDt);
@@ -281,7 +279,7 @@ class SQLData{
     {
         $lgtimesar = array();
         $sql="SELECT * FROM medlogtimes WHERE accountnumber=:accnt AND patientid=:patid AND administeredate=:adminDt AND time=:tims";
-        $stmnt = $this-con->prepare($sql);
+        $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid);
         $stmnt->bindParam(":adminDt",$adminDate);
@@ -376,7 +374,7 @@ class SQLData{
             if($stmnt->execute())
             {
                 $result = "Updated";
-                $msgar = array("code"=>"200 Successfully","result"=>$result);
+                $msgar = array("code"=>"200 Successfully","results"=>$result);
                //var_dump($msgar);
                 return $msgar;
             }
@@ -391,7 +389,7 @@ class SQLData{
     {
         $todaydt = new DateTime();
         $formatdate = $todaydt->format('Y-m-d H:i:s');
-        $sql="UPDATE `medications` SET medchangetype=:medchngstatus,dt_medchanged=:medDtchange,status=:medchngstatus,medchangreason=:changereason,medholddates=:changedates,medstatustimes=:medtimes WHERE accountnumber=:accnt AND patient_id=:patid AND medentryid=:mid";
+        $sql="UPDATE `medications` SET medchangetype=:medchngstatus,dt_medchanged=:medDtchange,status=:medchngstatus,medchangereason=:changereason,medholddates=:changedates,medstatustimes=:medtimes WHERE accountnumber=:accnt AND patient_id=:patid AND medentryid=:mid";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":medchngstatus",$medchangestat);
         $stmnt->bindParam(":medDtchange",$formatdate);
@@ -715,23 +713,23 @@ class SQLData{
     {
         if($dtfilled =='')
         {
-            $dtfilled="0000-00-00";
+            $dtfilled="1979-01-01";
         }
         if($startdate =='')
         {
-            $startdate ="0000-00-00";
+            $startdate ="1979-01-01";
         }
         if($enddate =='')
         {
-            $enddate ="0000-00-00";
+            $enddate ="1979-01-01";
         }
         if($refillreminderdt =='')
         {
-            $refillreminderdt ="0000-00-00";
+            $refillreminderdt ="1979-01-01";
         }
         if($refillexpirationdt =='')
         {
-            $refillexpirationdt ="0000-00-00";
+            $refillexpirationdt ="1979-01-01";
         }
         $sql="INSERT INTO prescription (accountnumber,patientid,medicationame,rxnumber,filldate,numofrefills,startdate,enddate,refill_reminderDate,expiration_refillDate)
         VALUES (:accnt,:patid,:medname,:rxnum,:filldt,:refills,:strtdt,:enddt,:refilldt,:refillexpdt)";
@@ -774,7 +772,10 @@ class SQLData{
         }
         if($via !="")
         {
-            $viamedtype=true;
+            $viamedtype=1;
+        }
+        else{
+          $viamedtype=0;
         }
         $sql="INSERT INTO medications (accountnumber,order_number,patient_id,ndcnumber,rxnorns,prn,additional_settings,total,`route`,diagnose_code,med_frequency,alt_route,med_amount,med_doseuom,medname,med_startdate,shorthand,
         instruction,medchangetype,status,writer,via_med,fluidtype,viatype,totalVolumn,totalVolumnUnit,rate,ivhowlong,ivstarttime,ivendtime)
