@@ -1,180 +1,239 @@
-<!-- src/components/barcode-scanner/BarcodeScanner.vue -->
 <template>
-  <div v-if="active" class="scanner-container">
+  <div
+    class="scanner"
+    @touchstart.passive="onTouchStart"
+    @touchmove.prevent="onTouchMove"
+    @touchend="onTouchEnd"
+  >
     <video
-      ref="videoEl"
-      class="scanner-video"
+      ref="video"
       autoplay
       playsinline
       muted
+      class="live-video"
+      :style="{ transform: `scale(${zoom.toFixed(2)})` }"
     ></video>
 
-    <div class="scanner-overlay">
-      <template v-if="scanRegion">
-        <div
-          class="region-border"
-          :style="{
-            left: `${scanRegion.x}px`,
-            top: `${scanRegion.y}px`,
-            width: `${scanRegion.width}px`,
-            height: `${scanRegion.height}px`,
-            borderColor: rapidScanMode ? '#F59E0B' : '#10B981'
-          }"
-        >
-          <div
-            class="region-label"
-            :style="{ color: rapidScanMode ? '#F59E0B' : '#10B981' }"
-          >
-            {{ rapidScanMode ? 'Rapid scan ready' : 'Barcode detected' }}
-          </div>
-        </div>
-      </template>
-      <template v-else>
-        <div class="default-box">
-          <div class="default-border"></div>
-          <div class="default-label">Position barcode here</div>
-        </div>
-      </template>
+    <div v-if="scanning" class="zoom-indicator">
+      Zoom: {{ zoom.toFixed(2) }}×
     </div>
 
-    <button
-      class="close-btn"
-      @click="handleClose"
-      aria-label="Close scanner"
-    >✕</button>
+    <button @click="startScan" :disabled="scanning">
+      {{ scanning ? 'Scanning…' : 'Start Scan' }}
+    </button>
+
+    <div v-if="lastResult" class="result">
+      ✅ Scanned: {{ lastResult }}
+    </div>
+
+    <div class="debug-area" v-if="scanning">
+      <h4>Debug Frame:</h4>
+      <canvas ref="debugCanvas"></canvas>
+      <pre>Last Results: {{ debugJson }}</pre>
+    </div>
   </div>
 </template>
 
-<script setup lang="ts">
-import { ref, watch, onUnmounted, nextTick, defineProps, defineEmits } from 'vue'
-import { BrowserMultiFormatReader, NotFoundException, Result } from '@zxing/library'
+<script setup>
+import { ref, onMounted, onBeforeUnmount } from 'vue'
 
-/* ---------- props ---------- */
-const props = defineProps<{
-  active: boolean
-  scanRegion?: { x: number; y: number; width: number; height: number } | null
-  rapidScanMode?: boolean
-}>()
+const video       = ref(null)
+const debugCanvas = ref(null)
+const scanning    = ref(false)
+const lastResult  = ref(null)
+const debugJson   = ref('')
+let scanInterval  = null
 
-/* ---------- emits ---------- */
-const emit = defineEmits<{
-  scanned: (code: string) => void
-  close: () => void
-}>()
+// zoom state
+const zoom       = ref(1)
+let initialZoom  = 1
+let pinchStart   = null
 
-/* ---------- refs & state ---------- */
-const videoEl = ref<HTMLVideoElement | null>(null)
-let codeReader: BrowserMultiFormatReader | null = null
+// ZXing‑wasm API
+let readBarcodes      = null
+let videoTrack        = null
+let trackCapabilities = null
 
-/* ---------- camera helpers ---------- */
-async function startCamera() {
-  if (!videoEl.value) return
-
-  // 1) instantiate ZXing reader
-  codeReader = new BrowserMultiFormatReader()
-
-  // 2) enumerate all devices, pick only videoinput
-  const devices = await navigator.mediaDevices.enumerateDevices()
-  const videoDevices = devices.filter(d => d.kind === 'videoinput')
-  if (!videoDevices.length) {
-    console.error('No video inputs found')
-    return
+onMounted(() => {
+  if (
+    !window.ZXingWASM ||
+    typeof window.ZXingWASM.readBarcodesFromImageData !== 'function'
+  ) {
+    throw new Error(
+      'ZXingWASM.readBarcodesFromImageData not found. Ensure <script src="/decoder.js"> is in index.html.'
+    )
   }
+  readBarcodes = window.ZXingWASM.readBarcodesFromImageData
+})
 
-  // 3) prefer a back-facing camera if labeled
-  const chosen =
-    videoDevices.find(d => /back|rear|environment/i.test(d.label)) ||
-    videoDevices[0]
+function onTouchStart(e) {
+  if (e.touches.length === 2) {
+    const [t0, t1] = e.touches
+    pinchStart = Math.hypot(
+      t1.clientX - t0.clientX,
+      t1.clientY - t0.clientY
+    )
+    initialZoom = zoom.value
+  }
+}
 
-  // 4) start decoding from that device into our <video>
-  codeReader.decodeFromVideoDevice(
-    chosen.deviceId,
-    videoEl.value,
-    (result: Result | null, err: Error | null) => {
-      if (result) {
-        const text = result.getText()
-        console.log('📦 scanned barcode:', text)
-        emit('scanned', text)
-        stopCamera() // stop after first scan
-      }
-      // ignore “no barcode in this frame”–type errors
-      if (err && !(err instanceof NotFoundException)) {
-        console.warn(err)
-      }
+function onTouchMove(e) {
+  if (e.touches.length === 2 && pinchStart) {
+    const [t0, t1] = e.touches
+    const dist = Math.hypot(
+      t1.clientX - t0.clientX,
+      t1.clientY - t0.clientY
+    )
+    zoom.value = Math.min(Math.max(initialZoom * (dist / pinchStart), 1), 5)
+
+    // hardware zoom
+    if (videoTrack && trackCapabilities.zoom) {
+      const z = Math.min(
+        Math.max(zoom.value, trackCapabilities.zoom.min),
+        trackCapabilities.zoom.max
+      )
+      videoTrack.applyConstraints({ advanced: [{ zoom: z }] }).catch(() => {})
     }
-  )
-}
-
-function stopCamera() {
-  // reset ZXing
-  if (codeReader) {
-    codeReader.reset()
-    codeReader = null
-  }
-  // stop video tracks
-  if (videoEl.value?.srcObject) {
-    ;(videoEl.value.srcObject as MediaStream).getTracks().forEach(t => t.stop())
-    videoEl.value.srcObject = null
-  }
-}
-
-/* ---------- react to prop changes ---------- */
-watch(
-  () => props.active,
-  async active => {
-    if (active) {
-      await nextTick()
-      startCamera()
-    } else {
-      stopCamera()
+    // continuous focus
+    if (videoTrack && trackCapabilities.focusMode?.includes('continuous')) {
+      videoTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {})
     }
-  },
-  { immediate: true }
-)
-
-/* ---------- lifecycle ---------- */
-onUnmounted(stopCamera)
-
-/* ---------- UI events ---------- */
-function handleClose() {
-  stopCamera()
-  emit('close')
+  }
 }
+
+function onTouchEnd(e) {
+  if (e.touches.length < 2) pinchStart = null
+}
+
+async function startScan() {
+  if (!readBarcodes) {
+    return alert('Decoder not ready')
+  }
+  lastResult.value = null
+  debugJson.value  = ''
+  scanning.value   = true
+
+  const stream = await navigator.mediaDevices.getUserMedia({
+    video: { facingMode: 'environment' }
+  })
+  video.value.srcObject = stream
+
+  videoTrack = stream.getVideoTracks()[0]
+  if (videoTrack?.getCapabilities) {
+    trackCapabilities = videoTrack.getCapabilities()
+    if (trackCapabilities.zoom) {
+      const mid = (trackCapabilities.zoom.max + trackCapabilities.zoom.min) / 2
+      videoTrack.applyConstraints({ advanced: [{ zoom: mid }] }).catch(() => {})
+    }
+    if (trackCapabilities.focusMode?.includes('continuous')) {
+      videoTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {})
+    }
+  }
+
+  scanInterval = setInterval(async () => {
+    const vid = video.value
+    if (!vid || vid.readyState !== 4) return
+
+    const w = vid.videoWidth
+    const h = vid.videoHeight
+    const cropW = w / zoom.value
+    const cropH = h / zoom.value
+    const offsetX = (w - cropW) / 2
+    const offsetY = (h - cropH) / 2
+
+    const canvas = document.createElement('canvas')
+    canvas.width  = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(vid, offsetX, offsetY, cropW, cropH, 0, 0, w, h)
+
+    const dbg = debugCanvas.value
+    dbg.width  = w / 4
+    dbg.height = h / 4
+    dbg.getContext('2d').drawImage(canvas, 0, 0, w / 4, h / 4)
+
+    const imgData = ctx.getImageData(0, 0, w, h)
+
+    let results = []
+    try {
+      results = await readBarcodes(imgData, {
+        tryHarder:   true,
+        autoRotate:  true,
+        tryInverted: true
+      })
+    } catch (err) {
+      console.error('readBarcodes error:', err)
+    }
+
+    debugJson.value = JSON.stringify(results, null, 2)
+
+    if (results.length && results[0].isValid && results[0].text) {
+      lastResult.value = results[0].text
+      clearInterval(scanInterval)
+      stream.getTracks().forEach(t => t.stop())
+      scanning.value = false
+      alert(`Scanned: ${results[0].text}`)
+    }
+  }, 200)
+}
+
+onBeforeUnmount(() => {
+  clearInterval(scanInterval)
+  const s = video.value?.srcObject
+  if (s) s.getTracks().forEach(t => t.stop())
+})
 </script>
 
 <style scoped>
-.scanner-container {
-  position: absolute;
-  inset: 0;
-  background: transparent;
+.scanner {
+  text-align: center;
+  padding: 1rem;
 }
-.scanner-video {
+.live-video {
   width: 100%;
-  height: 100%;
-  object-fit: cover;
+  max-width: 400px;
+  border: 1px solid #444;
+  transform-origin: center center;
 }
-.scanner-overlay {
+.zoom-indicator {
   position: absolute;
-  inset: 0;
-  pointer-events: none;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.5);
+  color: white;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.9rem;
 }
-
-.default-box       { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:12rem; height:8rem; }
-.default-border    { position:absolute; inset:0; border:4px solid #ef4444; border-radius:0.5rem; opacity:0.8; }
-.default-label     { position:absolute; top:-1.5rem; left:50%; transform:translateX(-50%); color:#ef4444; font-size:0.85rem; font-weight:500; }
-.region-border     { position:absolute; border:4px solid; border-radius:0.5rem; transition:all 0.2s ease-in-out; }
-.region-label      { position:absolute; top:-1.5rem; left:0; font-size:0.85rem; font-weight:500; }
-
-.close-btn {
-  position:absolute;
-  top:0.5rem; right:0.5rem;
-  width:2rem; height:2rem;
-  display:flex; align-items:center; justify-content:center;
-  border:none; border-radius:50%;
-  background:rgba(255,255,255,0.8);
-  font-size:1.2rem; cursor:pointer;
+button {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  font-size: 1rem;
 }
-.close-btn:hover {
-  background:#fff;
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.result {
+  margin-top: 1rem;
+  font-weight: bold;
+  color: green;
+}
+.debug-area {
+  margin-top: 1rem;
+  display: inline-block;
+  text-align: left;
+}
+.debug-area canvas {
+  border: 1px solid #999;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+.debug-area pre {
+  max-height: 150px;
+  overflow: auto;
+  background: #f5f5f5;
+  padding: 0.5rem;
+  white-space: pre-wrap;
 }
 </style>
