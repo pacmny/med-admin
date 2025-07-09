@@ -643,7 +643,7 @@
           <h2 class="modal-title">Add New Medication</h2>
 
           <!-- Accordions instead of tabs -->
-          <details open class="mobile-section">
+          <details class="mobile-section">
   <summary class="mobile-section-header">Medication Information</summary>
   <div class="mobile-section-body">
 
@@ -906,7 +906,7 @@
 
 
 
-          <details open class="mobile-section">
+          <details class="mobile-section">
   <summary class="mobile-section-header">Prescription Information</summary>
   <div class="mobile-section-body">
     <!-- RX Number -->
@@ -990,7 +990,7 @@
 </details>
 
 
-          <details open class="mobile-section">
+          <details class="mobile-section">
   <summary class="mobile-section-header">Provider Information</summary>
   <div class="mobile-section-body">
     <!-- Provider Name -->
@@ -1084,7 +1084,7 @@
 </details>
 
 
-          <details open class="mobile-section">
+          <details class="mobile-section">
   <summary class="mobile-section-header">Pharmacy Information</summary>
   <div class="mobile-section-body">
 
