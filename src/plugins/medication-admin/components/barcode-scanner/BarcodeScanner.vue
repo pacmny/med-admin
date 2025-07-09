@@ -1,55 +1,53 @@
 <template>
-  <div
-    class="scanner"
-    @touchstart.passive="onTouchStart"
-    @touchmove.prevent="onTouchMove"
-    @touchend="onTouchEnd"
-  >
-    <video
-      ref="video"
-      autoplay
-      playsinline
-      muted
-      class="live-video"
-      :style="{ transform: `scale(${zoom.toFixed(2)})` }"
-    ></video>
+  <div class="scanner">
+    <!-- only this wrapper holds video + close button -->
+    <div class="video-wrapper">
+      <video
+        ref="video"
+        autoplay
+        playsinline
+        muted
+        class="live-video"
+        :style="{ transform: `scale(${zoom.toFixed(2)})` }"
+      ></video>
 
+      <!-- ❌ now inside the same wrapper -->
+      <button class="close-btn" @click="handleClose">✕</button>
+    </div>
+
+    <!-- Start scan always below the video-wrapper -->
+    <button class="scan-btn" @click="startScan" :disabled="scanning">
+      {{ scanning ? 'Scanning…' : 'Start Scan' }}
+    </button>
+
+    <!-- Zoom level -->
     <div v-if="scanning" class="zoom-indicator">
       Zoom: {{ zoom.toFixed(2) }}×
     </div>
 
-    <button @click="startScan" :disabled="scanning">
-      {{ scanning ? 'Scanning…' : 'Start Scan' }}
-    </button>
-
+    <!-- Scan result -->
     <div v-if="lastResult" class="result">
       ✅ Scanned: {{ lastResult }}
-    </div>
-
-    <div class="debug-area" v-if="scanning">
-      <h4>Debug Frame:</h4>
-      <canvas ref="debugCanvas"></canvas>
-      <pre>Last Results: {{ debugJson }}</pre>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, onMounted, onBeforeUnmount, defineEmits } from 'vue'
+
+const emit = defineEmits(['close'])
 
 const video       = ref(null)
-const debugCanvas = ref(null)
 const scanning    = ref(false)
 const lastResult  = ref(null)
-const debugJson   = ref('')
 let scanInterval  = null
 
-// zoom state
+// Zoom state
 const zoom       = ref(1)
 let initialZoom  = 1
 let pinchStart   = null
 
-// ZXing‑wasm API
+// ZXing API
 let readBarcodes      = null
 let videoTrack        = null
 let trackCapabilities = null
@@ -60,7 +58,7 @@ onMounted(() => {
     typeof window.ZXingWASM.readBarcodesFromImageData !== 'function'
   ) {
     throw new Error(
-      'ZXingWASM.readBarcodesFromImageData not found. Ensure <script src="/decoder.js"> is in index.html.'
+      'ZXingWASM.readBarcodesFromImageData not found. Ensure IIFE loader in index.html.'
     )
   }
   readBarcodes = window.ZXingWASM.readBarcodesFromImageData
@@ -86,7 +84,6 @@ function onTouchMove(e) {
     )
     zoom.value = Math.min(Math.max(initialZoom * (dist / pinchStart), 1), 5)
 
-    // hardware zoom
     if (videoTrack && trackCapabilities.zoom) {
       const z = Math.min(
         Math.max(zoom.value, trackCapabilities.zoom.min),
@@ -94,7 +91,6 @@ function onTouchMove(e) {
       )
       videoTrack.applyConstraints({ advanced: [{ zoom: z }] }).catch(() => {})
     }
-    // continuous focus
     if (videoTrack && trackCapabilities.focusMode?.includes('continuous')) {
       videoTrack.applyConstraints({ advanced: [{ focusMode: 'continuous' }] }).catch(() => {})
     }
@@ -110,7 +106,6 @@ async function startScan() {
     return alert('Decoder not ready')
   }
   lastResult.value = null
-  debugJson.value  = ''
   scanning.value   = true
 
   const stream = await navigator.mediaDevices.getUserMedia({
@@ -147,11 +142,6 @@ async function startScan() {
     const ctx = canvas.getContext('2d')
     ctx.drawImage(vid, offsetX, offsetY, cropW, cropH, 0, 0, w, h)
 
-    const dbg = debugCanvas.value
-    dbg.width  = w / 4
-    dbg.height = h / 4
-    dbg.getContext('2d').drawImage(canvas, 0, 0, w / 4, h / 4)
-
     const imgData = ctx.getImageData(0, 0, w, h)
 
     let results = []
@@ -165,8 +155,6 @@ async function startScan() {
       console.error('readBarcodes error:', err)
     }
 
-    debugJson.value = JSON.stringify(results, null, 2)
-
     if (results.length && results[0].isValid && results[0].text) {
       lastResult.value = results[0].text
       clearInterval(scanInterval)
@@ -177,63 +165,65 @@ async function startScan() {
   }, 200)
 }
 
-onBeforeUnmount(() => {
+function stopAll() {
   clearInterval(scanInterval)
   const s = video.value?.srcObject
   if (s) s.getTracks().forEach(t => t.stop())
-})
+}
+
+function handleClose() {
+  stopAll()
+  emit('close')
+}
+
+onBeforeUnmount(stopAll)
 </script>
 
 <style scoped>
 .scanner {
-  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   padding: 1rem;
+  background: #000;
 }
-.live-video {
+
+/* this wrapper pins relative-positioned children */
+.video-wrapper {
+  position: relative;
   width: 100%;
   max-width: 400px;
-  border: 1px solid #444;
-  transform-origin: center center;
 }
-.zoom-indicator {
+
+/* your shrunken camera */
+.live-video {
+  width: 100%;
+  height: 200px;      /* tweak as needed */
+  object-fit: cover;
+  background: #111;
+  border-radius: 8px 8px 0 0;
+}
+
+/* now absolutely inside the wrapper’s top-right */
+.close-btn {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(0,0,0,0.5);
-  color: white;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.9rem;
+  top: 8px;
+  right: 8px;
+  z-index: 10;
+  background: rgba(255,255,255,0.6);
+  border: none;
+  font-size: 1.3rem;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  cursor: pointer;
 }
-button {
-  margin-top: 1rem;
-  padding: 0.5rem 1rem;
+
+/* your scan button sits below the wrapper */
+.scan-btn {
+  margin-top: 0.75rem;
+  padding: 0.6rem 1.2rem;
   font-size: 1rem;
 }
-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.result {
-  margin-top: 1rem;
-  font-weight: bold;
-  color: green;
-}
-.debug-area {
-  margin-top: 1rem;
-  display: inline-block;
-  text-align: left;
-}
-.debug-area canvas {
-  border: 1px solid #999;
-  display: block;
-  margin-bottom: 0.5rem;
-}
-.debug-area pre {
-  max-height: 150px;
-  overflow: auto;
-  background: #f5f5f5;
-  padding: 0.5rem;
-  white-space: pre-wrap;
-}
 </style>
+
