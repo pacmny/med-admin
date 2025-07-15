@@ -2,8 +2,8 @@
   <transition name="fade">
     <div v-if="show" class="modal-overlay">
       <div class="modal-content">
-        <h2 class="modal-title">Add New Medication</h2>
-
+        <h2 v-if="isAddNewMed==true" class="modal-title">Add New Medication</h2>
+        <h2 v-if="isEditMedication==true" class="modal-title">Edit Medication</h2>
         <!-- Tabs Row -->
         <div class="tabs">
           <button
@@ -27,12 +27,28 @@
               v-model="formData.medicationName"
               placeholder="Medication Name"
               @keyup.prevent="fetchDrugs"
+              
             />
+           <!--- <input v-if="isEditMedication"
+              type="text"
+              v-model="editFormdata.medname"
+              placeholder="Medication Name"
+              @keyup.prevent="fetchDrugs"
+             
+            /> -->
+           <!-- <input
+              type="text"
+              v-model="formData.medicationName"
+              placeholder="Medication Name"
+              @keyup.prevent="fetchDrugs"
+             
+            /> -->
             <div v-if="drugs.length > 0" class="drug-list">     
                <div v-for="(drug, index) in drugs" :key="index" class="drug-item" @click="getDrugSynonym(drug[2])">        
                   {{ drug[0] }} - {{ drug[1] }}     
                </div>   
             </div>
+           
           </div>
           <div class="form-group">
             <label>NDC Number</label>
@@ -58,6 +74,12 @@
               placeholder="Diagnosis"
               @keyup.prevent="fetchDiagnosis"
             />
+            <!---<input v-if="isEditMedication"
+            type="text"
+            v-model="editFormdata.diagnosis"
+            placeholder="Diagnosis"
+            @keyup.prevent="fetchDiagnosis"
+            /> -->
             <div v-if="newDiagloaded" id="npinamesearch" :class="'selectdisplay-'+newDiagloaded">
                 <div
                   v-for="(dicode, index) in newDiagcodes"
@@ -73,15 +95,22 @@
           <div class="form-row">
             <div class="form-group">
               <label>Dosage</label>
-              <input
+              <input v-if=" !isEditMedication==true"
                 type="text"
                 v-model="formData.dosage"
                 placeholder="Dosage"
               />
+              <input v-if="isEditMedication==true" 
+              type="number" 
+              v-model="formData.dosage" 
+              placeholder="(0)"
+               @change="detectDosageChange(formData.dosage)"/>
             </div>
             <div class="form-group">
               <label>Frequency</label>
-              <select v-model="formData.frequency">
+              <select v-model="formData.frequency"
+              @change="isEditMedication==true? detectFreqChange(formData.frequency): formData.frequency"
+              >
                 <option value="">Select frequency</option>
                 <option>1 times daily</option>
                 <option>2 times daily</option>
@@ -91,7 +120,34 @@
               </select>
             </div>
           </div>
-
+          <div class="form-row admin-times">
+            <div class="form-group">
+              <div v-if="timeInputs.length > 0" class="form-group">
+                <label>Administration Times:</label>
+                <div
+                  v-for="(_, index) in timeInputs"
+                  :key="index"
+                  class="time-input-row"
+                >
+                  <input
+                    type="time"
+                    v-model="timeInputs[index]"
+                    class="time-input"
+                    required
+                  />
+                </div>
+             </div>
+              
+            </div>
+            <div class="form-group">
+              <div v-if="ifStatusIsChange==true" >
+                <label>Enter Reason For Change:</label>
+                <div>
+                  <input type="text" placeholder="Enter Reason for Change" v-model="Reasaon4change" class/>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="form-row">
             <div class="form-group">
               <label>Route</label>
@@ -479,9 +535,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, defineProps, defineEmits, watch} from 'vue'
+import { ref, toRefs,defineProps, defineEmits, watch} from 'vue'
 import { PastProvarItem } from '../types';
 import axios from 'axios';
+import EditDetailsForm from './EditDetailsForm.vue';
 
 
 
@@ -495,6 +552,9 @@ interface MedicationFormData {
   dosage: string;
   frequency: string;
   route: string;
+  administrationTimes?: string; //new to the form it hold the med times
+  coreason:string, //new to the form and it holds the reason for the change
+  ordernumber:string, //new paramater that needs to be present when the parent component passis formdata items to axios for processing 
   prn: boolean;
   quantity: number;
   rate:'';
@@ -507,7 +567,7 @@ interface MedicationFormData {
   startTime: '';
   endTime: '';
   via: '';
-
+  tabletnumber:'';
   sqInjectionSite: '';
   idInjectionSite: '';
   imInjectionSite: '';
@@ -544,9 +604,18 @@ interface MedicationFormData {
 const props = defineProps<{
   show: boolean;
   pastProvloaded:boolean;
+  isEditMedication:boolean;
+  isAddNewMed:boolean;
+  ifStatusIsChange:boolean;
   pastProvar: PastProvarItem[];
+  editFormdata: object;
 }>()
-
+const selectedDosage = ref<string>('');
+const selectedFrequency = ref<string>('');
+const timeInputs = ref<string[]>([]);
+// Keyon Added variables for Time Change - Status change
+const ifStatusIsChange = ref<boolean>(false);
+const Reasaon4change = ref<string>('');
 /**
  * Emits:
  *  close  -> for closing/canceling the modal
@@ -555,10 +624,13 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'close'): void;
   (e: 'save', payload: MedicationFormData): void;
+  (e: 'freqchange', payload: MedicationFormData,selectedFrequency:string): void;
+  (e: 'dosagechange', payload:MedicationFormData,selectedDosage:string): void;
   (e: 'loadprov'): void;
   (e: 'updtPastProvbool'):void;
 }>()
-
+/** Reacctive oject for exetracing and prepopulating form from past Med data */
+const { editFormdata } = toRefs(props); 
 /** Reactive object storing all form fields. */
 const formData = ref<MedicationFormData>({
   medicationName: '',
@@ -568,6 +640,9 @@ const formData = ref<MedicationFormData>({
   diagdescription:'',
   dosage: '',
   frequency: '',
+  administrationTimes:'', //added because of the Update so this is new
+  coreason:'', //add because of the update so this is new
+  ordernumber:'',//added because the update - this is new 
   route: 'Oral/Sublingual',
   prn: false,
   quantity: 0,
@@ -582,7 +657,7 @@ const formData = ref<MedicationFormData>({
   startTime: '',
   endTime: '',
   via: '',
-
+  tabletnumber:'',
   sqInjectionSite: '',
   idInjectionSite: '',
   imInjectionSite: '',
@@ -651,8 +726,106 @@ watch(
     formData.value.endTime = `${hh}:${mm}`
   }
 )
+watch(      
+  editFormdata,     
+   (newValue, oldValue) => {       
+     if (newValue && !oldValue) {         
+       // Copy properties from editFormdata to formData          
+       //Object.assign(formData.value, props.editFormdata); 
+      
+       if(props.isEditMedication==true)
+       {
+         formData.value.medicationName = props.editFormdata.medname;
+          formData.value.diagnosis = props.editFormdata.diagnosis;  
+          formData.value.rxnorns = props.editFormdata.rxnorns;
+          formData.value.dosage = props.editFormdata.med_amount;
+          formData.value.frequency = props.editFormdata.med_frequency;
+          formData.value.ndcnumber = props.editFormdata.ndcnumber;
+          formData.value.quantity = props.editFormdata.total;
+          formData.value.prn = props.editFormdata.prn;
+          formData.value.ordernumber = props.editFormdata.order_number;
+          formData.value.route = props.editFormdata.route;
+          /*
+          This is accounting for Intravanous Form Fields if the showIvForm and via param has a value 
+          */ 
+         if(props.editFormdata.via_med==1)
+         {
+          showIvform.value = true;
+           formData.value.via = props.editFormdata.viatype;
+           formData.value.fluidType = props.editFormdata.fluidtype;
+           formData.value.totalVolume = props.editFormdata.totalVolumn;
+           formData.value.totalVolumeUnit = props.editFormdata.totalVolumnUnit;
+           formData.value.rate = props.editFormdata.rate;
+           formData.value.howLong = props.editFormdata.ivhowLong;
+           formData.value.startTime = props.editFormdata.ivstarttime;
+           formData.value.endTime = props.editFormdata.ivendtime;
 
+         }
+          //TIme Input Prefill 
+          /* Medication AdminisrtrationTimes propertis (1st choice) || yearmedTimes (jSON - backup if needed) has the Administration times 
+          * Thats needed in order to prefill the time slots if Administration time already exist 
+          */
+          if(props.editFormdata.administrationTimes && props.editFormdata.administrationTimes !="" || props.editFormdata.administrationTimes !=null)
+          {
+            //extract times from the yearmedtime (no need to loop since we have a single object of the Medication instance)
+            const splitted = props.editFormdata.administrationTimes.split(',');
+            timeInputs.value = splitted.map(t => t.trim());
+            formData.value.administrationTimes = timeInputs.value;
+          }
+         else {
+             // timeInputs.value = []
+            }
+          
+       }
+      
+       }     
+      }    
+    );
+//------ifStatusIsChange Watch----------//
+watch( [() =>props.ifStatusIsChange],
+  () => {
+  if(props.ifStatusIsChange==false)
+  {
+    alert("False");
+     ifStatusIsChange.value=props.ifStatusIsChange;
+  }
+  else{
+    alert("True");
+    ifStatusIsChange.value=props.ifStatusIsChange;
+  }
+})
+// ---------- FREQUENCY WATCH ----------//
+watch(selectedFrequency, (newFreq) => {
+  if (!newFreq || (editFormdata.value && editFormdata.prn)) {
+    timeInputs.value = []
+    return
+  }
+  const timesCount = getTimesCountFromFrequency(newFreq)
+  timeInputs.value = Array(timesCount).fill('')
+},{ deep: true })
 
+function getTimesCountFromFrequency(frequency: string): number {
+  if (!frequency) return 0
+  const dailyMatch = frequency.match(/(\d+)\s*times?\s*daily/)
+  if (dailyMatch) {
+    return parseInt(dailyMatch[1], 10)
+  }
+  const hoursMatch = frequency.match(/every\s*(\d+)\s*hours?/)
+  if (hoursMatch) {
+    const hours = parseInt(hoursMatch[1], 10)
+    return Math.floor(24 / hours)
+  }
+  switch (frequency) {
+    case 'every hour': return 24
+    case 'daily': return 1
+    case 'at bedtime': return 1
+    case 'every 24 hours': return 1
+    case 'every other day': return 4
+    case 'monday, wednesday, friday, sunday': return 4
+    case 'tuesday, thursday, saturday': return 3
+    default: return 1
+  }
+}
 /** The four tabs: */
 const tabs = [
   { value: 'medInfo',         label: 'Medication Information' },
@@ -717,10 +890,46 @@ function checkRouteSelection(fdata)
     showIvform.value=false;
   }
 }
+function detectFreqChange(frequency:string){
+ 
+  selectedFrequency.value = frequency;
+  emit('freqchange', formData.value, frequency)
+  if(props.ifStatusIsChange==true)
+  {
+   console.log("Status True");
+    ifStatusIsChange.value =true;
+  }
+  else{
+    ifStatusIsChange.value=false;
+   console.log("Status False");
+  }
+}
+function detectDosageChange(dosageamount:string){
+  
+  selectedDosage.value = dosageamount;
+  emit('dosagechange', formData.value, dosageamount)
+}
 /** Handler for the Save button. */
 function handleSave() {
   // You can do validation or other logic here
-  emit('save', formData.value)
+  if(props.isEditMedication)
+  {
+    //lets make sure the time in puts are in the formData before we send it over
+    alert("Its definitely an edit");
+    if(timeInputs.value.length > 0 )
+    {
+     
+      formData.value.administrationTimes = timeInputs.value.join(',') ;
+      formData.value.coreason = Reasaon4change.value;
+      emit('save',formData.value,timeInputs.value,selectedFrequency.value);
+    }
+   // emit('save',editFormdata.value)
+  }
+  if(props.isAddNewMed)
+  {
+    emit('save',formData.value)
+  }
+ // emit('save', formData.value)
 }
 /*Handles the Patient Pharmacy Select Box Change and parsing*/
 function selectpastPharm()
@@ -1038,6 +1247,13 @@ function loadPastProviders()
   font-weight: 500;
   transition: background-color 0.2s;
 }
+.form-row .admin-times{
+  border-style: solid;
+    border-width: 1px;
+    border-color: #d8e1e1;
+    margin-top: -15px;
+
+}
 .tab-button:hover {
   background-color: #f2f2f2;
 }
@@ -1073,6 +1289,18 @@ function loadPastProviders()
   padding: 0.4rem 0.6rem;
   border: 1px solid #ccc;
   border-radius: 4px;
+  font-size: 1rem;
+}
+
+.time-input-row {
+  margin-bottom: 0.5rem;
+}
+.time-input {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 1rem;
 }
 .checkbox-group {
   display: flex;

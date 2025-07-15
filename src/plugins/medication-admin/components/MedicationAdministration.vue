@@ -31,7 +31,7 @@
       <div class="date-range-selector">
         <label for="date-range-picker">Select Date Range:</label>
         <input type="text" id="date-range-picker" placeholder="Select date range" />
-        <button class="add-manually-btn" @click="showAddForm = true">
+        <button class="add-manually-btn" @click="isAddmedForm=true,showAddForm = true">
           Add Manually
         </button>
       </div>
@@ -125,7 +125,7 @@
                   :data-med-index="medIndex"
                 >
                   <!-- Medication Info -->
-                  <td class="sticky-column-1" :style="{
+                 <!--- <td class="sticky-column-1" :style="{
                               backgroundColor:
                                 med.temporaryStatus ==='hold'
                                   ? '#fff3cd'
@@ -141,8 +141,26 @@
                         {{ med.medname }}
                       </template>
                     </ExpandableDetails>
+                  </td> -->
+                  <!--Updated Front-end For Med Name Link-->
+                    <td class="sticky-column-1">
+                    <span
+                    class="medication-link"
+                    @click="openMedicationForm(med)"
+                    :style="{
+                      backgroundColor:
+                      med.temporaryStatus ==='hold'
+                                    ? '#fff3cd'
+                                    : med.temporaryStatus ==='new'
+                                    ? '#869ccd'
+                                    : '#f8f9fa'
+                    }"
+                    >
+                    {{ med.medname }}
+                    </span>
+                    <!-- Tooltip icon for nurse/time from Add New Medication -->
+                    
                   </td>
-
                   <!-- Status (hidden if collapsed) -->
                   <td v-if="!collapsed" class="sticky-column-2">
                     <select
@@ -319,10 +337,16 @@
       :show="showAddForm"
       :pastProvloaded="pastProvloaded"
       :pastProvar="pastProvar"
+      :isEditMedication="isEditForm"
+      :isAddNewMed="isAddmedForm"
+      :editFormdata="editFormdata"
+      :ifStatusIsChange="ifStatusIsChange"
       @close="showAddForm = false"
       @updtPastProvbool="updatepastProvBoolean"
       @save="handleNewMedication"
       @loadprov="loadpastProv"
+      @freqchange="checkMedActiveStatus"
+      @dosagechange="checkMedActiveDosageStatus"
     />
 
     <!-- Hold/New/Discontinue Time Selector Modal -->
@@ -661,6 +685,7 @@ const pendingTransactions = ref<any[]>([])
 // PRN Sign-Off
 const showPrnSignOffPopup = ref(false)
 const prnSignOffMedication = ref<Medication | null>(null)
+const editFormdata = ref<Medication | null>(null);
 const prnSignOffTimeObj = ref<any>(null)
 const prnNurseSignature = ref('')
 const changeActiveMed = ref<boolean>(false);
@@ -668,6 +693,8 @@ const changeActiveMed = ref<boolean>(false);
 // Keyon Added variables for Time Change - Status change
 const ifStatusIsChange = ref<boolean>(false);
 const Reasaon4change = ref<string>('');
+const isEditForm = ref<boolean>(false);
+const isAddmedForm = ref<boolean>(false);
 
 let medval= {};
 // FREQUENCY OPTIONS
@@ -760,22 +787,40 @@ function formatDateToYYYYMMDD(d: Date): string {
     String(d.getDate()).padStart(2, '0')
   )
 }
-// ---- Adding checkMedActiveStatus to check lock status and Trigger Hold Modal -----//
-function checkMedActiveStatus(obj:object,frequency:string)
+function openMedicationForm(med:any)
 {
-  
+  editFormdata.value= med;
+  //set the selectedMedicationForTime object for the 
+  selectedMedicationForTime.value = med;
+  isEditForm.value = true;
+  showAddForm.value =true;
+}
+// ---- Adding checkMedActiveStatus to check lock status and Trigger Hold Modal -----//
+function checkMedActiveStatus(obj:Medication,frequency:string)
+{
+  console.log(obj);
   console.log(obj.temporaryStatus);
   console.log(obj.med_frequency);
   console.log(frequency);
-  if(obj.med_frequency != frequency)
+  console.log("ActiveMedStatus");
+  console.log(editFormdata);
+  console.log(editFormdata.medname);
+  console.log(editFormdata);
+  if( isEditForm && editFormdata.value.med_frequency != frequency)
   {
     //I think they are chanign the frequency and we need to alert them that its a change order
+   console.log("It's a change guys"+" was"+ editFormdata.value.med_frequency +" Now its:"+frequency);
     changeActiveMed.value=true;
     ifStatusIsChange.value = true; //Reason for change should now be showing
   }
   else{
-    changeActiveMed.value = false;
+    if(editFormdata.value.med_frequency ==frequency)
+    {
+      changeActiveMed.value = false;
     ifStatusIsChange.value = false; //disable the Reason for change field
+    }
+   // changeActiveMed.value = false;
+   // ifStatusIsChange.value = false; //disable the Reason for change field
   }
  /* let tempstatus = obj.temporaryStatus.split(",");
   
@@ -789,12 +834,13 @@ function checkMedActiveStatus(obj:object,frequency:string)
   } */
 }
 //----Adding function for checkMedActiveDosageStatus-----//
-function checkMedActiveDosageStatus(obj:object,dosage:string)
+function checkMedActiveDosageStatus(obj:Partial<Medication>,dosage:string)
 {
   console.log(dosage);
-  if(obj.med_amount !=dosage)
+  if(editFormdata.value.med_amount !=dosage)
   {
     //I think they are chanign the frequency and we need to alert them that its a change order
+   
     changeActiveMed.value=true;
     ifStatusIsChange.value = true;
   }
@@ -1027,10 +1073,10 @@ function getTimesCountFromFrequency(frequency: string): number {
   }
   switch (frequency) {
     case 'every hour': return 24
-    case 'daily':
-    case 'at bedtime':
-    case 'every 24 hours':
-    case 'every other day': return 1
+    case 'daily': return 1
+    case 'at bedtime': return 1
+    case 'every 24 hours': return 1
+    case 'every other day': return 4
     case 'monday, wednesday, friday, sunday': return 4
     case 'tuesday, thursday, saturday': return 3
     default: return 1
@@ -1045,7 +1091,8 @@ function toggleSelectDropdown(medication: Medication) {
     return
   }
   selectedMedicationForTime.value = medication;
-  selectedFrequency.value = medication.med_frequency || ''
+  selectedFrequency.value = medication.med_frequency || '1 times daily'
+
   selectedDosage.value = medication.med_amount || '1'
   if(!selectedMedStatusForTime.value ) //if this is empty lets set the status to Active 
   {
@@ -1058,12 +1105,41 @@ function toggleSelectDropdown(medication: Medication) {
     const splitted = medication.administrationTimes.split(',')
     timeInputs.value = splitted.map(t => t.trim())
   } else {
-    timeInputs.value = []
+
+    timeInputs.value = ['']; //I'm doing this to fix the watch issue (if selectedFrequency doesn't change you may not get the time input fields to show up if the value is empty)
+    console.log("New Time that's empty - Whats on the inside");
+    console.log(timeInputs.value);
   }
   showTimeModal.value = true
 }
+async function handleSelectAdminTimeSave()
+{
 
-async function handleSave() {
+}
+async function handleSave(medication:Medication,nwtime:any,selectedFreq:string) {
+  let ordnumber ='';
+  if(isEditForm.value==true || isAddmedForm.value==true)
+{
+ 
+   selectedMedicationForTime.value = medication; //new line
+   console.log("Handle Save from Child");
+   console.log(selectedMedicationForTime.value);
+   timeInputs.value = nwtime;
+   Reasaon4change.value = selectedMedStatusForTime.value.coreason;
+   ordnumber = selectedMedicationForTime.value.ordernumber;
+   
+   console.log("New Times");
+   console.log(timeInputs.value);
+   console.log("Whats in this nwTime");
+   console.log(nwtime);
+}
+else{
+  ordnumber = medication.order_number;
+  console.log("Not isEditForm"+" "+ ordnumber);
+}
+ 
+  console.log("handle new save");
+  console.log(selectedMedicationForTime.value);
   if (!selectedMedicationForTime.value) {
     showTimeModal.value = false
     return
@@ -1079,9 +1155,22 @@ async function handleSave() {
   const ismedlocked = ref<boolean>(false);
   ismedlocked.value =  changeActiveMed.value
   const med = selectedMedicationForTime.value
-  med.frequency = selectedFrequency.value
+  //ordnumber = med.value.order_number; remove eventually - but leave for now
+  const medname = ref<string>('');
+  med.frequency = selectedFreq;//selectedFrequency.value
   med.dosage = selectedDosage.value
-  const medname =med.medname;//setting this so that I can grab the actual MedId that's needed to lo
+  if(isEditForm.value==true)
+  {
+    Reasaon4change.value = med.coreason;
+  }
+  if(isEditForm.value==true)
+  {
+     medname.value =med.medicationName;
+  }
+  else{
+       medname.value =med.medname;//setting this so that I can grab the actual MedId that's needed to lo
+  }
+
   if(changeActiveMed.value==true)
   {
     med.status="Change";
@@ -1091,12 +1180,31 @@ async function handleSave() {
   }
   
   const medstatus = med.status;
-  console.log(medname);
+  console.log(medname.value);
   console.log(medstatus);
   if (med.prn) {
     med.administrationTimes = 'As needed'
     med.dates = {}
   } else {
+    //const newtime =[]; //new 
+   
+   /*Need to check to see what Mode (Add or Edit) in order to account for the appropoirate inputTimes variale 
+   * isEditMode = Located in the Medication object that was passed over 
+   * isAddMed = Lcoated in the Medication/FormData object
+   * if its not either of them run original Parent inputTime needs to be used 
+   * */
+   if(isEditForm.value==true && nwtime.value !='')//should be in the object passed over from the emit
+   {
+     //I might need to pass the AddMedication timeInput const over to in order to build a newTimeArray const 
+    // timeInputs.value = nwtime.value;
+   
+     console.log("Defined new Input");
+     console.log(timeInputs.value);
+    // selectedDosage.value = med.value.dosage;
+
+   }
+  
+    
     const newTimeArray = timeInputs.value.filter(t => t).map(t => ({
       time: t,
       status: 'pending',
@@ -1163,7 +1271,7 @@ async function handleSave() {
      console.log(todaydt);
      const changeorder = ref<boolean>(false)
      //lets check to see if this med (normally setting the log time and date) is currenly logged and ative. If so the change will require a change order 
-     alert(changeActiveMed.value);
+     //alert(changeActiveMed.value);
      if(changeActiveMed.value==true )
      {
       
@@ -1181,12 +1289,12 @@ async function handleSave() {
           providerid:"123456789",
           slotedtimes:newTimeArray,
           adminDate:todaydt,
-          medname:medname,
-          ordernumber:med.ordernumber, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          medname:medname.value,
+          ordernumber:ordnumber, //med.ordernumber, // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:changeorder.value,
           changereason:Reasaon4change.value ||'',
-          frequency:selectedFrequency.value,
+          frequency:selectedFreq, //selectedFrequency.value,
           dosage:selectedDosage.value
           }
         };
@@ -1197,10 +1305,16 @@ async function handleSave() {
           if(response.data && response.data.results=="Changed")
           {
             alert("Medication Changes made Successfully. However, meds are pending until provider signs the Pending Order.");
+            return;
           }
-          if(response.data && response.data.results=="Error")
+          else if(response.data && response.data.results=="Error")
           {
             alert("There was a problem updating the patient Medication Times. Please try again and if problem persist, please contact system administrator.");
+            return;
+          }
+          else{
+            alert("Shit went wrong"+" "+ response.data.results);
+            return;
           }
              
          }) 
@@ -1210,7 +1324,8 @@ async function handleSave() {
            // errorMessage.value = error.response?.data?.message || 'An error occurred while posting data.';  
            } 
             else {          
-              console.log('Unexpected error:', error);         
+              console.log('Unexpected error:', error);    
+              return;     
               
             }    
             }); 
@@ -1218,6 +1333,7 @@ async function handleSave() {
        else{
           //don't do anything because they didn't confirm 
           //changeorder.value =false;
+          alert(changeActiveMed.value +" "+"Should be the Active Status");
           let content = {
           MedicationAdmin:{
           API_Meth:"InsertUpdateMedLogTimes",
@@ -1272,8 +1388,8 @@ async function handleSave() {
           providerid:"123456789",
           slotedtimes:newTimeArray,
           adminDate:todaydt,
-          medname:medname,
-          ordernumber:'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
+          medname:medname.value,
+          ordernumber:med.order_number,//'36', // Order number is hard coded for now but should or could be set when the admin app is loaded || or when loaded it could pass the order information as param
           status:medstatus,
           changeorder:false
           }
@@ -1317,6 +1433,8 @@ function handleCancel() {
   selectedMedicationForTime.value = null
   timeInputs.value = []
   ifStatusIsChange.value =false;
+  editFormdata.value=null;
+  isEditForm.value = false;
 }
 
 // ---------- ON MOUNT ----------
@@ -1425,7 +1543,10 @@ const length = ref<number>(0);
    else{
     acttakentimes=[];
    }
-  
+  if(med.rate==null)
+  {
+    med.rate='';
+  }
    console.log(acttakentimes);
    let medtakenstats;
     dateList.value.forEach(d => {
@@ -1457,16 +1578,30 @@ const length = ref<number>(0);
           lockedstatus = true;
         }
         const dosageNum = parseInt(med.med_amount || '1', 10);
-        med.dates![dStr] = splitted.map(t => ({
-          time:t +" (taken at"+" "+acttakentimes[0]+")",
-          status: medtakenstats.value,//med.temporaryStatus,
-          dosage: dosageNum,
-          earlyReason: med.earlyReason,
-          locked:lockedstatus,
-          temporaryStatus:medtakenstats.value
-        }));
-        console.log("Supposed to be here");
-        console.log(med.dates[dStr]);
+        
+        if(acttakentimes.length ==0 || acttakentimes =='')
+        {
+            med.dates![dStr] = splitted.map(t => ({
+            time:t,
+            status: medtakenstats.value,//med.temporaryStatus,
+            dosage: dosageNum,
+            earlyReason: med.earlyReason,
+            locked:lockedstatus,
+            temporaryStatus:medtakenstats.value
+          }));
+        }
+        else{
+            med.dates![dStr] = splitted.map(t => ({
+            time:t +" (taken at"+" "+acttakentimes[0]+")",
+            status: medtakenstats.value,//med.temporaryStatus,
+            dosage: dosageNum,
+            earlyReason: med.earlyReason,
+            locked:lockedstatus,
+            temporaryStatus:medtakenstats.value
+          }));
+          console.log("Supposed to be here");
+          console.log(med.dates[dStr]);
+        }
       } 
       else{
         console.log(med.dates![dStr]);
@@ -1523,6 +1658,8 @@ function handleStatusChange(event: Event, medIndex: number) {
   selectedDosage.value = medications.value[medIndex].med_amount || '1'
     showHoldSelector.value=false;//just in case its showing 
     ifStatusIsChange.value = true; //setting this so that the reason field shows up
+    //isEditForm.value = true;
+    //showAddForm.value = true;
     showTimeModal.value = true;
     return 
   }
@@ -1802,9 +1939,19 @@ function cancelTimeActionConfirmation() {
 
 // ---------- NEW MED ----------
 /* Keyon To make this function async to post the API endpoint */
-async function handleNewMedication(medication: Partial<Medication>) {
+async function handleNewMedication(medication: Partial<Medication>, nwtimeInputs:string[],freq:string) {
   console.log("Need to see Admit");
   console.log(medication);
+  if(isEditForm.value ==true)
+  {
+    //lets run hanldeSave function 
+    alert("Lets redirect");
+    handleSave(medication,nwtimeInputs,freq);
+    //return;//should be finished now and no more code should execute
+  }
+  else{
+
+  
   const newMedication: Medication = {
     name: medication.medicationName || '',
     dates: {},
@@ -1884,11 +2031,11 @@ async function handleNewMedication(medication: Partial<Medication>) {
     medsetting:medsetting,
     discontinuedDate: undefined,
     discontinuedTimes: {},
-    via: medication.via || '',
+    via: medication.via || 0,
     fluidType: medication.fluidType,
     startTime: medication.startTime,
     endTime: medication.endTime,
-    howLong: medication.howLong,
+    howLong: medication.howLong || 0,
     totalVolume: medication.totalVolume,
     totalVolumeUnit: medication.totalVolumeUnit,
     rate: medication.rate
@@ -1922,7 +2069,9 @@ async function handleNewMedication(medication: Partial<Medication>) {
          else if(response.data.message=="Medication Added Successfully" && response.data.status=="200 Successfull")
          {
            alert("New Medication Added Successfully");
+           isAddmedForm.value =false;
            showAddForm.value = false
+           
          }
          else{
            //now lets add the information to the Appropriate tables 
@@ -1941,6 +2090,7 @@ async function handleNewMedication(medication: Partial<Medication>) {
               errorMessage = 'An unexpected error occurred. Please try again.'; 
             }    
             });   
+          }
   //medications.value.push(newMedication)
   //showAddForm.value = false
   /*if (!newMedication.prn) {
@@ -1963,6 +2113,7 @@ async function updateMedAdminSetting(payload)
            let returnmsg="";
            returnmsg="Medication Updated Successfully";
            alert(returnmsg);
+           isAddmedForm.value = false;
            showAddForm.value = false;
            loadMedications();
            return ;
@@ -2091,11 +2242,12 @@ async function medFinalSignOff(pendingTrans:object)
   axios.post('https://medadministration:8890/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Meds signed off successfully:', response.data);  
-          if(response.data && response.data.message =="Updated")
+          if(response.data && response.data.results =="Updated")
          {
            let returnmsg="";
            returnmsg="Medication Signed off Successfully";
            alert(returnmsg);
+           isAddmedForm.value = false;
            showAddForm.value = false;
            loadMedications();
            return ;
@@ -2567,6 +2719,11 @@ function hideTooltip() {}
   justify-content: flex-end;
   gap: 1rem;
   margin-top: 1.5rem;
+}
+.medication-link{
+  text-decoration: underline;
+  text-decoration-color:blue;
+  cursor: pointer;
 }
 .btn-save,
 .btn-cancel {

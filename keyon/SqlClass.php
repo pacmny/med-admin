@@ -171,10 +171,10 @@ class SQLData{
     }
     public function upatePrevOrder($accountnumber,$patientid,$ordernumber,$medicationid,$status,$changereason,$providersignature,$provinit)
     {
-        var_dump($ordernumber);
+       /* var_dump($ordernumber);
         var_dump($patientid);
         var_dump($ordernumber);
-        var_dump($status);
+        var_dump($status); */
        
         $sql="UPDATE orders SET status=:stat, orderdescription=:chngnotes, providersignature=:provsig WHERE patientid=:patid AND ordernumber=:ordnumb";
         $stmnt = $this->con->prepare($sql);

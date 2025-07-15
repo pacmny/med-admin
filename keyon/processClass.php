@@ -162,7 +162,7 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 {
 	if(!empty($signoffobj))
 	{
-		//var_dump($signoffobj);
+		
 		//capture the medicationID first and then as we loop through - cross check the ID to ensure we are getting the correct medname (coould be multiple med obj's)
 		$today = date('Y-m-d');
 		$finaladmintimes = array();
@@ -193,7 +193,7 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 				$earlyreason = $s->timeObj->earlyReason;
 			}
 
-			var_dump($admintimes);
+			/*var_dump($admintimes);
 			var_dump($medname);
 			var_dump($finltimeslot);
 			var_dump($finlslotreason);
@@ -202,10 +202,10 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 			var_dump($signoffdate);
 			var_dump($signoffnurse);
 			var_dump($earlyreason);
-			var_dump($remainingtablets );
+			var_dump($remainingtablets );*/
 			 /* Lets Update each Administration Record Now */
 			 $updaterec = $this->sclass->UpdateMedLogandLogtimes($accountnumber,$patientid,$medid,$finltimeslot,$finlslotreason,$takentime,$status,$signoffdate,$signoffnurse,$signoffinit,$earlyreason);
-			var_dump($updaterec);
+			//var_dump($updaterec); debug
 			 if(!empty($updaterec["results"]) && is_array($updaterec) && $updaterec["results"]=="Updated")
 			 {
 				//now lets update the medication table (column - available) to keep the remainin tabs Available 
@@ -235,7 +235,7 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 
 
 		}
-		var_dump($finaladmintimes);
+		//var_dump($finaladmintimes);
 	}
 }
 public function GetPatientInfoByPatientId($accountnumber,$patientid)
