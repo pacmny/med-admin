@@ -369,7 +369,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 							$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$newfrequency,$newdosage,
 							$medname,$graboldmedlist["results"][0]["instruction"],$status,$via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
 							
-							//var_dump($insertmed); // debug
+							var_dump($insertmed); // debug
 							if($insertmed["result"]=="Inserted")
 							{
 										/* Step 6: Now Lets go Step 5 and crate the Medlog Table and then insert the medtimes into the medtimes table  - Side Note The Medid needs to be the new medentryid from Medications tbl*/
@@ -767,6 +767,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$patientid = $mmdata->MedicationAdmin->patientid;
 	$holdobj = $mmdata->MedicationAdmin->holdobjec;
 	$ordernumber = $mmdata->MedicationAdmin->holdobjec->ordernumber;
+  //var_dump($ordernumber);
 	$medname = $mmdata->MedicationAdmin->holdobjec->medname;
 	$dtrange = json_encode($mmdata->MedicationAdmin->holdobjec->dateRange);//should be an array 
 	$medtimes = json_encode($mmdata->MedicationAdmin->holdobjec->times);//should be an array also 
@@ -794,7 +795,8 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 			{
 				/* Now Lets Create a new Change Order to Actually Hold the Order (Prev code just updated the prev order status) */
 				$cloneprevorder = $processData->cloneOrderInfo($accountnumber,$patientid,$ordernumber);
-				$graboldmedlist = $processData->grabOldMedListByMedId($accountnumber,$ordnumber,$medentryid,$patientid);
+				$graboldmedlist = $processData->grabOldMedListByMedId($accountnumber,$ordernumber,$medentryid,$patientid);
+        //var_dump($graboldmedlist);
 				$getNum = $processData->GetGlobalOrderNumber();
 				$ordsendtophyscians="1";
 				$verbalorder="1";
@@ -830,14 +832,13 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 					{
 						//Send Email Notification 
 						$sendemail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
+            //var_dump($sendemail);
 						//Now Add the New Medication that corresponds with the new Order that was created (medID and Order ID should match n order for the admin app to pull )
 						/*Step 5 We need to Add a new Medications with the updated times and frequency here */
-						$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
-						$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$graboldmedlist[0]["med_frequency"],$graboldmedlist[0]["med_amount"],
+            $insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
+						$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$graboldmedlist["results"][0]["med_frequency"],$graboldmedlist["results"][0]["med_amount"],
 						$medname,$graboldmedlist["results"][0]["instruction"],$ordstatus,$graboldmedlist["results"][0]["via_med"],$graboldmedlist["results"][0]["rate"],$graboldmedlist["results"][0]["ivhowlong"],$$graboldmedlist["results"][0]["fluidType"],
 						$graboldmedlist["results"][0]["totalVolum"],$graboldmedlist["results"][0]["totalVolumnUnit"],$graboldmedlist["results"][0]["ivstarttime"],$graboldmedlist["results"][0]["ivendtime"]);
-						
-						//var_dump($insertmed);  debug
 						if($insertmed["result"]=="Inserted")
 						{
 							//All is done and Add Successfully

@@ -597,7 +597,7 @@
         <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
         <div class="form-group">
           <label>Frequency:</label>
-          <select v-model="selectedFrequency" class="form-select" @change="checkMedActiveStatus(selectedMedicationForTime,selectedFrequency)">
+         <!-- <select v-model="selectedFrequency" class="form-select" @change="checkMedActiveStatus(selectedMedicationForTime,selectedFrequency)">
             <option value="">Select frequency</option>
             <option
               v-for="option in frequencyOptions"
@@ -607,17 +607,19 @@
             >
               {{ option }}
             </option>
-          </select>
+          </select> -->
+          <label>{{selectedFrequency}}</label>
         </div>
         <div class="form-group">
           <label>Dosage ({{selectedMedicationForTime.unitType || 'unit'}} per admin time):</label>
-          <input
+         <!-- <input
             type="number"
             v-model="selectedDosage"
             min="1"
             step="1"
             @change="checkMedActiveDosageStatus(selectedMedStatusForTime,selectedDosage)"
-          />
+          /> -->
+          <label>{{ selectedDosage }}</label>
         </div>
         <div v-if="timeInputs.length > 0" class="form-group">
           <label>Administration Times:</label>
@@ -2971,6 +2973,7 @@ function finalSignOff() {
 //-------Hold Medication Axios Call --------//
 async function holdMedication(medholddata:object)
 {
+  console.log("Hold Data");
   console.log(medholddata);
    let content = {
     MedicationAdmin:{
@@ -2978,7 +2981,7 @@ async function holdMedication(medholddata:object)
       accountnumber:"904575107",
       npinumber:"123456789",
       patientid:"709081242",
-     // ordernumber:"36",
+     // ordernumber:medholderddata.order_number,//"36",
       holdobjec:medholddata
     }
    }

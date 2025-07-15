@@ -1326,11 +1326,11 @@ public function SendPhysicianEmailTemplate($ordernumber,$primephysician)
 {
 	//var_dump("here");
 	require_once('Mandrill.php');
-	include("EmailTemplate.php");
+	require_once("EmailTemplate.php");
 	//require("consts.php");
 $emailtemp = new EmailTemplates();
 $mandrill = new Mandrill($this->MandrillPW);
-	$e = new EmailTemplates();
+	//$e = new EmailTemplates();
 	$pretext="Pacmny Notifiction - Dr. ".$primephysician." "." You Have A New Order That Needs to Be Signed. Priority Level - Urgent";
 	$subjectline="Verbal Order Needs Approval/Signed";
 	$html="<h2>Hi".$primephysician."</h2><p>You have a Verbal Order from Park Avenue Concerige Medecine that needs your attention. Please login and review</p>";
