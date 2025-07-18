@@ -133,7 +133,7 @@ class SQLData{
     }
     public function pastMedList($ordernumber,$accountnumber,$patientid,$medendDt,$status,$adminDate,$changereason,$medicationid)
     {
-        var_dump("Dump params");
+       /* var_dump("Dump params");
         var_dump($adminDate);
         var_dump($patientid);
         var_dump($medendDt);
@@ -141,7 +141,7 @@ class SQLData{
         var_dump($status);
         var_dump($changereason);
         var_dump($ordernumber);
-        var_dump($accountnumber);
+        var_dump($accountnumber);*/
         $sql="UPDATE `medications` SET med_enddate=:medendDt, medchangetype=:stat, dt_medchanged=:endDt, medchangreason=:chngreason, `status`=:stat WHERE patient_id=:patid AND order_number=:ordnumb
         AND medentryid=:meid";
         $stmnt = $this->con->prepare($sql);

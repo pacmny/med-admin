@@ -31,7 +31,7 @@
       <div class="date-range-selector">
         <label for="date-range-picker">Select Date Range:</label>
         <input type="text" id="date-range-picker" placeholder="Select date range" />
-        <button class="add-manually-btn" @click="isAddmedForm=true,showAddForm = true">
+        <button class="add-manually-btn" @click="isAddmedForm=true,isEditForm=false,showAddForm = true">
           Add Manually
         </button>
       </div>
@@ -574,7 +574,7 @@ import { useRouter } from 'vue-router'
 import 'flatpickr/dist/flatpickr.css'
 import flatpickr from 'flatpickr'
 import axios from 'axios'
-import ExpandableDetails from './ExpandableDetails.vue'
+//import ExpandableDetails from './ExpandableDetails.vue'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
 

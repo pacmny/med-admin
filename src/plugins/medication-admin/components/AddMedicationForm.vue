@@ -143,7 +143,7 @@
               <div v-if="ifStatusIsChange==true" >
                 <label>Enter Reason For Change:</label>
                 <div>
-                  <input type="text" placeholder="Enter Reason for Change" v-model="Reasaon4change" class/>
+                  <input class="change-reason" type="text" placeholder="Enter Reason for Change" v-model="Reasaon4change"/>
                 </div>
               </div>
             </div>
@@ -538,7 +538,7 @@
 import { ref, toRefs,defineProps, defineEmits, watch} from 'vue'
 import { PastProvarItem } from '../types';
 import axios from 'axios';
-import EditDetailsForm from './EditDetailsForm.vue';
+//import EditDetailsForm from './EditDetailsForm.vue';
 
 
 
@@ -1301,6 +1301,13 @@ function loadPastProviders()
   border: 1px solid #ddd;
   border-radius: 4px;
   font-size: 1rem;
+}
+.change-reason{
+  width:100%;
+  padding:0.5rem;
+  border: 1px solid #ddd;
+  border-radius:4px;
+  font-size:1rem;
 }
 .checkbox-group {
   display: flex;
