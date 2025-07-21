@@ -54,7 +54,7 @@
         <div class="date-range-selector">
             <label for="date-range-picker">Select Date Range:</label>
             <input type="text" id="date-range-picker" placeholder="Select date range" />
-            <button class="add-manually-btn" @click="isAddmedFrom=true,showAddForm = true">
+            <button class="add-manually-btn" @click="isAddmedForm=true,showAddForm = true">
             Add Manually
             </button>
         </div>
@@ -250,7 +250,7 @@
 									@click="openMedicationForm(med)"
                   :style="{
                     backgroundColor:
-                    med.temporaryStatus ==='hold'
+                    med.status ==='hold'
                                   ? '#fff3cd'
                                   : med.temporaryStatus ==='new'
                                   ? '#869ccd'
@@ -392,7 +392,7 @@
 												? '#b3f0b3'
 												: timeObj.locked && timeObj.status === 'refused'
 												? '#f9b3b3'
-												: timeObj.status ==='hold'
+												: timeObj.locked &&  timeObj.status ==='hold'
 												? '#fff3cd'
                         :timeObj.locked && timeObj.status ==='discontinued'
                         ? '#f8d7da'
@@ -566,7 +566,7 @@
       :isAddNewMed="isAddmedForm"
       :editFormdata="editFormdata"
       :ifStatusIsChange="ifStatusIsChange"
-      @close="showAddForm = false"
+      @close="showAddForm = false,isEditForm = false,editFormdata=null"
       @updtPastProvbool="updatepastProvBoolean"
       @save="handleNewMedication"
       @loadprov="loadpastProv"
@@ -1665,7 +1665,7 @@ async function loadMedications() {
           
      
 }
-watch(medications, (newVal) => {
+/*watch(medications, (newVal) => {
   localStorage.setItem('medications', JSON.stringify(newVal));
   console.log("Keyon watching localStorate");
   console.log(localStorage.getItem("medications"));
@@ -1676,7 +1676,23 @@ watch(medications, (newVal) => {
   }
   //medications.value = newVal;
   
-}, { deep: true })
+}, { deep: true }) */
+watch(medications, (newVal) => {  
+  // Check if newVal is an object and not null  
+  if (newVal && typeof newVal === 'object') {    
+    // Store the updated medications object in localStorage 
+    localStorage.setItem('medications', JSON.stringify(newVal));   
+    console.log("Keyon watching localStorage");   
+    console.log(localStorage.getItem("medications"));    
+    // Check if newVal has properties (not empty)    
+    if (Object.keys(newVal).length > 0) {     
+      // Update the medications object      
+      medications.value = newVal;      
+      // Optionally call your function to populate the medication table      
+      // populateMedicationTable();    
+    }  
+  }
+}, { deep: true });
 
 const props = withDefaults(defineProps<{ medications?: Medication[] }>(), {
   medications: () => []
@@ -1983,7 +1999,7 @@ else{
         axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
-          if(response.data && response.data.results=="Changed")
+          if(response.data && response.data.results=="Insert")
           {
             alert("Medication Changes made Successfully. However, meds are pending until provider signs the Pending Order.");
             return;
@@ -2468,6 +2484,8 @@ function handleHoldSubmit(data: {
     holdMedication(medication.holdInfo);
     //send to backend 
     //we are going to assume everything went well and are going to go ahead and close the showHolder Selector and the SelectedMedicationfor Hold comp
+    showHoldSelector.value = false;
+    selectedMedicationForHold.value = null
   }
   else{
     //do nothing but lets go ahead and still close the modalss 
@@ -3059,7 +3077,7 @@ async function holdMedication(medholddata:object)
    axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php',content)
    .then(response => {
     console.log(response.data);
-    if(response.data && response.data.result =="Updated")
+    if(response.data && response.data.results =="Updated")
          {
            let returnmsg="";
            returnmsg="Medication Held Successfully";

@@ -1335,6 +1335,7 @@ interface MedicationFormData {
   sqInjectionSite: '';
   idInjectionSite: '';
   imInjectionSite: '';
+  nurseSignature:'';
   rxNumber: string;
   filledDate: string;
   refills: number;
@@ -1392,7 +1393,7 @@ interface FdaResult {
   isEditMedication:boolean;
   isAddNewMed:boolean;
   ifStatusIsChange:boolean;
-  editFormdata: object;
+  editFormdata: Partial<MedicationFormData> | null; //object ;
   // Chris additions
   //existingMedication?: Partial<MedicationFormData> | null; - chris
 }>()
@@ -1621,6 +1622,7 @@ const formData = ref<MedicationFormData>({
   sqInjectionSite: '',
   idInjectionSite: '',
   imInjectionSite: '',
+  nurseSignature:'',
   rxNumber: '',
   filledDate: '',
   refills: 0,
@@ -1842,9 +1844,9 @@ function onBarcodeScanned(barcode) {
 
 //const pastProvar = ref<string[]>([]);
 
-/*watch(() => props.existingMedication, (newVal) => {
+/*watch(() => props.isEditMedication, (newVal) => {
   if (newVal) {
-    formData.value = { ...formData.value, ...newVal }
+    editFormdata.value = { ...editFormdata.value, ...newVal }
   } else {
     resetForm()
   }
@@ -1853,16 +1855,16 @@ function onBarcodeScanned(barcode) {
 watch(() => props.show, (visible) => {
   if (!visible) resetForm()
 })
-watch(      
-  editFormdata,     
-   (newValue, oldValue) => {       
+watch(           
+   () => props.editFormdata,
+   (newValue, oldValue) => {   
+        
      if (newValue && !oldValue) {         
        // Copy properties from editFormdata to formData          
-       //Object.assign(formData.value, props.editFormdata); 
-      
+     
        if(props.isEditMedication==true)
        {
-       // alert("its true");
+        
          formData.value.medicationName = props.editFormdata.medname;
           formData.value.diagnosis = props.editFormdata.diagnosis;  
           formData.value.rxnorns = props.editFormdata.rxnorns;

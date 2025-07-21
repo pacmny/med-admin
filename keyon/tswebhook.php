@@ -366,10 +366,10 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 							$sendemail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
 							/*Step 5 We need to Add a new Medications with the updated times and frequency here */
 							$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$newordernumber,$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
-							$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$newfrequency,$newdosage,
+							$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["route"],$graboldmedlist["results"][0]["diagnose_code"],$newfrequency,$newdosage,
 							$medname,$graboldmedlist["results"][0]["instruction"],$status,$via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
 							
-							var_dump($insertmed); // debug
+							//var_dump($insertmed); // debug
 							if($insertmed["result"]=="Inserted")
 							{
 										/* Step 6: Now Lets go Step 5 and crate the Medlog Table and then insert the medtimes into the medtimes table  - Side Note The Medid needs to be the new medentryid from Medications tbl*/

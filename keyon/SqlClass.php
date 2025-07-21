@@ -778,8 +778,8 @@ class SQLData{
           $viamedtype=0;
         }
         $sql="INSERT INTO medications (accountnumber,order_number,patient_id,ndcnumber,rxnorns,prn,additional_settings,total,`route`,diagnose_code,med_frequency,alt_route,med_amount,med_doseuom,medname,med_startdate,shorthand,
-        instruction,medchangetype,status,writer,via_med,fluidtype,viatype,totalVolumn,totalVolumnUnit,rate,ivhowlong,ivstarttime,ivendtime)
-        VALUES(:accnt,:ordnum,:patid,:ndcnum,:rxnum,:prn,:adminsetting,:totaltabs,:route,:diag,:freq,:altroute,:medamnt,:dosage,:medname,:medstrtdt,:shorthand,:instruction,:medchange,:stat,:writer,
+        instruction,medchangetype,`status`,writer,via_med,fluidtype,viatype,totalVolumn,totalVolumnUnit,rate,ivhowlong,ivstarttime,ivendtime)
+        VALUES(:accnt,:ordnum,:patid,:ndcnum,:rxnum,:prn,:adminsetting,:totaltabs,:rte,:diag,:freq,:altroute,:medamnt,:dosage,:medname,:medstrtdt,:shorthand,:instruction,:medchange,:stat,:writer,
         :viabool,:fluidtype,:viatype,:ttlvol,:ttlvolunit,:rate,:ivhowlong,:ivstrttime,:ivendtime)";
         $startdate = date('Y-m-d');
         $stmnt = $this->con->prepare($sql);
@@ -791,10 +791,10 @@ class SQLData{
         $stmnt->bindParam(":prn",$prn);
         $stmnt->bindParam(":adminsetting",$newmedsettings);
         $stmnt->bindParam(":totaltabs",$totalTabs);
-        $stmnt->bindParam(":route",$route);
+        $stmnt->bindParam(":rte",$route);
         $stmnt->bindParam(":diag",$diagnois);
         $stmnt->bindParam(":freq",$freq);
-        $stmnt->bindParam(":altroute",$freq);
+        $stmnt->bindParam(":altroute",$route);
         $stmnt->bindParam(":medamnt",$dosage);
         $stmnt->bindParam(":dosage",$dosage);
         $stmnt->bindParam(":medname",$medname);
@@ -7457,6 +7457,7 @@ class SQLData{
         $stmnt->bindParam(":nrssigdt",$nursesigDate);
         $stmnt->bindParam(":provsig",$providersignature);
         $stmnt->bindParam(":provsigdt",$provsigDate);
+       
        /* switch($ordertype)
         {
             case "Physicians Order":
