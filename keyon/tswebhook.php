@@ -886,7 +886,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	 $totalTabs = $mmdata->MedicationAdmin->totalTabs;
 	 $proflicense=$mmdata->MedicationAdmin->proflicensenumber;
 	 $newmedsettings="";
-	 $medchangetype="";
+	 $medchangetype="New";
 	 $instruction="Take 2 and call me in the morning";
 
 	 //perscription Information

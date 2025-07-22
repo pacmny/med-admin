@@ -1409,12 +1409,29 @@ function groupMedicationsByDiagnosis(meds: Medication[]): Record<string, Medicat
   return grouped
 }
 const groupedMedications = computed(() => {
-//   let sortedMeds = [...medications.value]
+ // let sortedMeds = [...medications.value]
 // Chris version, just this one line change
-  let sortedMeds = [...medications.value].filter(med => isMedicationVisible(med))
+ let sortedMeds = [...medications.value].filter(med => isMedicationVisible(med))
 
   if (selectedStatus.value) {
-    sortedMeds = sortedMeds.filter(med => med.status === selectedStatus.value)
+    if(selectedStatus.value=="active")
+    {
+     
+      sortedMeds = sortedMeds.filter(med => "active" === selectedStatus.value);
+    }
+    else if(selectedStatus.value =='change')
+    {
+      sortedMeds = sortedMeds.filter(med => med.medchangetype.toLowerCase() === selectedStatus.value);
+    }
+    else if(selectedStatus.value =='pending')
+    {
+     // alert("Pending Baby");
+     sortedMeds = sortedMeds.filter(med => med.status.toLowerCase() === selectedStatus.value);
+    }
+    else{
+      sortedMeds = sortedMeds.filter(med => med.medchangetype.toLowerCase() === selectedStatus.value)
+    }
+    
   }
   const groups: Record<string, Medication[]> = {}
 
