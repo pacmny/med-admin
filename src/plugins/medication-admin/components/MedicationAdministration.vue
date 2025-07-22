@@ -400,10 +400,12 @@
 											}"
 										>
 											{{ timeObj.time }}
-											<span v-if="timeObj.earlyReason">
-											({{ timeObj.earlyReason }})
+										 <!--	<span v-if="!timeObj.earlyReason">
+											{{ timeObj.earlyReason }}
 											</span>
-
+                      <span v-else="timeObj.earlyReason">
+                        ({{ timeObj.earlyReason }})
+											</span>-->
 											<!-- Immediate Icons -->
 											<template v-if="timeObj.temporaryStatus === 'taken'">
 											<span
@@ -994,37 +996,11 @@ const scannerContext = ref<{ med: Medication, timeObj: any, dateObj: Date } | nu
 
 const selectedDates = ref<string[]>([])
 
-const editingMedication = ref<Object | null>(null)
+//const editingMedication = ref<Object | null>(null)
 
-function onAddMedication() {
-	editingMedication.value = null
-	showAddForm.value = true
-}
-
+/*6/23 New Function to Handle the Edit Medical Form Data (prepopulate data) */
 function openMedicationForm(med:Medication) {
-  /*editingMedication.value = {
-    ...med,
-    originalName: med.name,
-
-    medicationName: med.medname,
-    quantity: med.tabsAvailable,
-    ndcNumber: med.ndcnumber || '',
-    rxNorm: med.rxNorm || '',
-    rate : med.rate || '',
-    rxNumber: med.rxNumber || '',
-    refills: med.refills ?? 0,
-    pharmacy: med.pharmacy || '',
-    pharmacyNpi: med.pharmacyNpi || '',
-    pharmacyAddress: med.pharmacyAddress || '',
-    pharmacyPhone: med.pharmacyPhone || '',
-    pharmacyDea: med.pharmacyDea || '',
-    prescriberInfo: med.prescriberInfo || '',
-    prescriberDeaNpi: med.prescriberDeaNpi || '',
-
-    unitType: med.unitType || '',
-    nurseSignature: med.addedByNurse || ''
-  }
-  showAddForm.value = true */
+ 
   isEditForm.value = true;
   editFormdata.value= med;
   console.log("New Open Medication");
@@ -1033,105 +1009,6 @@ function openMedicationForm(med:Medication) {
   selectedMedicationForTime.value = med;
   
   showAddForm.value =true;
-}
-/*6/23 New Function to Handle the Edit Medical Form Data (prepopulate data) */
-function EditMedicationForm(payload:any)
-{
-  //lets set the isEdit to true 
-  const isEdit = payload.isEdit
-  if(isEdit)
-  {
-    const idx = medications.value.findIndex(m => m.name === originalName)
-    if (idx !== -1) {
-      medications.value[idx].name = payload.medicationName
-      medications.value[idx].ndcNumber = payload.ndcNumber
-      medications.value[idx].rxNorm = payload.rxNorm
-      medications.value[idx].frequency = payload.frequency
-      medications.value[idx].dosage = payload.dosage
-      medications.value[idx].route = payload.route
-      medications.value[idx].tabsAvailable = payload.quantity
-      medications.value[idx].prn = payload.prn
-      medications.value[idx].diagnosis = payload.diagnosis
-      medications.value[idx].unitType = payload.unitType
-      medications.value[idx].rxNumber = payload.rxNumber
-      medications.value[idx].refills = payload.refills
-      medications.value[idx].pharmacy = payload.pharmacy
-      medications.value[idx].pharmacyNpi = payload.pharmacyNpi
-      medications.value[idx].pharmacyAddress = payload.pharmacyAddress
-      medications.value[idx].pharmacyPhone = payload.pharmacyPhone
-      medications.value[idx].pharmacyDea = payload.pharmacyDea
-      medications.value[idx].prescriberInfo = payload.prescriberInfo
-      medications.value[idx].prescriberDeaNpi = payload.prescriberDeaNpi
-      medications.value[idx].addedByNurse = nurseSignature
-      medications.value[idx].addedTimestamp = new Date().toISOString()
-
-      //populateMedicationTable()
-    }
-  }
-  
-}
-function handleMedicationFormSave(payload: any) {
-  const isEdit = payload.isEdit
-  const originalName = payload.originalName
-  const nurseSignature = payload.nurseSignature || ''
-
-  if (!isEdit) {
-    const newMedication: Medication = {
-      name: payload.medicationName,
-      ndcNumber: payload.ndcNumber || '',
-      rxNorm: payload.rxNorm || '',
-      tabsAvailable: payload.quantity || 0,
-      frequency: payload.frequency,
-      dosage: payload.dosage,
-      route: payload.route,
-      prn: payload.prn,
-      diagnosis: payload.diagnosis || '',
-      unitType: payload.unitType || '',
-      rxNumber: payload.rxNumber || '',
-      refills: payload.refills || 0,
-      pharmacy: payload.pharmacy || '',
-      pharmacyNpi: payload.pharmacyNpi || '',
-      pharmacyAddress: payload.pharmacyAddress || '',
-      pharmacyPhone: payload.pharmacyPhone || '',
-      pharmacyDea: payload.pharmacyDea || '',
-      prescriberInfo: payload.prescriberInfo || '',
-      prescriberDeaNpi: payload.prescriberDeaNpi || '',
-      administrationTimes: '',
-      dates: {},
-      addedByNurse: nurseSignature,
-      addedTimestamp: new Date().toISOString()
-    }
-    medications.value.push(newMedication)
-    populateMedicationTable()
-  } else {
-    const idx = medications.value.findIndex(m => m.name === originalName)
-    if (idx !== -1) {
-      medications.value[idx].name = payload.medicationName
-      medications.value[idx].ndcNumber = payload.ndcNumber
-      medications.value[idx].rxNorm = payload.rxNorm
-      medications.value[idx].frequency = payload.frequency
-      medications.value[idx].dosage = payload.dosage
-      medications.value[idx].route = payload.route
-      medications.value[idx].tabsAvailable = payload.quantity
-      medications.value[idx].prn = payload.prn
-      medications.value[idx].diagnosis = payload.diagnosis
-      medications.value[idx].unitType = payload.unitType
-      medications.value[idx].rxNumber = payload.rxNumber
-      medications.value[idx].refills = payload.refills
-      medications.value[idx].pharmacy = payload.pharmacy
-      medications.value[idx].pharmacyNpi = payload.pharmacyNpi
-      medications.value[idx].pharmacyAddress = payload.pharmacyAddress
-      medications.value[idx].pharmacyPhone = payload.pharmacyPhone
-      medications.value[idx].pharmacyDea = payload.pharmacyDea
-      medications.value[idx].prescriberInfo = payload.prescriberInfo
-      medications.value[idx].prescriberDeaNpi = payload.prescriberDeaNpi
-      medications.value[idx].addedByNurse = nurseSignature
-      medications.value[idx].addedTimestamp = new Date().toISOString()
-
-      populateMedicationTable()
-    }
-  }
-  showAddForm.value = false
 }
 
 // Signature popup
@@ -2270,7 +2147,7 @@ const length = ref<number>(0);
    else{
     //acttakentimes=[];
    }
-  // alert("Actual Takne Time");
+  console.log("Actual Takne Time");
    console.log(acttakentimes);
   //6/24 -- lets set the rate to empty string if its null 
   if(med.rate==null)
@@ -2307,8 +2184,16 @@ const length = ref<number>(0);
         {
           lockedstatus = true;
         }
+        /* med.earlyReason is coming back null (casuing an undefined - Db fix (data structure) or it has a ', ' value which should 
+        * equate to empty but its technically a commma which means it has a value and causing issues in med times formatting
+        * I've resolved the issue by adjusting the populateMediationTable code and commenting out the conditional rendering logic on the time componet)
+        */ 
+        
+        console.log("Reason Trim Here"); //debug helpful
+        console.log(med.earlyReason); 
+       
         const dosageNum = parseInt(med.med_amount || '1', 10);
-        if(acttakentimes.length ==0 || acttakentimes =='')
+        if(acttakentimes.length ==0 )
         {
             med.dates![dStr] = splitted.map(t => ({
             time:t,
@@ -2319,8 +2204,40 @@ const length = ref<number>(0);
             temporaryStatus:medtakenstats.value
           }));
         }
-        else{
+        else if(medtakenstats.value=="refused" && acttakentimes.length !=0){
+         
             med.dates![dStr] = splitted.map(t => ({
+            time:t +" (refused at"+" "+acttakentimes[0]+")",
+            status: medtakenstats.value,//med.temporaryStatus,
+            dosage: dosageNum,
+            earlyReason: med.earlyReason,
+            locked:lockedstatus,
+            temporaryStatus:medtakenstats.value
+            }));
+          
+           /* med.dates![dStr] = splitted.map(t => ({
+            time:t +" (taken at"+" "+acttakentimes[0]+")",
+            status: medtakenstats.value,//med.temporaryStatus,
+            dosage: dosageNum,
+            earlyReason: med.earlyReason,
+            locked:lockedstatus,
+            temporaryStatus:medtakenstats.value 
+          }));*/
+          console.log("Supposed to be here");
+          console.log(med.dates[dStr]);
+        }
+        else if(med.earlyReason !="" && med.earlyReason !=", " && medtakenstats.value=="taken"){
+          med.dates![dStr] = splitted.map(t => ({
+            time:t +" (taken at"+" "+acttakentimes[0]+") ( "+med.earlyReason+" ))",
+            status: medtakenstats.value,//med.temporaryStatus,
+            dosage: dosageNum,
+            earlyReason: med.earlyReason,
+            locked:lockedstatus,
+            temporaryStatus:medtakenstats.value
+          }));
+        }
+        else{
+          med.dates![dStr] = splitted.map(t => ({
             time:t +" (taken at"+" "+acttakentimes[0]+")",
             status: medtakenstats.value,//med.temporaryStatus,
             dosage: dosageNum,
@@ -2328,8 +2245,6 @@ const length = ref<number>(0);
             locked:lockedstatus,
             temporaryStatus:medtakenstats.value
           }));
-          console.log("Supposed to be here");
-          console.log(med.dates[dStr]);
         }
        
       } 
