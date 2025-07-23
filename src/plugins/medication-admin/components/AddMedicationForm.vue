@@ -823,13 +823,13 @@
                         <!-- inline modal for mobile scanner -->
                         <div v-if="showScanner" class="modal-overlay">
                             <div class="modal-content" style="max-width:360px;">
-                                <!-- <BarcodeScanner
+                                <BarcodeScanner
                                     :active="showScanner"
                                     :scanRegion="scanRegion"
                                     :rapidScanMode="rapidScanMode"
                                     @scanned="onBarcodeScanned"
                                     @close="showScanner = false"
-                                /> -->
+                                />
                                 <button class="btn-cancel" @click="showScanner = false" style="margin-top:1rem">
                                     Close
                                 </button>
@@ -1251,8 +1251,8 @@
 <script setup lang="ts">
 import { ref, toRefs, computed, watch, defineProps, defineEmits, onMounted, onUnmounted } from 'vue'
 import { PastProvarItem } from '../types';
+import BarcodeScanner from "./barcode-scanner/BarcodeScanner.vue"
 import axios from 'axios';
-// import BarcodeScanner from "./barcode-scanner/BarcodeScanner.vue"
 
 /** Define the structure of all form fields. */
 /*interface MedicationFormData {

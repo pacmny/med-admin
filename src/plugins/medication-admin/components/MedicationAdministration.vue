@@ -1,6 +1,14 @@
 <template>
   <div id="app">
 
+    <!-- MOBILE HEADER -->
+    <template v-if="isMobile">
+      <div class="mobile-header">
+        <button class="back-button" @click="goBack">← Return</button>
+        <span class="mobile-title">Medication Admin Record</span>
+      </div>
+    </template>
+
     <div class="table-container">
       <!-- Status Filter -->
       <template v-if="!isMobile">
@@ -27,8 +35,8 @@
             </div>
         </div>
       </template>
-      <template v-else>
-  		<!-- MOBILE: Filter-by-Status dropdown -->
+      <!-- <template v-else>
+  		  // MOBILE: Filter-by-Status dropdown
         <div class="mobile-filter-dropdown">
           <label for="mobileFilter">Filter by Status:</label>
           <select
@@ -47,7 +55,7 @@
             <option value="partial">Partial</option>
           </select>
         </div>
-      </template>
+      </template> -->
 
       <!-- Date Range and Add Form -->
       <template v-if="!isMobile">
@@ -62,30 +70,66 @@
 
       <template v-else>
         <!-- add a wrapper so desktop never gets these styles -->
-    	<div class="mobile-toolbar">
+    	  <div class="mobile-toolbar">
             <div class="date-range-selector">
-            <button class="add-manually-btn" @click="showAddForm = true">
-                Add Manually
-            </button>
-            <button
-                class="sort-button sign-off-button"
-                @click="showSignOffPopup = true"
-            >
-                Signature
-            </button>
-            <input
-                type="text"
-                id="date-range-picker"
-                placeholder="Date Range"
-            />
+              <button class="add-manually-btn" @click="showAddForm = true">
+                  Add Manually
+              </button>
+              <button
+                  class="sort-button sign-off-button"
+                  @click="showSignOffPopup = true"
+              >
+                  Signature
+              </button>
+              <input
+                  type="text"
+                  id="date-range-picker"
+                  placeholder="Date Range"
+              />
             </div>
-
-            <!-- … your filter/sort dropdowns and date chips … -->
         </div>
       </template>
 
-	  <template v-if="isMobile">
-        <!-- … your mobile filter & sort dropdowns … -->
+      <template v-if="isMobile">
+        <div class="mobile-filter-sort-row">
+          <!-- Filter by Status -->
+          <div class="mobile-filter-dropdown">
+            <label for="mobileFilter" class="mobile-text">Filter by Status:</label>
+            <select
+              id="mobileFilter"
+              @change="e => handleStatusFilter(e.target.value === '' ? null : e.target.value)"
+              class="mobile-sort-select"
+            >
+              <option value="">Show All</option>
+              <option value="active">Active</option>
+              <option value="discontinue">Discontinue</option>
+              <option value="hold">Hold</option>
+              <option value="new">New</option>
+              <option value="pending">Pending</option>
+              <option value="change">Change</option>
+              <option value="completed">Completed</option>
+              <option value="partial">Partial</option>
+            </select>
+          </div>
+
+          <!-- Sort by -->
+          <div class="mobile-sort-dropdown">
+            <label for="mobileSort" class="mobile-text">Sort by:</label>
+            <select
+              id="mobileSort"
+              v-model="selectedSort"
+              @change="onSortChange"
+              class="mobile-sort-select"
+            >
+              <option disabled value="">- Select -</option>
+              <option value="Medication">Medication</option>
+              <option value="Time">Time</option>
+              <option value="Diagnosis">Diagnosis</option>
+              <option value="Route">Route</option>
+              <option value="PRN">PRN</option>
+            </select>
+          </div>
+        </div>
 
         <!-- MOBILE: Selected-Dates Scroll -->
         <div class="mobile-date-scroll">
@@ -100,147 +144,124 @@
         </div>
       </template>
 
-	  <template v-if="!isMobile">
-		<!-- Sorting Controls + Sign Off Button + Expand/Collapse -->
-		<div class="sort-controls">
-			<button
-			class="sort-button"
-			:class="{ active: sortBy === 'medication' }"
-			@click="handleSort('medication')"
-			>
-			Sort by Medication
-			</button>
-			<button
-			class="sort-button"
-			:class="{ active: sortBy === 'time' }"
-			@click="handleSort('time')"
-			>
-			Sort by Time
-			</button>
-			<button
-			class="sort-button"
-			:class="{ active: sortBy === 'diagnosis' }"
-			@click="handleSort('diagnosis')"
-			>
-			Sort by Diagnosis
-			</button>
-			<button
-			class="sort-button"
-			:class="{ active: sortBy === 'route' }"
-			@click="handleSort('route')"
-			>
-			Sort by Route
-			</button>
-			<button
-			class="sort-button"
-			:class="{ active: sortBy === 'prn' }"
-			@click="handleSort('prn')"
-			>
-			Sort by PRN
-			</button>
+	    <template v-if="!isMobile">
+        <!-- Sorting Controls + Sign Off Button + Expand/Collapse -->
+        <div class="sort-controls">
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'medication' }"
+            @click="handleSort('medication')"
+          >
+            Sort by Medication
+          </button>
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'time' }"
+            @click="handleSort('time')"
+          >
+            Sort by Time
+          </button>
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'diagnosis' }"
+            @click="handleSort('diagnosis')"
+          >
+            Sort by Diagnosis
+          </button>
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'route' }"
+            @click="handleSort('route')"
+          >
+            Sort by Route
+          </button>
+          <button
+            class="sort-button"
+            :class="{ active: sortBy === 'prn' }"
+            @click="handleSort('prn')"
+          >
+            Sort by PRN
+          </button>
 
-			<!-- Expand/Collapse Columns -->
-			<button
-			class="sort-button"
-			@click="toggleCollapse"
-			>
-			{{ collapsed ? 'Expand' : 'Collapse' }}
-			</button>
+          <!-- Expand/Collapse Columns -->
+          <button
+            class="sort-button"
+            @click="toggleCollapse"
+          >
+          {{ collapsed ? 'Expand' : 'Collapse' }}
+          </button>
 
-			<!-- Sign Off Button -->
-			<button
-			class="sort-button sign-off-button"
-			@click="showSignOffPopup = true"
-			>
-			Sign Off
-			</button>
-		</div>
-	  </template>
+          <!-- Sign Off Button -->
+          <button
+            class="sort-button sign-off-button"
+            @click="showSignOffPopup = true"
+          >
+          Sign Off
+          </button>
+        </div>
+	    </template>
 
-	  <template v-else>
-        <!-- MOBILE: Sort-by dropdown -->
-        <div class="mobile-sort-row">
-    		<!-- Left: Sort dropdown -->
-			<div class="mobile-sort-col mobile-sort-col-left">
-			<label for="mobileSort">Sort by:</label>
-			<select
-				id="mobileSort"
-				v-model="selectedSort"
-				@change="onSortChange"
-				class="mobile-sort-select"
-			>
-				<option disabled value="">— Select —</option>
-				<option value="Medication">Medication</option>
-				<option value="Time">Time</option>
-				<option value="Diagnosis">Diagnosis</option>
-				<option value="Route">Route</option>
-				<option value="PRN">PRN</option>
-			</select>
-			</div>
-
-			<!-- Center: clicked‐date display -->
-			<div class="mobile-sort-col mobile-sort-col-center">
-			{{ activeDate || ' ' }}
-			</div>
-
-			<!-- Right: static text -->
-			<div class="mobile-sort-col mobile-sort-col-right">
-			Admin Time
-			</div>
-		</div>
+      <template v-else>
+          <div class="mobile-sort-row">
+            <!-- Center: clicked‐date display -->
+            <div class="mobile-sort-col mobile-sort-col-center mobile-date-box">
+              {{ activeDate || ' ' }}
+            </div>
+          </div>
       </template>
 
       <!-- Grouped Medications -->
-	  <template v-if="!isMobile">
-		<template v-for="(medsInGroup, category) in groupedMedications" :key="category">
-			<div v-if="medsInGroup.length > 0">
-				<!-- Sticky category header -->
-				<h3 class="category-header">{{ category }}</h3>
-				<div class="category-section">
-					<table class="schedule-table">
-						<thead>
-							<tr>
-							<th class="sticky-header-1">Medication Details</th>
-							<!-- Hide these columns if collapsed -->
-							<th v-if="!collapsed" class="sticky-header-2">Status</th>
-							<th v-if="!collapsed" class="sticky-header-3">Tabs Available</th>
-							<th v-if="!collapsed" class="sticky-header-4">Frequency</th>
-							<th v-if="!collapsed" class="sticky-header-5">Dosage</th>
-							<th v-if="!collapsed" class="sticky-header-6">Select Time and Dosage</th>
-							<!-- Date Columns -->
-							<th
-								v-for="dateObj in allColumns"
-								:key="dateObj.getTime()"
-							>
-								Administration Times ({{ formatDate(dateObj) }})
-							</th>
-							</tr>
-						</thead>
-						<tbody>
-							<tr
-							v-for="(med, medIndex) in medsInGroup"
-							:key="medIndex"
-							class="medication-row"
-							:class="getRowStatusClass(med)"
-							:data-med-index="medIndex">
-								<!-- Medication Info -->
-								<!-- <td class="sticky-column-1" :style="{
-											backgroundColor:
-												med.temporaryStatus ==='hold'
-												? '#fff3cd'
-												: '#f8f9fa'
-											}">
-									<ExpandableDetails
-									:medication="med"
-									@update="handleMedicationUpdate"
-									>
-									<template #preview>
-										{{ med.medname }}
-									</template>
-									</ExpandableDetails>
-								</td> -->
+      <template v-if="!isMobile">
+        <template v-for="(medsInGroup, category) in groupedMedications" :key="category">
+          <div v-if="medsInGroup.length > 0">
+            <!-- Sticky category header -->
+            <h3 class="category-header">{{ formatCategoryLabel(category) }}</h3>
+            <div class="category-section">
+              <table class="schedule-table">
+                <thead>
+                  <tr>
+                    <th class="sticky-header-1">Medication Details</th>
+                    <!-- Hide these columns if collapsed -->
+                    <th v-if="!collapsed" class="sticky-header-2">Status</th>
+                    <th v-if="!collapsed" class="sticky-header-3">Tabs Available</th>
+                    <th v-if="!collapsed" class="sticky-header-4">Frequency</th>
+                    <th v-if="!collapsed" class="sticky-header-5">Dosage</th>
+                    <th v-if="!collapsed" class="sticky-header-6">Select Time and Dosage</th>
+                    <!-- Date Columns -->
+                    <th
+                      v-for="dateObj in allColumns"
+                      :key="dateObj.getTime()"
+                    >
+                      Administration Times ({{ formatDate(dateObj) }})
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(med, medIndex) in medsInGroup"
+                    :key="medIndex"
+                    class="medication-row"
+                    :class="getRowStatusClass(med)"
+                    :data-med-index="medIndex"
+                  >
+                    <!-- Medication Info -->
+                    <!-- <td class="sticky-column-1" :style="{
+                          backgroundColor:
+                            med.temporaryStatus ==='hold'
+                            ? '#fff3cd'
+                            : '#f8f9fa'
+                          }">
+                      <ExpandableDetails
+                      :medication="med"
+                      @update="handleMedicationUpdate"
+                      >
+                      <template #preview>
+                        {{ med.medname }}
+                      </template>
+                      </ExpandableDetails>
+                    </td> -->
 
-								<!-- ABOVE IS PRIOR TEMPLATE, BELOW IS NEW VIA CHRIS -->
+                    <!-- ABOVE IS PRIOR TEMPLATE, BELOW IS NEW VIA CHRIS -->
 
 								<!-- Medication Info: clickable name => edit 
 									PLUS the new tooltip icon showing the nurse/time from Add New Medication -->
@@ -252,7 +273,7 @@
                     backgroundColor:
                     med.status ==='hold'
                                   ? '#fff3cd'
-                                  : med.temporaryStatus ==='new'
+                                  : med.status ==='new'
                                   ? '#869ccd'
                                   : '#f8f9fa'
                   }"
@@ -270,111 +291,110 @@
 									</span>
 								</td>
 
-								<!-- Status (hidden if collapsed) -->
-								<td v-if="!collapsed" class="sticky-column-2">
-									<select
-									class="status-dropdown"
-									@change="(e) => handleStatusChange(e, medIndex)"
-									>
-									<option
-										v-for="option in statusOptions"
-										:key="option.value"
-										:value="option.value"
-										:style="{ backgroundColor: option.color }"
-										:selected="med.status === option.value"
-									>
-									{{ option.label }} 
-									</option>
-									</select>
-								</td>
+                    <!-- Status (hidden if collapsed) -->
+                    <td v-if="!collapsed" class="sticky-column-2">
+                      <select
+                        class="status-dropdown"
+                        @change="(e) => handleStatusChange(e, medIndex)"
+                      >
+                        <option
+                          v-for="option in statusOptions"
+                          :key="option.value"
+                          :value="option.value"
+                          :style="{ backgroundColor: option.color }"
+                          :selected="med.status === option.value"
+                        >
+                          {{ option.label }} 
+                        </option>
+                      </select>
+                    </td>
 
-								<!-- Tabs Available (hidden if collapsed) -->
-								<td v-if="!collapsed" class="tabs-available sticky-column-3">
-									<div class="tabs-counter">
-									<input
-										type="number"
-										v-model="med.available"
-										@change="handleTabsChange(med, $event.target.value)"
-										class="tabs-input"
-									/>
-									</div>
-									<!-- Dosage type dropdown (unitType) -->
-									<div class="unit-dropdown">
-									<select v-model="med.unitType" class="unit-select">
-										<option value="" disabled>Select Dosage Type</option>
-										<option
-										v-for="option in unitOptions"
-										:key="option"
-										:value="option"
-										>
-										{{ option }}
-										</option>
-									</select>
-									</div> 
-								</td>
+                    <!-- Tabs Available (hidden if collapsed) -->
+                    <td v-if="!collapsed" class="tabs-available sticky-column-3">
+                      <div class="tabs-counter">
+                        <input
+                          type="number"
+                          v-model="med.available"
+                          @change="handleTabsChange(med, $event.target.value)"
+                          class="tabs-input"
+                        />
+                      </div>
+                      <!-- Dosage type dropdown (unitType) -->
+                      <div class="unit-dropdown">
+                        <select v-model="med.unitType" class="unit-select">
+                          <option value="" disabled>Select Dosage Type</option>
+                          <option
+                          v-for="option in unitOptions"
+                          :key="option"
+                          :value="option"
+                          >
+                          {{ option }}
+                          </option>
+                        </select>
+                      </div> 
+                    </td>
 
-								<!-- Frequency & Dosage (hidden if collapsed) -->
-								<td v-if="!collapsed" class="sticky-column-4">{{ med.med_frequency || 'Not set' }}</td>
-								<td v-if="!collapsed" class="sticky-column-5">{{ med.med_amount || 'Not set' }}</td>
+                    <!-- Frequency & Dosage (hidden if collapsed) -->
+                    <td v-if="!collapsed" class="sticky-column-4">{{ med.med_frequency || 'Not set' }}</td>
+                    <td v-if="!collapsed" class="sticky-column-5">{{ med.med_amount || 'Not set' }}</td>
 
-								<!-- "Select Time and Dosage" Button (hidden if collapsed) -->
-								<td v-if="!collapsed" class="select-time-dosage sticky-column-6">
-									<button class="select-button" @click="toggleSelectDropdown(med)">
-									Select
-									</button>
-								</td>
+                    <!-- "Select Time and Dosage" Button (hidden if collapsed) -->
+                    <td v-if="!collapsed" class="select-time-dosage sticky-column-6">
+                      <button class="select-button" @click="toggleSelectDropdown(med)">
+                        Select
+                      </button>
+                    </td>
 
-								<!-- Times by Date -->
-								<td
-									v-for="dateObj in allColumns"
-									:key="dateObj.getTime()"
-								>
-									<div class="administration-times">
-									<!-- PRN Meds -->
-									<template v-if="med.prn">
-										<div class="prn-indicator" v-if="!hasPrnTimesForDate(med, dateObj)" @click="stampPRNTime(med)">
-										As needed
-										</div>
-										<div
-										v-if="med.times && med.times.length"
-										class="prn-times-list"
-										>
-										<div
-											v-for="timeObj in med.times.filter(entry => entry.date === formatDateToYYYYMMDD(dateObj))"
-											:key="timeObj.time + timeObj.status"
-											class="time-entry"
-											:class="[timeObj.status, { discontinued: timeObj.status === 'discontinue' }]"
-											@mouseover="showTooltip(timeObj)"
-											@mouseout="hideTooltip"
-											:style="{
-											backgroundColor:
-												timeObj.locked && timeObj.status === 'taken'
-												? '#b3f0b3'
-												: timeObj.locked && timeObj.status === 'refused'
-												? '#f9b3b3'
-												:  timeObj.status ==='hold'
-												? '#fff3cd'
-                        :timeObj.locked && timeObj.status =='discontinued'
-                        ? '#f8d7da'
-												: 'transparent'
-												
-											}"
-										>
-											{{ timeObj.time }}
-											<span v-if="timeObj.earlyReason">
-											({{ timeObj.earlyReason }})
-											</span>
-											<!-- Tooltip Icon -->
-											<span
-											v-if="getTooltipText(timeObj)"
-											class="tooltip-icon"
-											:title="getTooltipText(timeObj)"
-											>
-											ℹ️
-											</span>
-										</div>
-										</div>
-									</template>
+                    <!-- Times by Date -->
+                    <td
+                      v-for="dateObj in allColumns"
+                      :key="dateObj.getTime()"
+                    >
+                      <div class="administration-times">
+                        <!-- PRN Meds -->
+                        <template v-if="med.prn">
+                          <div class="prn-indicator" v-if="!hasPrnTimesForDate(med, dateObj)" @click="stampPRNTime(med)">
+                            As needed
+                          </div>
+                          <div
+                          v-if="med.times && med.times.length"
+                          class="prn-times-list"
+                          >
+                            <div
+                              v-for="timeObj in med.times.filter(entry => entry.date === formatDateToYYYYMMDD(dateObj))"
+                              :key="timeObj.time + timeObj.status"
+                              class="time-entry"
+                              :class="[timeObj.status, { discontinued: timeObj.status === 'discontinue' }]"
+                              @mouseover="showTooltip(timeObj)"
+                              @mouseout="hideTooltip"
+                              :style="{
+                                backgroundColor:
+                                  timeObj.locked && timeObj.status === 'taken'
+                                  ? '#b3f0b3'
+                                  : timeObj.locked && timeObj.status === 'refused'
+                                  ? '#f9b3b3'
+                                  :  timeObj.status ==='hold'
+                                  ? '#fff3cd'
+                                  :timeObj.locked && timeObj.status =='discontinued'
+                                  ? '#f8d7da'
+                                  : 'transparent'
+                                }"
+                            >
+                              {{ formatTimeDisplay(timeObj.time) }}
+                              <span v-if="timeObj.earlyReason">
+                                ({{ timeObj.earlyReason }})
+                              </span>
+                              <!-- Tooltip Icon -->
+                              <span
+                                v-if="getTooltipText(timeObj)"
+                                class="tooltip-icon"
+                                :title="getTooltipText(timeObj)"
+                                >
+                                ℹ️
+                              </span>
+                            </div>
+                          </div>
+                        </template>
 
 									<!-- Scheduled Meds (non-PRN) -->
 									<template v-else>
@@ -392,20 +412,18 @@
 												? '#b3f0b3'
 												: timeObj.locked && timeObj.status === 'refused'
 												? '#f9b3b3'
-												: timeObj.locked &&  timeObj.status ==='hold'
+												: timeObj.locked && timeObj.status ==='hold'
 												? '#fff3cd'
                         :timeObj.locked && timeObj.status ==='discontinued'
                         ? '#f8d7da'
 												: 'transparent'
 											}"
 										>
-											{{ timeObj.time }}
-										 <!--	<span v-if="!timeObj.earlyReason">
-											{{ timeObj.earlyReason }}
-											</span>
-                      <span v-else="timeObj.earlyReason">
-                        ({{ timeObj.earlyReason }})
-											</span>-->
+											{{ formatTimeDisplay(timeObj.time) }}
+											<!-- <span v-if="timeObj.earlyReason">
+											({{ timeObj.earlyReason }})
+											</span> -->
+
 											<!-- Immediate Icons -->
 											<template v-if="timeObj.temporaryStatus === 'taken'">
 											<span
@@ -435,128 +453,152 @@
 											</span>
 											</template>
 
-											<!-- Tooltip if signed off -->
-											<span
-											v-if="getTooltipText(timeObj)"
-											class="tooltip-icon"
-											:title="getTooltipText(timeObj)"
-											>
-											ℹ️
-											</span>
-										</div>
-										</template>
-									</template>
-									</div>
-								</td>
-							</tr>
-						</tbody>
-					</table>
-				</div>
-			</div>
-		</template>
-	  </template>
+                              <!-- Tooltip if signed off -->
+                              <span
+                              v-if="getTooltipText(timeObj)"
+                              class="tooltip-icon"
+                              :title="getTooltipText(timeObj)"
+                              >
+                                ℹ️
+                              </span>
+                            </div>
+                          </template>
+                        </template>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </template>
+      </template>
 
-	  <template v-else>
-		<div class="mobile-accordion-container">
-			<template
-			v-for="(medsInGroup, category) in groupedMedications"
-			:key="category"
-			>
-				<h3 class="category-header">{{ category }}</h3>
-				<div class="accordion">
-					<div
-					class="accordion-item"
-					v-for="med in medsInGroup"
-					:key="med.name"
-					:class="{ active: openAccordions[med.name] }"
-					>
-						<button
-							class="accordion-button"
-							@click="toggleAccordion(med.name)"
-						>
-							{{ med.name }}
-						</button>
+      <template v-else>
+        <div class="mobile-accordion-container">
+          <template
+            v-for="(medsInGroup, category) in groupedMedications"
+            :key="category"
+          >
+            <h3 class="category-header">{{ formatCategoryLabel(category) }}</h3>
+            <div class="accordion">
+              <div
+              class="accordion-item"
+              v-for="med in medsInGroup"
+              :key="med.name"
+              >
+                <!-- GREEN HEADER (clickable) -->
+                <div
+                  class="mobile-acordion-header"
+                  :class="{ active: openAccordions[med.name] }"
+                  @click="toggleAccordion(med.name)"
+                >
+                  <div class="header-main">
+                    <!-- truncate when closed, full name when open -->
+                    <span class="med-name">
+                      {{ openAccordions[med.name]
+                        ? med.name 
+                        : (med.name.length > 32
+                            ? med.name.slice(0,32) + '…'
+                            : med.name
+                            )
+                      }}
+                    </span>
+                    <span class="accordion-arrow">
+                      {{ openAccordions[med.name] ? '▾' : '▸' }}
+                    </span>
+                  </div>
 
-						<div
-							class="accordion-content"
-							v-show="openAccordions[med.name]"
-						>
-							<!-- Dosage + Unit as text -->
+                  <div v-if="openAccordions[med.name]" class="header-times">
+                    <div class="mobile-times">
+                      <span
+                        v-for="timeObj in getTimesForDate(med, findDateObj(activeDate))"
+                        :key="timeObj.time + timeObj.status"
+                        class="time-bubble"
+                        :class="timeObj.status"
+                        @click="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
+                      >
+                        <!-- display the time -->
+                        {{ formatTimeDisplay(timeObj.time) }}
+                        <!-- mobile status icons -->
+                        <template v-if="timeObj.temporaryStatus === 'taken'">
+                          <span class="icon-immediate taken-icon">✔</span>
+                        </template>
+                        <template v-else-if="timeObj.temporaryStatus === 'refused'">
+                          <span class="icon-immediate refused-icon">✘</span>
+                        </template>
+                        <template v-else-if="timeObj.temporaryStatus ===  'later'">
+                          <span class="icon-immediate later-icon">&#8987</span>
+                        </template>
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-							<!-- Administration times for the current date -->
-							<!-- inside your <div class="accordion-content"> -->
-							<div class="mobile-times">
-								<span
-									v-for="timeObj in getTimesForDate(med, findDateObj(activeDate))"
-									:key="timeObj.time + timeObj.status"
-									class="time-bubble"
-									@click="!timeObj.locked && handleTimeClick(findDateObj(activeDate), timeObj, med)"
-								>
-									{{ timeObj.time }}
+                <!-- WHITE CONTENT BOX -->
+                <div
+                  class="accordion-content"
+                  v-show="openAccordions[med.name]"
+                >
 
-									<!-- <BarcodeScanner
-								:active="scannerContext?.timeObj === timeObj"
-								:scanRegion="scannerContext?.timeObj === timeObj ? scanRegion : null"
-								:rapidScanMode="rapidScanMode"
-								@scanned="onBarcodeScanned"
-								@close="scannerContext = null"
-								/> -->
-								</span>
-							</div>
-							<div class="detail-row">
-								<span class="label">Dosage</span>
-								<span class="value">{{ med.dosage || '–' }} {{ med.unitType || '' }}</span>
-							</div>
+                  <div class="detail-row">
+                    <span class="label">Dosage</span>
+                    <span class="value">{{ med.dosage || '–' }} {{ med.unitType || '' }}</span>
+                  </div>
 
-							<!-- Frequency -->
-							<div class="detail-row">
-								<span class="label">Frequency</span>
-								<span class="value">{{ med.frequency || 'Not set' }}</span>
-							</div>
+                  <!-- Frequency -->
+                  <div class="detail-row">
+                    <span class="label">Frequency</span>
+                    <span class="value">{{ med.frequency || 'Not set' }}</span>
+                  </div>
 
-							<!-- Available (smaller input) -->
-							<div class="detail-row">
-								<span class="label">Available</span>
-								<input
-									type="number"
-									v-model="med.tabsAvailable"
-									class="available-input"
-									readonly
-								/>
-							</div>
+                  <!-- Available (smaller input) -->
+                  <div class="detail-row">
+                    <span class="label">Available</span>
+                    <input
+                      type="number"
+                      v-model="med.tabsAvailable"
+                      class="available-input"
+                    />
+                    <span class="label">Status</span>
+                    <select
+                      v-model="med.status"
+                      class="status-select"
+                    >
+                      <option
+                        v-for="opt in statusOptions"
+                        :key="opt.value"
+                        :value="opt.value"
+                      >
+                        {{ opt.label }}
+                      </option>
+                    </select>
+                  </div>
 
-							<!-- Select Time & Dosage -->
-							<div class="detail-row">
-								<button
-									class="select-btn"
-									@click="toggleSelectDropdown(med)"
-								>
-									Select Time & Dosage
-								</button>
-							</div>
+                  <!-- Select Time & Dosage -->
+                  <div class="detail-row">
+                    <button
+                      class="select-btn"
+                      @click="toggleSelectDropdown(med)"
+                    >
+                      Select Time & Dosage
+                    </button>
 
-							<!-- Status Dropdown -->
-							<div class="detail-row">
-								<span class="label">Status</span>
-								<select
-									v-model="med.status"
-									class="status-select"
-								>
-									<option
-									v-for="opt in statusOptions"
-									:key="opt.value"
-									:value="opt.value"
-									>
-									{{ opt.label }}
-									</option>
-								</select>
-							</div>
-						</div>
-					</div>
-				</div>
-			</template>
-		</div>
-	  </template>
+                    <button
+                      class="edit-icon"
+                      @click="openMedicationForm(med)"
+                      aria-label="Edit medication"
+                      type="button"
+                    >
+                      ✎
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+        </div>
+      </template>
     </div>
 
     <!-- Add Medication Form -->
@@ -600,8 +642,8 @@
     </div>
 
     <!-- Time and Dosage Modal -->
-    <div v-if="showTimeModal" class="modal-overlay">
-      <div class="modal-content">
+    <div v-if="showTimeModal" class="modal-overlay td-modal">
+      <div class="modal-content time-modal-content">
         <h3>Select Time and Dosage</h3>
         <h4 v-if="selectedMedicationForTime">{{ selectedMedicationForTime.name }}</h4>
         <div class="form-group">
@@ -612,7 +654,6 @@
               v-for="option in frequencyOptions"
               :key="option"
               :value="option"
-              
             >
               {{ option }}
             </option>
@@ -713,7 +754,45 @@
         </div>
         <div v-else>
           <p>Please confirm the following medication administrations:</p>
-          <ul>
+
+          <!-- TAKEN grouping -->
+          <div
+            v-for="(group, idx) in takenGrouped"
+            :key="'taken-'+idx"
+          >
+            <h4 class="status-time-header taken-time">
+              Taken Time: {{ group.time }}
+            </h4>
+            <div
+              v-for="(item, iIdx) in group.items"
+              :key="iIdx"
+              class="sign-off-item"
+            >
+              <span class="taken-icon">✔</span>
+              <span class="sign-off-med">{{ item.medication.name }}</span>
+            </div>
+          </div>
+
+          <!-- REFUSED grouping -->
+          <div
+            v-for="(group, idx) in refusedGrouped"
+            :key="'refused-'+idx"
+          >
+            <h4 class="status-time-header refused-time">
+              Refused Time: {{ group.time }}
+            </h4>
+            <div
+              v-for="(item, iIdx) in group.items"
+              :key="iIdx"
+              class="sign-off-item"
+            >
+              <span class="refused-icon">✘</span>
+              <span class="sign-off-med">{{ item.medication.name }}</span>
+            </div>
+          </div>
+
+          <!-- OLD IMPLEMENTATION -->
+          <!-- <ul>
             <li
               v-for="(item, index) in pendingTransactions"
               :key="index"
@@ -732,8 +811,9 @@
                 </em>
               </span>
             </li>
-          </ul>
-		  <div class="form-group">
+          </ul> -->
+		  
+          <div class="form-group">
             <label for="signOffNurseSignature">Nurse Signature:</label>
             <input
               type="text"
@@ -743,7 +823,7 @@
             />
           </div>
           <div class="button-row">
-            <button @click="finalSignOff" class="save-button" :disabled="!signOffNurseSignature">Sign Off</button>
+            <button @click="finalSignOff" class="save-button" :disabled="!signOffNurseSignature">Signature</button>
             <button @click="showSignOffPopup = false" class="cancel-button">Cancel</button>
           </div>
         </div>
@@ -811,20 +891,35 @@
       </div>
     </div>
   </div>
+
+  <!-- SCANNER -->
   <div
-  v-if="scannerContext"
-  class="scanner-modal-overlay"
-  @click.self="scannerContext = null">
-	<div class="scanner-modal-content">
-		<!-- <BarcodeScanner
-		:active="true"
-		:scanRegion="scanRegion"
-		:rapidScanMode="rapidScanMode"
-		@scanned="onBarcodeScanned"
-		@close="scannerContext = null"
-		/> -->
-	</div>
+    v-if="scannerContext"
+    class="scanner-modal-overlay"
+    @click.self="scannerContext = null">
+    <div class="scanner-modal-content">
+      <BarcodeScanner
+        :active="true"
+        :scanRegion="scanRegion"
+        :rapidScanMode="rapidScanMode"
+        @scanned="onBarcodeScanned"
+        @close="scannerContext = null"
+      />
+	  </div>
   </div>
+
+  <!-- NDC mismatch modal -->
+  <div v-if="showNdcMismatchPopup" class="modal-overlay">
+    <div class="modal-content">
+      <span style="display:block; margin-bottom:1rem; color:#dc3545;">
+        Scanned NDC ({{ mismatchScannedValue }}) does not match expected NDC ({{ mismatchExpectedNdc}}).
+      </span>
+      <div class="button-row">
+        <button class="btn-save" @click="retryScan">Retry</button>
+        <button class="btn-cancel" @click="closeMismatchPopup">Close</button>
+    </div>
+  </div>
+
 </template>
 
 <script setup lang="ts">
@@ -837,7 +932,7 @@ import axios from 'axios'
 //import ExpandableDetails from './ExpandableDetails.vue'
 import AddMedicationForm from './AddMedicationForm.vue'
 import HoldTimeSelector from './HoldTimeSelector.vue'
-// import BarcodeScanner from './barcode-scanner/BarcodeScanner.vue'
+import BarcodeScanner from './barcode-scanner/BarcodeScanner.vue'
 
 const FUTURE_DAYS_TO_POPULATE = 365
 let fpInstance: ReturnType<typeof flatpickr> | null = null
@@ -933,6 +1028,11 @@ function toggleAccordion(key: string) {
 }
 
 const selectedSort = ref('')
+
+// scanner refs for matching NDCs
+const showNdcMismatchPopup = ref(false)
+const mismatchScannedValue = ref('')
+const mismatchExpectedNdc = ref('')
 
 // when it changes, call your existing sort functions
 function onSortChange() {
@@ -1085,11 +1185,22 @@ function parseDateKey(key: string): Date {
 }
 
 function onBarcodeScanned(barcode: string) {
-  if (scannerContext.value) {
-    scannerContext.value.timeObj.temporaryStatus = 'taken'
-    alert('Scanned barcode: ' + barcode)
+  if (!scannerContext.value) return
+  const { med, timeObj, dateObj } = scannerContext.value
+  const expected = med.ndcNumber ?? ''
+  // consider it a match if expected is non?empty and is contained within the scanned barcode
+  if (expected && barcode.includes(expected)) {
+    selectedDateAndTime.value = { medication: med, timeObj, dateObj }
+    showTimeActionPopup.value = true
+  } else {
+    // mismatch
+    mismatchScannedValue.value = barcode
+    mismatchExpectedNdc.value  = expected
+    showNdcMismatchPopup.value = true
   }
-  scannerContext.value = null
+  // reset scanner UI
+  scannerContext.value     = null
+  showBarcodeScanner.value = false
 }
 
 function handleTimeClick(dateObj: Date, timeObj: any, med: Medication) {
@@ -2677,24 +2788,24 @@ function handleTimeActionSelected({ action }: { action: string }) {
 }
 
 // ---------- EARLY / LATE CONFIRMATION ----------
-function confirmTimeAction() {
-  showTimeConfirmationPopup.value = false
-  if (!isEarly.value && pendingDateAndTime.value) {
-    selectedDateAndTime.value = pendingDateAndTime.value
-    showTimeActionPopup.value = true
-    pendingDateAndTime.value = null
-  }
-}
-//Chris version
 // function confirmTimeAction() {
 //   showTimeConfirmationPopup.value = false
-//   if (pendingDateAndTime.value) {
-//     const { dateObj, timeObj, medication } = pendingDateAndTime.value
-//     // now that user confirmed, open the barcode scanner for this single slot
-//     scannerContext.value = { med: medication, timeObj, dateObj }
+//   if (!isEarly.value && pendingDateAndTime.value) {
+//     selectedDateAndTime.value = pendingDateAndTime.value
+//     showTimeActionPopup.value = true
 //     pendingDateAndTime.value = null
 //   }
 // }
+//Chris version
+function confirmTimeAction() {
+  showTimeConfirmationPopup.value = false
+  if (pendingDateAndTime.value) {
+    const { dateObj, timeObj, medication } = pendingDateAndTime.value
+    // now that user confirmed, open the barcode scanner for this single slot
+    scannerContext.value = { med: medication, timeObj, dateObj }
+    pendingDateAndTime.value = null
+  }
+}
 function triggerEarlyYes() {
   showEarlyReasonInput.value = true
 }
@@ -3167,6 +3278,10 @@ function getTooltipText(timeObj: any) {
 }
 function showTooltip(_timeObj: any) {}
 function hideTooltip() {}
+
+const truncate = (str: string, len = 32) =>
+  str.length > len ? str.slice(0, len) + '…' : str
+
 </script>
 
 <style scoped>
@@ -3924,6 +4039,223 @@ function hideTooltip() {}
     max-width: 600px;
     height: 70vh;
   }
+}
+
+.time-modal-content {
+  background-color: #f4f4f4;
+}
+
+/* ─── 1) The container for each row ─── */
+.mobile-accordion-container .detail-row {
+  /* add this: */
+  color: #3e9394;
+
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  gap: 0.5rem;
+}
+
+/* ─── 2) The label on the left ─── */
+.mobile-accordion-container .detail-row .label {
+  /* add this: */
+  color: #3e9394;
+
+  flex: 0 0 auto;
+  width: auto;
+  font-weight: 500;
+}
+
+/* ─── 3) The value on the right ─── */
+.mobile-accordion-container .detail-row .value {
+  /* add this: */
+  color: #3e9394;
+
+  flex: 1;
+  font-size: 0.95rem;
+}
+
+/* make all three mobile toolbar buttons the same green */
+.mobile-toolbar .mobile-action-btn {
+  background-color: #008080;
+  color: #fff;
+  border: none;
+  padding: 0.6rem 0;
+  font-size: 1rem;
+  border-radius: 4px;
+  text-align: center;
+}
+
+
+.mobile-filter-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 1rem 0;
+}
+
+.mobile-header {
+  display: flex;
+  align-items: center;
+  background-color: #0c8687;
+  color: white;
+  padding: 0.75rem 1rem;
+}
+.back-button {
+  background: none;
+  border: none;
+  color: white;
+  font-size: 1rem;
+  margin-right: 1rem;
+  cursor: pointer;
+}
+.mobile-title {
+  font-size: 1rem;
+  font-weight: bold;
+}
+
+.mobile-toolbar #date-range-picker {
+ background-color:#008080 !important;
+ color: #ffffff !important;
+}
+
+/* entire header */
+.mobile-accordion-header {
+  background-color: #489898;
+  color: #fff;
+  border-radius: 8px;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+.mobile-accordion-header.open {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* title + arrow row */
+.header-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+}
+.med-name {
+  font-size: 1rem;
+  font-weight: 600;
+}
+.accordion-arrow {
+  font-size: 1.2rem;
+  line-height: 1;
+}
+
+/* times row in header */
+.header-times {
+  background-color: #0c8687;
+  padding: 0.5rem 0 0.75rem; /* little top‐space above times */
+}
+/* horizontal scroll of times */
+.mobile-times {
+  display: flex;
+  gap: 0.5rem;
+  overflow-x: auto;
+  padding-left: 1rem;
+}
+.mobile-times::-webkit-scrollbar {
+  height: 6px;
+}
+.mobile-times::-webkit-scrollbar-thumb {
+  background: rgba(255,255,255,0.3);
+  border-radius: 3px;
+}
+
+/* style each time */
+.time-bubble {
+  flex: 0 0 auto;
+  background: rgba(255,255,255,0.8);
+  color: #0c8687;
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+  min-width: 48px;
+  text-align: center;
+  font-size: 0.85rem;
+}
+.time-bubble.taken       { background: #b3f0b3; color: #000; }
+.time-bubble.refused     { background: #f9b3b3; color: #000; }
+.time-bubble.discontinue { opacity: 0.6; text-decoration: line-through; }
+
+/* white content box */
+.accordion-content {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-top: none;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+}
+
+/* detail rows */
+.detail-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+.detail-row .label {
+  flex: 0 0 30%;
+  color: #0c8687;
+  font-weight: 500;
+}
+.detail-row .value {
+  flex: 1;
+  color: #333;
+}
+.available-input {
+  width: 60px;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+/* buttons/select */
+.select-btn {
+  width: 100%;
+  background: #0c8687;
+  color: white;
+  border: none;
+  padding: 0.6rem;
+  border-radius: 4px;
+  font-size: 1rem;
+}
+.status-select {
+  flex: 1;
+  padding: 0.4rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+}
+
+.td-modal {overflow-y: scroll;}
+
+.mobile-text {color: #3e9394;}
+
+.detail-row .select-btn {
+  flex: 1 1 auto;
+  width: auto !important;
+  min-width: 0;
+}
+
+/* 3) Style the edit icon so you can actually see it */
+.detail-row .edit-icon {
+  display: inline-block;
+  margin-left: 0.25rem;
+  font-size: 1.2rem;
+  color: #3e9394;       /* your teal text color */
+  cursor: pointer;
+  transition: opacity .2s;
+  opacity: 0.85;
+}
+.detail-row .edit-icon:hover {
+  opacity: 1;
 }
 
 </style>
