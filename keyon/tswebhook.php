@@ -258,6 +258,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$admintimes = $mmdata->MedicationAdmin->slotedtimes;
 	$changereason = $mmdata->MedicationAdmin->changereason;
 	$changeorder = $mmdata->MedicationAdmin->changeorder;
+  $enddate='';
 	/*6/24 Adding IV form params */
 	if($mmdata->MedicationAdmin->dosage !="")
 	{
@@ -367,7 +368,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 							/*Step 5 We need to Add a new Medications with the updated times and frequency here */
 							$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$newordernumber,$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
 							$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["route"],$graboldmedlist["results"][0]["diagnose_code"],$newfrequency,$newdosage,
-							$medname,$graboldmedlist["results"][0]["instruction"],$status,$via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
+							$medname,$graboldmedlist["results"][0]["instruction"],$status,$via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime,$enddate);
 							
 							//var_dump($insertmed); // debug
 							if($insertmed["result"]=="Inserted")
@@ -643,6 +644,35 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 		print(json_encode($findactivemedorders,JSON_PRETTY_PRINT));
 	}
   }
+  //Keyo Added on 8/7/25 Medication Date Range Sort Function Attempt 
+  elseif(isset($mmdata->MedicationAdmin ) && $mmdata->MedicationAdmin->API_Meth=="GetPatientsMedByID")
+  {
+
+    $accountnumber = $mmdata->MedicationAdmin->accountId;
+    $npinumber = $mmdata->MedicationAdmin->providerid;
+    $patientid = $mmdata->MedicationAdmin->pid;
+    $stdate = $mmdata->MedicationAdmin->startDate;
+    $eDate = $mmdata->MedicationAdmin->endDate;
+    //srart date format 
+    $dateTime = new DateTime($stdate);
+    $formattedStrtDate = $dateTime->format('Y-m-d');
+    //end date format 
+    $ddateTime = new DateTime($eDate);
+    $formattedEndDate = $ddateTime->format('Y-m-d');
+    //$providerid = $mmdata->MedicationAdmin->providerid;
+   // var_dump($formattedEndDate);
+   // var_dump($formattedStrtDate);
+    $findactivemedorders = $processData->findpatientactiveMedOrdersByStrtEndDate($accountnumber,$npinumber,$patientid,$formattedStrtDate,$formattedEndDate);
+   // var_dump($findactivemedorders);
+	if(count($findactivemedorders["records"]) >=1)
+    {
+      print(json_encode($findactivemedorders,JSON_PRETTY_PRINT));
+    }
+	else{
+		$msgar = array("code"=>"323-Empty","results"=>"No Records found");
+		print(json_encode($findactivemedorders,JSON_PRETTY_PRINT));
+	}
+  }
   elseif(isset($mmdata->MedicationAdmin) && $mmdata->MedicationAdmin->API_Meth=="InsetPrescription")
   {
 	
@@ -897,7 +927,9 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	 $enddate = $mmdata->MedicationAdmin->endDate;
 	 $refilreminderdt= $mmdata->MedicationAdmin->refillReminderDate;
 	 $refillexpirationdt = $mmdata->MedicationAdmin->expirationDate;
-
+  //convert end date to a proper format 
+  $edate = new DateTime($enddate);
+  $endformatDt = $edate->format('Y-m-d H:i:s');
 	 //provider information 
 	 $providername = $physican;
 	 $deanumber="k55534343";
@@ -1052,13 +1084,13 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 					$endTime = date("H:i:s"); //same setting default time if it's empty
 				}
 				$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
-			    $via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
+			    $via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime,$endformatDt);
 				
-				//var_dump($insertmed); //debug
+				var_dump($insertmed); //debug
 				if($insertmed["result"]=="Inserted")
 				{
 					//Now Insert Prescreption Information 
-					$insertPrescription = $processData->InsertPerscription($accountnumber,$patientid,$medname,$rxnumber,$dtfilled,$refills,$startdate,$enddate,$refilreminderdt,$refillexpirationdt);
+					$insertPrescription = $processData->InsertPerscription($accountnumber,$patientid,$medname,$rxnumber,$dtfilled,$refills,$startdate,$endformatDt,$refilreminderdt,$refillexpirationdt);
 					//var_dump($insertPrescription); //debug
 					if($insertPrescription["results"]=="Inserted")
 					{

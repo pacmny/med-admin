@@ -438,6 +438,7 @@ class SQLData{
     }
     public function UpdateMedLogandLogtimes($accountnumber,$patientid,$medid,$finltimeslot,$finlslotreason,$takentime,$status,$signoffdate,$signoffnurse,$signoffinit,$earlyreason)
     {
+      
         $sql="UPDATE `medlogtimes` SET `takentime`=:taktime, `status`=:stat, `reason`=:earlyreas, `provsignoffsignature`=:provsignoff,`provsignoffinitials`=:provsignoffinit
         WHERE accountnumber=:accnt AND patientid=:patid AND medid=:mid";
         $stmnt = $this->con->prepare($sql);
@@ -758,9 +759,45 @@ class SQLData{
             return $msg;
         }
     }
+    /*7/29/2025 checkActiveMedLogDates($today) - Checkes medlogtimes Dates for Cron job */ 
+    public function checkActiveMedLogDates($today)
+    {
+      /*$sql="SELECT * FROM orders 
+      INNER JOIN medications ON orders.ordernumber = medications.order_number
+      INNER JOIN medicationlog ON medications.medentryid = medicationlog.medicationid
+      INNER JOIN medlogtimes ON medicationlog.medicationid = medlogtimes.medid
+      WHERE orders.status='Active' AND medications.status='Active' AND medicationlog.status='Active' AND  medications.additional_settings='Administered'";
+     */
+   /* $sql="SELECT * FROM medicationlog
+    INNER JOIN medications ON medicationlog.ordernumber = medications.order_number
+    INNER JOIN orders ON medications.order_number = orders.ordernumber
+    INNER JOIN medlogtimes ON medicationlog.medicationid = medlogtimes.medid
+    WHERE orders.status='Active' AND medications.status='Active' AND medicationlog.status='Active' AND  medications.additional_settings='Administered'";
+    */
+    $sql="SELECT * FROM medicationlog
+    WHERE medicationlog.status='Active'";//medications.additional_settings='Administered'"; 
+    $stmnt = $this->con->prepare($sql);
+      try{
+          
+        if($stmnt->execute())
+        {
+          //execution was successfull 
+          $rec = $stmnt->fetchAll();
+          $msgar =array("status"=>"200-Successfull","records"=>$rec,"count"=>count($rec));
+          return $msgar;
+        }
+
+      }
+      catch(PDOException $e)
+      {
+        $msgar = array("status"=>"700-Sql Error","error"=>$e->__toString());
+        return $msgar;
+      }
+      
+    }
     /*5/9/2025 Adding Administration Medication Function */
     public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
-    $via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime)
+    $via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime,$enddate)
     {
         $shorthand=$medname;
         $status="pending";
@@ -777,9 +814,9 @@ class SQLData{
         else{
           $viamedtype=0;
         }
-        $sql="INSERT INTO medications (accountnumber,order_number,patient_id,ndcnumber,rxnorns,prn,additional_settings,total,`route`,diagnose_code,med_frequency,alt_route,med_amount,med_doseuom,medname,med_startdate,shorthand,
+        $sql="INSERT INTO medications (accountnumber,order_number,patient_id,ndcnumber,rxnorns,prn,additional_settings,total,`route`,diagnose_code,med_frequency,alt_route,med_amount,med_doseuom,medname,med_startdate,med_enddate,shorthand,
         instruction,medchangetype,`status`,writer,via_med,fluidtype,viatype,totalVolumn,totalVolumnUnit,rate,ivhowlong,ivstarttime,ivendtime)
-        VALUES(:accnt,:ordnum,:patid,:ndcnum,:rxnum,:prn,:adminsetting,:totaltabs,:rte,:diag,:freq,:altroute,:medamnt,:dosage,:medname,:medstrtdt,:shorthand,:instruction,:medchange,:stat,:writer,
+        VALUES(:accnt,:ordnum,:patid,:ndcnum,:rxnum,:prn,:adminsetting,:totaltabs,:rte,:diag,:freq,:altroute,:medamnt,:dosage,:medname,:medstrtdt,:medenddt,:shorthand,:instruction,:medchange,:stat,:writer,
         :viabool,:fluidtype,:viatype,:ttlvol,:ttlvolunit,:rate,:ivhowlong,:ivstrttime,:ivendtime)";
         $startdate = date('Y-m-d');
         $stmnt = $this->con->prepare($sql);
@@ -799,6 +836,7 @@ class SQLData{
         $stmnt->bindParam(":dosage",$dosage);
         $stmnt->bindParam(":medname",$medname);
         $stmnt->bindParam(":medstrtdt",$startdate);
+        $stmnt->bindParam(":medenddt",$enddate);
         $stmnt->bindParam(":shorthand",$shorthand);
         $stmnt->bindParam(":instruction",$instruction);
         $stmnt->bindParam(":medchange",$medchangetype);
@@ -2736,6 +2774,7 @@ class SQLData{
       *6/10/25 Need to adjust the sql to account for Meciation.status to be included in the WHERE clause
       *6/10/25 Also added medication status =hold OR adjustment to include active or held medications 
      */
+   /* $today =date('Y-m-d');
     $sql="SELECT medications.*,
     orders.*,
     medicationlog.*,
@@ -2743,24 +2782,95 @@ class SQLData{
       SEPARATOR ', ') AS times,
       GROUP_CONCAT(medlogtimes.takentime ORDER BY medlogtimes.takentime SEPARATOR ', ') AS takentimes, 
       GROUP_CONCAT(medlogtimes.reason ORDER BY medlogtimes.reason SEPARATOR ', ') AS earlyReason,   
-      GROUP_CONCAT(medlogtimes.status ORDER BY medlogtimes.status SEPARATOR ', ') AS temporaryStatus
+      GROUP_CONCAT(medlogtimes.status ORDER BY medlogtimes.status SEPARATOR ', ') AS temporaryStatus,
+      MAX(medlogtimes.administerdate) AS administerdate -- Get the latest administered date
       FROM 
       medications
       LEFT JOIN orders ON  orders.ordernumber = medications.order_number
       LEFT JOIN medicationlog ON medicationlog.medicationid = medications.medentryid
       LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid
-      WHERE orders.accountnumber=:accnt AND orders.patientid=:patid and orders.npinumber=:npi AND orders.status='Active' OR orders.status='hold' AND medications.status='Active' OR medications.status='hold' AND additional_settings='Administered'
+      WHERE orders.accountnumber=:accnt AND orders.patientid=:patid and orders.npinumber=:npi AND orders.status='Active' OR orders.status='hold' AND medications.status='Active' OR medications.status='hold' AND medications.additional_settings='Administered'
+     AND medlogtimes.administerdate=:tddt
       GROUP BY
-      medications.medentryid,  orders.orderid,medicationlog.phid,orders.ordernumber, medicationlog.medicationid";
+      medications.medentryid,  orders.orderid,medicationlog.phid,orders.ordernumber, medicationlog.medicationid"; */
+      date_default_timezone_set('America/New_York');
+      $today =date('Y-m-d');
+      /* This may work
+      $sql = "SELECT medications.*,   
+       orders.*,    
+       medicationlog.*,    
+       MAX(medlogtimes.time) AS times,    
+       MAX(medlogtimes.takentime) AS takentimes,     
+       MAX(medlogtimes.reason) AS earlyReason,       
+       MAX(medlogtimes.status) AS temporaryStatus,   
+       MAX(medlogtimes.administerdate) AS administerdate -- Get the latest administered date
+         FROM     
+         medications
+         LEFT JOIN orders ON orders.ordernumber = medications.order_number
+         LEFT JOIN medicationlog ON medicationlog.medicationid = medications.medentryid
+         LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid
+         WHERE     
+         orders.accountnumber = :accnt     
+         AND orders.patientid = :patid    
+         AND orders.npinumber = :npi    
+         AND (orders.status IN ('Active', 'hold'))     
+        AND (medications.status IN ('Active', 'hold'))    
+        AND medications.additional_settings = 'Administered'   
+        AND medlogtimes.administerdate = :tddt
+        GROUP BY    
+        medications.medentryid,     
+        orders.orderid,    
+        medicationlog.phid,    
+        orders.ordernumber,    
+        medicationlog.medicationid"; */
+     
+      $sql = "SELECT medications.*,   
+       orders.*,    
+       medicationlog.*,    
+       GROUP_CONCAT(CASE         
+       WHEN medlogtimes.administerdate = :tddt AND medlogtimes.time IS NOT NULL AND medlogtimes.time <> '' THEN medlogtimes.time        
+       END ORDER BY medlogtimes.time SEPARATOR ', ') AS times,    
+       GROUP_CONCAT( CASE         
+       WHEN medlogtimes.administerdate = :tddt AND medlogtimes.takentime IS NOT NULL AND medlogtimes.takentime <> '' THEN medlogtimes.takentime         
+       END ORDER BY medlogtimes.takentime SEPARATOR ', ') AS takentimes,    
+       GROUP_CONCAT( CASE         
+       WHEN medlogtimes.administerdate = :tddt AND medlogtimes.reason IS NOT NULL AND medlogtimes.reason <> '' THEN medlogtimes.reason        
+       END ORDER BY medlogtimes.reason SEPARATOR ', ') AS earlyReason,       
+       GROUP_CONCAT(CASE         
+       WHEN medlogtimes.administerdate = :tddt AND medlogtimes.status IS NOT NULL AND medlogtimes.status <> '' THEN medlogtimes.status         
+       END ORDER BY medlogtimes.status SEPARATOR ', ') AS temporaryStatus,   
+       MAX(medlogtimes.administerdate) AS administerdate -- Get the latest administered date
+       FROM     
+       medications
+       LEFT JOIN orders ON orders.ordernumber = medications.order_number
+       LEFT JOIN medicationlog ON medicationlog.medicationid = medications.medentryid
+       LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid    
+        AND medlogtimes.administerdate = :tddt -- Only join on today's date  
+       WHERE     
+       orders.accountnumber = :accnt     
+       AND orders.patientid = :patid     
+       AND orders.npinumber = :npi      
+      -- AND (orders.status IN ('Active', 'hold')) 
+       AND (medications.status IN ('Active', 'hold'))     
+       AND medications.additional_settings = 'Administered'    
+      -- AND medlogtimes.administerdate = :tddt
+       GROUP BY    
+       medications.medentryid,     
+       orders.orderid,     
+       medicationlog.phid,     
+       orders.ordernumber,     
+       medicationlog.medicationid";
       $stmnt = $this->con->prepare($sql);
       $stmnt->bindParam(":accnt",$accountnumber);
       $stmnt->bindParam(":npi",$npinumber);
       $stmnt->bindParam(":patid",$patientid);
+      $stmnt->bindParam(":tddt",$today);
      // $stmnt->bindParam(":npi",$npinumber);
       try{
          if($stmnt->execute())
          {
           $records = $stmnt->fetchAll();
+          //var_dump($records);
           $successmsg = array("code"=>"200-Successfull","records"=>$records);
           return $successmsg;
          }
@@ -2772,6 +2882,126 @@ class SQLData{
       }
     }
     /*6/10/2025 Adding SQL to Locate Med Log Records and add New Dates to be administered for any medications that's in the Log Table*/
+
+    /*8/8/25 SQL Query that Gets Medications By Date Range For Med Admin Date Range Filtering */
+    public function findpatientactiveMedOrdersByStrtEndDate($accountnumber,$npinumber,$patientid,$strtDate,$endDate)
+    {
+      
+      date_default_timezone_set('America/New_York');
+      $today =date('Y-m-d');
+     
+      $sql = "SELECT  
+      medications.*,              
+      orders.*,               
+      medicationlog.*,              
+      medlogtimes.administerdate,           
+      medlogtimes.takentime As takentimes,           
+      medlogtimes.reason As earlyReason,           
+      medlogtimes.status,           
+      medlogtimes.time
+       FROM     
+       medications
+       LEFT JOIN orders ON orders.ordernumber = medications.order_number
+       INNER JOIN medicationlog ON medicationlog.medicationid = medications.medentryid
+       LEFT JOIN medlogtimes ON medlogtimes.medid = medicationlog.medicationid    
+       WHERE    
+       medlogtimes.administerdate BETWEEN :strtDt AND :endDt
+       AND 
+       orders.accountnumber = :accnt     
+       AND orders.patientid = :patid     
+       AND orders.npinumber = :npi      
+      -- AND (orders.status IN ('Active', 'hold')) 
+       AND (medications.status IN ('Active', 'hold'))     
+       AND medications.additional_settings = 'Administered'    
+       ORDER BY    
+       medlogtimes.administerdate ";
+      $stmnt = $this->con->prepare($sql);
+      $stmnt->bindParam(":accnt",$accountnumber);
+      $stmnt->bindParam(":npi",$npinumber);
+      $stmnt->bindParam(":patid",$patientid);
+      $stmnt->bindParam(":strtDt",$strtDate);
+      $stmnt->bindParam(":endDt",$endDate);
+      try{
+         if($stmnt->execute())
+         {
+          $records = $stmnt->fetchAll();
+         // var_dump($records);
+         $tdata = $this->transformMedFilterData($records);
+         //var_dump($tdata);exit();
+          //var_dump($records);
+          $successmsg = array("code"=>"200-Successfull","records"=>$tdata);
+          return $successmsg;
+         }
+      }
+      catch(PDOException $e)
+      {
+        $errormsg = array("code"=>"700-Sql Error","message"=>$e->__toString());
+        return $errormsg;
+      }
+    }
+public function transformMedFilterData($records)
+{
+  if(!is_array($records) && empty($records))
+  {
+    return;
+  }
+  else{
+     $grouprecords =[];
+     $idx = count($records);
+     $shelar[] = array();
+     $medobj = new stdClass;
+     $medobj->dates = array();
+     $i=0;
+    // var_dump($records[0]["takentimes"]);
+      //place holder date to evalue against, as I loop through the data 
+      foreach($records as $md)
+      {
+        $ukey = $md["medname"];
+        //lets try and put the med status together 
+        if($md["status"] =="taken" || $md["status"] =="refused")
+        {
+          //lets format the taken value 
+          $medstatformat = "(".$md["status"]." at ".$md["takentimes"].")";
+         // var_dump($medstatformat);
+        }
+        //group recrods 
+        if(!isset($grouprecords[$ukey])){
+          $grouprecords[$ukey] = ["administerdate"=>[],"medname"=>$md["medname"],"medicationid"=>$md["medicationid"],
+          "times"=>$md["times"],"diagnose"=>$md["diagnose_code"],"medchangtype"=>$md["medchangetype"],
+          "yearmedtime"=>$md["yearmedtime"],"med_frequency"=>$md["med_frequency"],"medentryid"=>$md["medentryid"],"ordernumber"=>$md["order_number"],
+          "route"=>$md["route"],"med_amount"=>$md["med_amount"]];
+          //append log entry
+          $grouprecords[$ukey]["administerdate"][] = array("medname"=>$md["medname"],"administerdate"=>$md["administerdate"],"status"=>$md["status"],
+          "takentimes"=>$md["takentimes"],"earlyReason"=>$md["earlyReason"],"medstatustime"=>$medstatformat);
+         // $grouprecords[$ukey]["takentimes"][] = $md["takentimes"];
+          //$grouprecords[$ukey]["medstatustime"][] = $medstatformat;
+
+        }
+        else{
+          //groupkley does match 
+          if(isset($grouprecords[$ukey]))
+          {
+            //var_dump("They Match - Le3ts show the matching Date:"." ".$md["medname"]."-". $md["administerdate"]);
+            $grouprecords[$ukey]["administerdate"][] = array("medname"=>$md["medname"],"administerdate"=>$md["administerdate"],"status"=>$md["status"],
+          "takentimes"=>$md["takentimes"],"medstatustime"=>$medstatformat);
+           // $grouprecords[$ukey]["takentimes"][] = $md["takentimes"];
+          //$grouprecords[$ukey]["medstatustime"][] = $medstatformat;
+          }
+          
+
+        }
+        //Append the log entry to the group records 
+      //  $grouprecords[$ukey]["takentimes"][] = $md["takentimes"];
+        //$grouprecords[$ukey]["medstatustime"][] = $medstatformat;
+      }
+      //Optional: Reindex the array 
+      $grouprecords = array_values(array_filter($grouprecords));
+      return $grouprecords;
+     
+
+
+     }
+  }
 
     public function GetMeasurements($arr){
         $sql = "SELECT * FROM foradata WHERE patientId=:pid AND MDeviceID = :meterid";

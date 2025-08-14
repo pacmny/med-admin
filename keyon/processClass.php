@@ -143,6 +143,11 @@ public function ImportPatients($filepath,$fhandle)
 	}
 	//var_dump($dbdata);
 }
+public function checkActiveMedLogDates($today)
+{
+  $checkstatus = $this->sclass->checkActiveMedLogDates($today);
+  return $checkstatus;
+}
 public function holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid)
 {
 	$updatestat = $this->sclass->holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid);
@@ -167,6 +172,8 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 		$today = date('Y-m-d');
 		$finaladmintimes = array();
 		$earlyreason="";
+    //adding variaable to hold all success metrics so that we can account for multiple administration times vs just one. More than 1 medlog time is causing issues
+    $medsuccessar = array();
 		foreach($signoffobj as $s)
 		{
 			//var_dump($s);
@@ -188,7 +195,7 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 			$signoffinit = substr($expinit[0],0,1) ." ". substr($expinit[1],0,1);
 			//lets do the math to get the remaining amount of tabslets (if plausible) from the total number of tablets
 			$remainingtablets = (int)$s->medication->total - (int)$s->medication->med_amount;
-			if($s->timeObj->earlyReason)
+			if(isset($s->timeObj->earlyReason) && $s->timeObj->earlyReason !=null && $s->timeObj->earlyReason)
 			{
 				$earlyreason = $s->timeObj->earlyReason;
 			}
@@ -202,7 +209,7 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 			var_dump($signoffdate);
 			var_dump($signoffnurse);
 			var_dump($earlyreason);
-			var_dump($remainingtablets ); debug*/
+			var_dump($remainingtablets );exit(); debug */
 			 /* Lets Update each Administration Record Now */
 			 $updaterec = $this->sclass->UpdateMedLogandLogtimes($accountnumber,$patientid,$medid,$finltimeslot,$finlslotreason,$takentime,$status,$signoffdate,$signoffnurse,$signoffinit,$earlyreason);
 			//var_dump($updaterec); debug
@@ -213,7 +220,8 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
        // var_dump($updatetabremaining);debug
 				if(!empty($updatetabremaining) && is_array($updatetabremaining) && $updatetabremaining["results"]=="Updated")
 				{
-					return $updatetabremaining;
+          array_push($medsuccessar,"updated");
+				//	return $updatetabremaining;
 				}
 				
 			 }
@@ -236,6 +244,15 @@ public function processMedTimes($accountnumber,$patientid,$signoffobj)
 
 
 		}
+    if(count(array_filter($medsuccessar)) >0)
+    {
+      $msgar = array("code"=>"200 Successfull","results"=>"Updated");
+      return $msgar;
+    }
+    else{
+      $msgar = array("code"=>"200 Successfull","results"=>"Updated");
+      return $msgar;
+    }
 		//var_dump($finaladmintimes); debug
 	}
 }
@@ -384,12 +401,12 @@ public function InsertPerscription($accountnumber,$patientid,$medname, $rxnumber
 	return $getdata;
 }
 public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
-$via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime)
+$via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime,$enddate)
 {
 	require_once("SqlClass.php");
 	$sclass= new SQLData();
 	$getdata = $sclass->InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
-	$via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime);
+	$via,$rate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime,$enddate);
 	return $getdata;
 }
 public function grabPatientAddressbyID($patientid)
@@ -425,6 +442,13 @@ public function findpatientactiveMedOrders($accountnumber,$npinumber,$patientid)
   require_once("SqlClass.php");
   $sclass = new SQLData();
   $activemed = $sclass->findpatientactiveMedOrders($accountnumber,$npinumber,$patientid);
+  return $activemed;
+}
+public function findpatientactiveMedOrdersByStrtEndDate($accountnumber,$npinumber,$patientid,$strtDate,$endDate)
+{
+  require_once("SqlClass.php");
+  $sclass = new SQLData();
+  $activemed = $sclass->findpatientactiveMedOrdersByStrtEndDate($accountnumber,$npinumber,$patientid,$strtDate,$endDate);
   return $activemed;
 }
 public function InsertPatientNotes($patientId,$note,$pname,$notedate,$notify,$email,$name,$startDt,$endDt,$startTime,$endTime,$type,$timeLength,$providersignature,$provsigdate)
@@ -1001,6 +1025,73 @@ private function BuildSelectProviderCard($cardinfo)
 		return $html;
 	}
 
+}
+public function SendInternalMedLogTimesNotication($message)
+{
+	require_once('Mandrill.php');
+	require_once("EmailTemplate.php");
+	//require("consts.php");
+	$emailtemp = new EmailTemplates();
+	//var_dump($emailtemp);
+	$mandrill = new Mandrill($this->MandrillPW);
+	//$e = new EmailTemplates();
+	$pretext="You Have A Message From Park Avenue Concierge Admistration IT/Dev | Sent From System Email ";
+	$headtext="<h1>You have a message from Pacmny EMR Internal System</h1>";
+	$subject="You Have a new Med log Times notification FROM PACM EMR";
+	$utm="";
+	$email = $emailtemp->CustomerEmail($pretext, $headtext, $message, $utm);
+    	//var_dump($email);
+    	//$email2 = $emailtemp->DonarEmail($pretext2, $headfile,$dnremailmessage);
+    	//var_dump($email2);
+    	//I should have the HTML EMAIL to attached to the Mandrill body section 
+
+   
+    $successar = array();
+   // var_dump($emailar);//exit();
+    //var_dump($emailar);
+	$message2 = new stdClass();
+	$message2->html =$email;
+	//$message->text = "text body";
+	$message2->subject =$subject;
+	$message2->from_email = "keyon@touchpointsolutionsinc.com";
+	$message2->from_name  = "PACM Patient Portal";
+		$i=0;
+		 //var_dump($e);
+		 $message2->to = array(
+			array(
+			'email' =>'emailvip52@gmail.com',
+			'name' =>'EMR Administration',
+			'type' => 'to',
+			),
+			 /*array(
+				'email' => 'emailvip52@gmail.com',
+				'name' => 'Keyon Whiteside',
+				'type' => 'cc'
+			),*/
+			array(
+				'email' =>'keyon5052@gmail.com',
+				'name' =>'Keyon Whiteside',
+				'type' =>'cc'
+			)
+		);	
+
+		$message2->track_opens = true;
+
+		if($mandrill->messages->send($message2))
+			{
+				//var_dump("Sent");
+				array_push($successar, "Success");
+				/*$returnmsg="EmailSent";
+				return $returnmsg;*/
+			}else{
+				$returnmsg="Mail Did't Send";
+				return $returnmsg;
+			}
+			if(in_array("Success", $successar))
+			{
+				$returnmsg="EmailSent";
+				return $returnmsg;
+			}
 }
 public function SendInternalMessagingNotication($contact,$provider)
 {

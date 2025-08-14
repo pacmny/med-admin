@@ -120,6 +120,7 @@
                             required
                             aria-required="true"
                             @change="isEditMedication==true? detectFreqChange(formData.frequency): formData.frequency"
+                            style="width:90%;"
                         >
                             <option>1 time daily</option>
                             <option>2 times daily</option>
@@ -170,6 +171,35 @@
                             <option>weekly</option>
                         </select>
                     </div>
+                    <!-- Oral route only -->
+                <div v-if="formData.route === 'Oral/Sublingual'" class="form-row">
+                    <div class="form-group">
+                        <label>Number of Tablets/Quantity</label>
+                        <input
+                            type="number"
+                            min="1"
+                            v-model.number="formData.quantity"
+                        />
+                    </div>
+                    <!--<div class="form-group checkbox-group">
+                        <input
+                            type="checkbox"
+                            id="prnCheck-oral"
+                            v-model="formData.prn"
+                        />
+                        <label for="prnCheck-oral">PRN (As Needed)</label>
+                    </div>-->
+                </div>
+                    <!--<div class="form-group">
+                        <label>Number of Refills</label>
+                        <input
+                        type="number"
+                        min="0"
+                        v-model.number="formData.refills"
+                        placeholder="0"
+                        @change="resetExpirationDate"
+                        />
+                    </div>-->
                   </div>
                     <div class="form-row admin-times">
                       <div class="form-group">
@@ -233,7 +263,9 @@
                     </div>
                     <div class="form-group">
                         <label>Duration</label>
-                        <select v-model="formData.duration">
+                        <select v-model="formData.duration"
+                        @change="calcDuration(formData.duration)"
+                        >
                             <option value="">Select Duration</option>
                             <option value="7">7 days</option>
                             <option value="14">14 days</option>
@@ -295,10 +327,10 @@
                             </div>
                         </div>
                     </div>
-                </div>
+                </div><!--formRow-->
 
                 <!-- PRN if route is in [IVI, SQ, IM, ID, TOP] -->
-                <div
+                <div 
                     v-if="!['IV (Intravenous)', 'Oral/Sublingual'].includes(formData.route)"
                     class="form-group checkbox-group">
                     <input
@@ -308,14 +340,40 @@
                     />
                     <label for="prnCheck-otherRoutes">PRN (As Needed)</label>
                 </div>
-
+                <div class="form-row">
                 <!-- Oral route only -->
-                <div v-if="formData.route === 'Oral/Sublingual'" class="form-row">
+                <div class="form-group col-sm-12 col-md-2 col-lg-2" >
+                    
+                  <label>Number of Refills</label>
+                        <input
+                        type="number"
+                        min="0"
+                        v-model.number="formData.refills"
+                        placeholder="0"
+                        @change="resetExpirationDate"
+                        class="col-sm-12 col-md-2 col-lg-2"
+                        style="width:40%;margin:0 auto;"
+                        />
+                  
+                    </div>
+
+                    <div class="form-group">
+                        <input
+                            type="checkbox"
+                            id="prnCheck-oral"
+                            v-model="formData.prn"
+                        />
+                        <label for="prnCheck-oral">PRN (As Needed)</label>
+                   </div>
+                        
+                 </div>   
+                    
+                <!--<div v-if="formData.route === 'Oral/Sublingual'" class="form-row">
                     <div class="form-group">
                         <label>Number of Tablets/Quantity</label>
                         <input
                             type="number"
-                            min="0"
+                            min="1"
                             v-model.number="formData.quantity"
                         />
                     </div>
@@ -327,7 +385,7 @@
                         />
                         <label for="prnCheck-oral">PRN (As Needed)</label>
                     </div>
-                </div>
+                </div> -->
 
                 <!-- IV Administration -->
                 <div v-if="showIvform==true">
@@ -459,7 +517,7 @@
                     placeholder="mm/dd/yyyy"
                     />
                 </div>
-                <div class="form-group">
+               <!-- <div class="form-group">
                     <label>Number of Refills</label>
                     <input
                     type="number"
@@ -467,7 +525,7 @@
                     v-model.number="formData.refills"
                     placeholder="0"
                     />
-                </div>
+                </div> -->
                 <div class="form-row">
                     <div class="form-group">
                         <label>Start Date</label>
@@ -1658,9 +1716,317 @@ const isFormValid = computed(() =>
   formData.value.frequency !== '' &&
   formData.value.route !== ''
 )
+function resetExpirationDate()
+{
+  /*Formula for Expiration Date 
+  @ StartDate + ( Number of Refill x Duration) = Expiration Date
+  */
+ let startdt = new Date(formData.value.startDate);
+  let expirDt = new Date(startdt);
+ let extendDays = Number(formData.value.refills) * Number(formData.value.duration);
+ expirDt.setDate(startdt.getDate() + extendDays);
+ formData.value.expirationDate = expirDt.toISOString().split('T')[0];
+ console.log("Expiration Date:"+" "+formData.value.expirationDate);
+}
+function calcDuration(duration:string)
+{
+ // alert("duration is "+" "+duration);
+  //lets find the en date 
+  const today = new Date();
+  const medEndDate = new Date(today);
+  medEndDate.setDate(today.getDate() + parseInt(duration));
+  formData.value.endDate =medEndDate;
+  console.log("Form Data During CalcDuration");
+  console.log(formData);
+  console.log(medEndDate);
+  //call presetDuration 
+ // alert(formData.value.frequency);
+  /*number of pills to match the actual start and end date should be taken care of in the next function | Pass srtDt and endDt to Perscription
+  * Industry standards are 5 to 7 days */
+  presetDefaultReminderRefillDate(parseInt(duration),today,medEndDate)
+  preSetDurationData(formData.value.dosage, formData.value.frequency,duration,formData.value.quantity);
+}
+function presetDefaultReminderRefillDate(duration:number,today:Date,mendDate:Date)
+{
+  {
+  switch(duration)
+  {
+    case 7:
+    {
+      let defdt = 2;
+      let remindrefilldt = new Date(today);
+      remindrefilldt.setDate( today.getDate() + ( duration - defdt));
+      formData.value.startDate = today.toISOString().split('T')[0];
+      formData.value.endDate = mendDate.toISOString().split('T')[0];
+      formData.value.refillReminderDate = remindrefilldt.toISOString().split('T')[0];
+      //alert("Reminder Date is:"+ " "+ remindrefilldt);
+     
+      console.log(formData.value);
+      break
+    }
+    case 14:
+    {
+      let defdt = 5;
+      let remindrefilldt = new Date(today);
+      remindrefilldt.setDate( today.getDate() + ( duration - defdt));
+      formData.value.startDate = today.toISOString().split('T')[0];
+      formData.value.endDate = mendDate.toISOString().split('T')[0];
+      formData.value.refillReminderDate = remindrefilldt.toISOString().split('T')[0];
+      //alert("Reminder Date is:"+ " "+ remindrefilldt);
+     
+      console.log(formData.value);
+      break;
+    }
+    case 30:
+    {
+      let defdt = 5;
+      let remindrefilldt = new Date(today);
+      remindrefilldt.setDate( today.getDate() + ( duration - defdt));
+      formData.value.startDate = today.toISOString().split('T')[0];
+      formData.value.endDate = mendDate.toISOString().split('T')[0];
+      formData.value.refillReminderDate = remindrefilldt.toISOString().split('T')[0];
+      //alert("Reminder Date is:"+ " "+ remindrefilldt);
+     
+      console.log(formData.value);
+      break;
+    }
+  }
+  
+ }
+}
+function preSetDurationData(dosage:string,frequency:string,duration:string,tablets:number)
+{
+  /*Do Math to Set start and End date for both Medications Table 
+  * Same Dates needs to be past to the Presection Tab fields (Start and Enddate)
+  * @Number of Refills are needed for calc and to be passed 
+  * @Refil Reminder Date - Email/Text of When refills are about to end and need refilling 
+  * @Expiration or Refills Until Date - Dependent on the Numrer of Refills, Pills, Frequency, Duration (Formula) - to Determine 
+  * @@Reminder@@ Start Date should also correlate to the MedLog and MedLogtimes table of when the Medications start to show up
+  * ....Conttinuation of Refills Until Date: this final date and mark complete
+  * 
+  */
+ 
+   let days = duration.split(" ");
+ switch(frequency)
+ {
+   case"1 time daily":
+   {
+   
+    //Now do logic
+    if(dosage !="" && duration !="" && tablets !=0)
+    {
+    
+      let nwfreq=1;
+      let checknumofTabs = (parseInt(dosage) * nwfreq) * parseInt(days[0]); //shiould give you the number o tablets that you'll need from a total amount
+      console.log("Number of Tabs");
+      console.log(checknumofTabs);
+       if( Number(tablets) < Number(checknumofTabs))
+       {
+        console.log("Not enough tablets");
+        alert("Not Enough Tablets- So we auto adjusted the number of tablests for you");
+        //update the number of tableets
+        //formula is ((freq * dosage) * duration)
+        let actualtabs = (nwfreq * parseInt(dosage)) * parseInt(days[0]);
+        formData.value.quantity = actualtabs;
+        break;
+       }
+       else{
+        //Do nothing for now 
+         console.log("didn't pass evaluation");
+         break;
+       }
+      
+    }
+    else{
+      alert("Please ensure that dosage, duration, and tablets have a valid value. Can't auto fill fileds without necessary input.");
+      break;
+    }
+   
+   }
+   case"2 times daily":
+   {
+    alert("2 time daily");
+    //now do logic
+    if(dosage !="" && duration !="" && tablets !=0)
+    {
+     // let days = duration.split(" ");
+      let nwfreq=2;
+      let checknumofTabs = (parseInt(dosage) * nwfreq) * parseInt(days[0]); //shiould give you the number o tablets that you'll need from a total amount
+      console.log("Number of Tabs");
+      console.log(checknumofTabs);
+       if( Number(tablets) < Number(checknumofTabs))
+       {
+        console.log("Not enough tablets");
+        alert("Not Enough Tablets- So we auto adjusted the number of tablests for you");
+        //update the number of tableets
+        //formula is ((freq * dosage) * duration)
+        let actualtabs = (nwfreq * parseInt(dosage)) * parseInt(days[0]);
+        formData.value.quantity = actualtabs;
+       }
+       else{
+        //Do nothing for now 
+         console.log("didn't pass evaluation");
+       }
+      break;
+    }
+    else{
+      alert("Please ensure that dosage, duration, and tablets have a valid value. Can't auto fill fileds without necessary input.");
+      break;
+    }
+   }
+   case"3 times daily":
+   {
+    alert("3 times daily");
+    // now do logic
+    if(dosage !="" && duration !="" && tablets !=0)
+    {
+      //let days = duration.split(" ");
+      let nwfreq=4;
+      let checknumofTabs = (parseInt(dosage) * nwfreq) * parseInt(days[0]); //shiould give you the number o tablets that you'll need from a total amount
+      console.log("Number of Tabs");
+      console.log(checknumofTabs);
+       if( Number(tablets) < Number(checknumofTabs))
+       {
+        console.log("Not enough tablets");
+        alert("Not Enough Tablets- So we auto adjusted the number of tablests for you");
+        //update the number of tableets
+        //formula is ((freq * dosage) * duration)
+        let actualtabs = (nwfreq * parseInt(dosage)) * parseInt(days[0]);
+        formData.value.quantity = actualtabs;
+       }
+       else{
+        //Do nothing for now 
+         console.log("didn't pass evaluation");
+       }
+      break;
+    }
+    else{
+      alert("Please ensure that dosage, duration, and tablets have a valid value. Can't auto fill fileds without necessary input.");
+      break;
+    }
+   }
+   case"4 times daily":
+   {
+    alert("4 times daily");
+    if(dosage !="" && duration !="" && tablets !=0)
+    {
+      //let days = duration.split(" ");
+      let nwfreq=4;
+      let checknumofTabs = (parseInt(dosage) * nwfreq) * parseInt(days[0]); //shiould give you the number o tablets that you'll need from a total amount
+      console.log("Number of Tabs");
+      console.log(checknumofTabs);
+       if( Number(tablets) < Number(checknumofTabs))
+       {
+        console.log("Not enough tablets");
+        alert("Not Enough Tablets- So we auto adjusted the number of tablests for you");
+        //update the number of tableets
+        //formula is ((freq * dosage) * duration)
+        let actualtabs = (nwfreq * parseInt(dosage)) * parseInt(days[0]);
+        formData.value.quantity = actualtabs;
+       }
+       else{
+        //Do nothing for now 
+         console.log("didn't pass evaluation");
+       }
+      break;
+    }
+    else{
+      alert("Please ensure that dosage, duration, and tablets have a valid value. Can't auto fill fileds without necessary input.");
+      break;
+    }
+   }
+ }
+  //lets check and or define the other durations in order to map out the math correctly 
+  let iftimeinar =["as directed", "as needed", "as one does", "at bedtime", "before every meal", "bi-weekly","daily","daily as directed"];
 
-
-
+  if(iftimeinar.includes(frequency,0))
+  {
+    alert("Ha....its here"+" "+frequency);
+    let nwfreq = mapFrequency(frequency);
+    if(dosage !="" && duration !="" && Number(tablets) <=1)
+    {
+      //let days = duration.split(" ");
+      
+      let checknumofTabs = (parseInt(dosage) * Number(nwfreq)) * parseInt(days[0]); //shiould give you the number o tablets that you'll need from a total amount
+      console.log("Number of Tabs");
+      console.log(checknumofTabs);
+       if( Number(tablets) < Number(checknumofTabs))
+       {
+        console.log("Not enough tablets");
+        alert("Not Enough Tablets- So we auto adjusted the number of tablests for you");
+        //update the number of tableets
+        //formula is ((freq * dosage) * duration)
+        let actualtabs = (Number(nwfreq) * parseInt(dosage)) * parseInt(days[0]);
+        formData.value.quantity = actualtabs;
+       }
+       else{
+        //Do nothing for now 
+         console.log("didn't pass evaluation");
+       }
+      
+    }
+    else{
+      alert("Please ensure that dosage, duration, and tablets have a valid value. Can't auto fill fileds without necessary input.");
+     
+    }
+  }
+  
+}
+function mapFrequency(frequency:string)
+{
+  let freq=0;
+  switch(frequency)
+  {
+    case"as directed":
+    {
+      freq = 1;
+      return freq;
+      break;
+    }
+    case"as needed":
+    {
+      freq = 1;
+      return freq;
+      break;
+    }
+    case"as one dose":
+    {
+      freq = 1;
+      return freq;
+      break;
+    } 
+    case"at bedtime":
+    {
+      freq =1;
+      return freq;
+      break;
+    }
+    case"before every meal":
+    {
+      freq =1;
+      return freq;
+      break;
+    } 
+    case"bi-weekly":
+    {
+      freq =2;
+      return freq;
+      break;
+    }
+    case"daily":
+    {
+      freq =1;
+      return freq;
+      break;
+    }
+    case"daily as directed":
+    {
+      freq =1;
+      return freq;
+      break;
+    }
+  }
+}
 function resetForm() {
   formData.value = {
     medicationName: '',

@@ -252,8 +252,7 @@
                     backgroundColor:
                     med.status ==='hold'
                                   ? '#fff3cd'
-                                  : med.temporaryStatus ==='new'
-                                  ? '#869ccd'
+                                  
                                   : '#f8f9fa'
                   }"
 									>
@@ -392,8 +391,10 @@
 												? '#b3f0b3'
 												: timeObj.locked && timeObj.status === 'refused'
 												? '#f9b3b3'
-												: timeObj.locked &&  timeObj.status ==='hold'
+												: timeObj.locked &&  timeObj.status ==='hold' || med.status==='hold'
 												? '#fff3cd'
+                        : timeObj.status =='New' || med.medchangetype=='New'
+                        ? '#869dcd'
                         :timeObj.locked && timeObj.status ==='discontinued'
                         ? '#f8d7da'
 												: 'transparent'
@@ -1528,7 +1529,7 @@ async function loadMedications() {
         providerid:"123456789"
         }
       };
-    
+       // axios.post('http://20.231.24.137/med-admin/keyon/medlogcron.php', content) test cron job script
         axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
          .then(response => {        
           console.log('Data posted successfully:', response.data);  
@@ -2087,15 +2088,188 @@ function updateDateRange(startDate: Date, endDate: Date) {
     alert("Please select both a start and an end date.")
     return
   }
+  GetDynamicMedDates(startDate,endDate);
   dateList.value = []
   let cur = new Date(startDate)
   while (cur <= endDate) {
     dateList.value.push(normalizeToMidnight(cur))
+    //populateMedicationTable()
+   
     cur.setDate(cur.getDate() + 1)
   }
-  populateMedicationTable()
+  /* Now we are going to make a call the the backend using axios* -8/7/25 */
+  
+  //populateMedicationTableFilter()
 }
 
+async function GetDynamicMedDates(startDate:Date,endDate: Date){
+  let content = {
+          MedicationAdmin:{
+          API_Meth:"GetPatientsMedByID",
+          pid: "709081242",
+          accountId: "904575107",
+          providerid:"123456789",
+          startDate:startDate,
+          endDate:endDate
+          }
+        };
+    
+        axios.post('http://20.231.24.137/med-admin/keyon/tswebhook.php', content)
+         .then(response => {        
+          console.log('Data posted successfully:', response.data);  
+          if(response.data && response.data.records)
+          {
+            alert("Medication based on Date Range brought back  Successfully");
+            medications.value = response.data.records;
+            localStorage.setItem('medications', JSON.stringify(medications.value));// Did not do conditional logic here - just overwrite curren item - Can revisit later if needed
+           populateMedicationTableFilter()
+            return;
+          }
+          if(response.data && response.data.error)
+          {
+            alert("There was an issue with the Date Range Filter");
+            return;
+          }
+             
+         }) 
+         .catch(error => {       
+           if (axios.isAxiosError(error)) {  
+             console.error('Error posting data:', error.response?.data || error.message);     
+           // errorMessage.value = error.response?.data?.message || 'An error occurred while posting data.';  
+           } 
+            else {          
+              console.log('Unexpected error:', error);         
+              
+            }    
+            }); 
+}
+//--- Populate Medication Filter ------ //
+function populateMedicationTableFilter() {
+  if (!Array.isArray(medications?.value)) return;
+
+  const toYYYYMMDD = d => formatDateToYYYYMMDD(d); // assume exists
+  const isSameOrBefore = (d1, d2) => normalizeToMidnight(d1).getTime() <= normalizeToMidnight(d2).getTime();
+
+  medications.value.forEach(med => {
+    // parse yearmedtime safely
+    let yrmedtimeArray = [];
+    try {
+      yrmedtimeArray = Array.isArray(med.yearmedtime) ? med.yearmedtime : JSON.parse(med.yearmedtime || '[]');
+    } catch (e) {
+      yrmedtimeArray = [];
+    }
+
+    // build administrationTimes safely
+    med.administrationTimes = (Array.isArray(yrmedtimeArray) ? yrmedtimeArray
+      .map(x => x?.time)
+      .filter(Boolean)
+      : []
+    ).join(',');
+
+    if (med.prn) return; // skip PRN meds
+    if (!med.administrationTimes || med.administrationTimes === 'As needed') return;
+
+    if (!med.dates) med.dates = {};
+
+    // prepare acttakentimes array if present
+    const actTakeTimes = (med.takentimes && typeof med.takentimes === 'string')
+      ? med.takentimes.split(',').map(s => s.trim()).filter(Boolean)
+      : [];
+
+    // iterate dateList (assume dateList.value is an array of Date objects)
+    (dateList.value || []).forEach(d => {
+      const curdt = toYYYYMMDD(d);
+
+      // skip if discontinued before this date
+      if (med.discontinuedDate && normalizeToMidnight(d).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
+        return;
+      }
+
+      // ensure medic.administerdate is an array
+      const adminArr = Array.isArray(med.administerdate) ? med.administerdate : [];
+
+      // find entries that match curdt
+      const matches = adminArr.filter(entry => entry && entry.administerdate === curdt);
+
+      // prepare the static pieces for this med/date
+      const splitTimes = med.administrationTimes.split(',').map(t => t.trim()).filter(Boolean);
+      const dosageNum = parseInt(med.med_amount || '1', 10) || 1;
+
+      // default empty structure if no matches (we still want times listed)
+      if (matches.length === 0) {
+        // if there are no taken times, just list scheduled times
+        med.dates[curdt] = splitTimes.map(t => ({
+          time: t,
+          status: 'pending',
+          dosage: dosageNum,
+          earlyReason: '',
+          locked: false,
+          temporaryStatus: 'pending'
+        }));
+        return;
+      }
+
+      // for each matching admin entry, build time entries ? combine info sensibly
+      // (If there are multiple matches for the same date, we merge into a single array)
+      // We'll determine a single medTakenStatus / earlyReason / locked based on the first match with useful values
+      const primary = matches.find(m => m && m.status) || matches[0];
+
+      let medTakenStatusArr = [];
+      if (primary && primary.status) {
+        medTakenStatusArr = primary.status.split(',').map(s => s.trim()).filter(Boolean);
+      }
+
+      const medTakenStatus = medTakenStatusArr.length > 0 ? medTakenStatusArr[0] : null;
+      const earlyReason = primary?.earlyReason ?? '';
+      const locked = (medTakenStatus === 'taken' && actTakeTimes.length > 0) || medTakenStatus === 'hold';
+
+      // Build the med.dates entry depending on refused/taken/no taken times
+      if (!actTakeTimes.length) {
+        // no logged taken times, show scheduled times with status/pending or real status if present
+        med.dates[curdt] = splitTimes.map(t => ({
+          time: t,
+          status: medTakenStatus || 'pending',
+          dosage: dosageNum,
+          earlyReason,
+          locked,
+          temporaryStatus: medTakenStatus || 'pending'
+        }));
+      } else {
+        // there are actual taken times: annotate scheduled times with taken/refused info (use first actTakeTimes for message)
+        const takenLabel = medTakenStatus === 'refused' ? ` (refused at ${actTakeTimes[0]})`
+                          : medTakenStatus === 'taken' ? ` (taken at ${actTakeTimes[0]})`
+                          : '';
+
+        med.dates[curdt] = splitTimes.map(t => ({
+          time: t + takenLabel,
+          status: medTakenStatus || 'pending',
+          dosage: dosageNum,
+          earlyReason,
+          locked,
+          temporaryStatus: medTakenStatus || 'pending'
+        }));
+      }
+    }); // end dateList loop
+  }); // end medications loop
+
+  // Rebuild medicationStatus per date/time
+  (dateList.value || []).forEach(date => {
+    const dateStr = toYYYYMMDD(date);
+    if (!medicationStatus.value[dateStr]) {
+      medicationStatus.value[dateStr] = {};
+      medications.value.forEach((med, idx) => {
+        if (med.prn || !med.dates) return;
+        const dayTimes = med.dates[dateStr] || [];
+        dayTimes.forEach(timeObj => {
+          if (!medicationStatus.value[dateStr][timeObj.time]) {
+            medicationStatus.value[dateStr][timeObj.time] = {};
+          }
+          medicationStatus.value[dateStr][timeObj.time][idx] = med.earlyReason && med.earlyReason !== '' ? med.earlyReason : 'pending';
+        });
+      });
+    }
+  });
+}
 // ---------- POPULATE & STATUS ----------
 function populateMedicationTable() {
   console.log("keyon figure it out");
@@ -2157,12 +2331,34 @@ const length = ref<number>(0);
    console.log("I want to see whats in the med.date before we start assigning new values");
    console.log(med.dates);
    let acttakentimes = [];
-   if(med.takentimes !="" && med.takentimes !=null)
+   const todayst = new Date();
+   const options = { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' };
+   //const finaltoday = todayst.toLocaleDateString('en-US', options).split('/').reverse().join('-');
+   // Get the components of the date
+   const year = todayst.toLocaleString('en-US', { timeZone: 'America/New_York', year: 'numeric' });
+   const month = todayst.toLocaleString('en-US', { timeZone: 'America/New_York', month: '2-digit' });
+   const day = todayst.toLocaleString('en-US', { timeZone: 'America/New_York', day: '2-digit' });
+   // Construct the final date string in YYYY-MM-DD format
+   const finaltoday = `${year}-${month}-${day}`;
+  //alert(med.administerdate);
+   //alert(finaltoday +" "+ med.administerdate);
+   var i=0;
+   if(med.administerdate==null)
    {
+
+   }
+   else if(med.takentimes !="" && med.takentimes !=null && med.administerdate ==finaltoday){
+    
+   
     acttakentimes =med.takentimes.split(',');
-   } 
+    console.log("Taken times in not empty or null and the split value is below:");
+    console.log(acttakentimes);
+   }
    else{
-    //acttakentimes=[];
+    i++;
+     console.log("Administerdate failed this amount of times:"+" "+i);
+     console.log("Admin and Administerdate and Finaltoday date conditional logic if else if logic failed - Nothing is working Hah ha");
+     console.log(acttakentimes);
    }
   console.log("Actual Takne Time");
    console.log(acttakentimes);
@@ -2171,33 +2367,61 @@ const length = ref<number>(0);
   {
     med.rate='';
   }
-   console.log(acttakentimes);
-   let medtakenstats;
+   
+   let medtakenstats = [];
+  // const todaydt = new Date();
+  // const option2 = { timeZone: 'America/New_York', year: 'numeric', month: '2-digit', day: '2-digit' };
+   //const formattoday = todaydt.toLocaleDateString('en-US', option2).split('/').reverse().join('-');//todaydt.toISOString().split('T')[0]; 
+   const formattoday = `${year}-${month}-${day}`;
     dateList.value.forEach(d => {
      
-      const dStr = formatDateToYYYYMMDD(d)
+      const dStr = formatDateToYYYYMMDD(d); //dStr is a function to figure out what toda date is
+     
       if (med.discontinuedDate && normalizeToMidnight(d).getTime() > normalizeToMidnight(med.discontinuedDate).getTime()) {
         return
       }
       if (!med.dates![dStr]) {
         const splitted =med.administrationTimes.split(',').map(t => t.trim()); //med.administrationTimes
-        if(med.temporaryStatus !="" && med.temporaryStatus !=null)
+        if( med.temporaryStatus ==null && med.administerdate==null && med.administerdate ==formattoday)
         {
+         // medtakenstats =medtakenstats.push('no value');
+         console.log("TempSetatus and Admini date null conditional logic value below:");
+         console.log(med.temporaryStatus);
+        }
+        else if(med.temporaryStatus !=null && med.temporaryStatus !="" && med.temporaryStatus !=undefined && med.administerdate !=null && med.administerdate ==formattoday)
+        {
+         
             medtakenstats = med.temporaryStatus.split(',');
+            console.log("KMedtaken Status:"+" "+ medtakenstats[0]);
         }
         else{
-          medtakenstats =[];
+         // alert("I don't know why tempStatus condition keeps landing here");
+         // medtakenstats =[];
         }
        
        // alert(splitted);
         let lockedstatus =false;
-        medtakenstats.value = medtakenstats[0];
-       console.log("Taken:"+" "+medtakenstats.value);
-        if(medtakenstats.value=="taken")
+        //check to see if medtakenstat is an array and if not set as empty string 
+        if(medtakenstats !="" && medtakenstats !=undefined && medtakenstats !=null && medtakenstats.length > 0 )//!=undefined
+        {
+           medtakenstats = medtakenstats[0];//[0];
+          // alert("Absolute Med Taken Value status"+" "+ medtakenstats);
+        }
+        else{
+          medtakenstats="No taken stats";
+         // alert("Last Else conditional - Med taken status value"+" "+medtakenstats);
+        }
+       
+       console.log("Taken:"+" "+medtakenstats);
+        if(medtakenstats=="taken" && acttakentimes !=0 &&  med.administerdate !=null && med.administerdate==formattoday )
         {
           lockedstatus =true;
         }
-        if(medtakenstats.value=="hold")
+        
+       
+        console.log("Keyon Administer Date"+" "+ med.administerdate);
+        console.log("Final Date Var: "+" "+finaltoday);
+        if(medtakenstats=="hold" && med.administerdate !=null &&  med.administerdate==formattoday  || med.status=='hold')
         {
           lockedstatus = true;
         }
@@ -2208,31 +2432,70 @@ const length = ref<number>(0);
         
         console.log("Reason Trim Here"); //debug helpful
         console.log(med.earlyReason); 
+        let erReason =[];
+        let finalreason="";
+        if(med.earlyReason ==null  || med.earlyReason ==" " &&  med.administerdate==null && med.administerdate==formattoday)
+        {
+          console.log("Eearly value is...." +" "+erReason['I made it up so its null']);
+         // med.earlyReason=erReason;
+          //med.administerdate='0000-00-00';
+         
+        }
+        else if(med.earlyReason !=null  && med.administerdate !=null && med.administerdate==finaltoday)
+        {
+          
+          console.log("EarlySplit dates:/n/r" +"1st value:"+" "+ med.administerdate +"/n/r" +" "+ finaltoday);
+         erReason = med.earlyReason.split(',');
+         
+        }
+       
        
         const dosageNum = parseInt(med.med_amount || '1', 10);
-        if(acttakentimes.length ==0 )
+        //try new code 
+      /*  const maxLength = Math.max(splitted.length,acttakentimes.length,medtakenstats.length,erReason.length);
+       console.log(maxLength);
+        med.dates![dStr] = Array.from({ length: maxLength }, (_, index) => {    // Get each corresponding value from the arrays, safely handling undefined values    
+          const timeTaken = splitted[index] ? splitted[index].trim() : '';   
+          const logTime = acttakentimes[index] ? acttakentimes[index] : '';    
+          const status = medtakenstats[index] ? medtakenstats[index] : '';    
+          const earlyReasonValue = erReason[index] ? erReason[index] : '';    
+          return {        
+            time: `${timeTaken} (taken at ${logTime})`,        
+            status: status,        
+            dosage: dosageNum, // Assuming dosageNum is defined elsewhere        
+            earlyReason: earlyReasonValue,        
+            locked: lockedstatus, // Assuming lockedstatus is defined elsewhere        
+            temporaryStatus: status, // Assuming you want to use the same status here    
+          };
+        }).filter(entry => entry.time); // Filter to remove any entries without a valid time
+        */
+        if(acttakentimes.length ==0) //this is for items that have no taken times and we just want to list the med administration times
         {
+          /* Note
+          * can't add the administerdate !=null or empty because for med items that doesn't have a actual date this logic will fail and therefore
+           leave certain med items with no administration date at ALL */
             med.dates![dStr] = splitted.map(t => ({
             time:t,
-            status: medtakenstats.value,//med.temporaryStatus,
+            status: medtakenstats,//med.temporaryStatus,
             dosage: dosageNum,
-            earlyReason: med.earlyReason,
+            earlyReason: finalreason, // med.earlyReason,
             locked:lockedstatus,
-            temporaryStatus:medtakenstats.value
+            temporaryStatus:medtakenstats
           }));
         }
-        else if(medtakenstats.value=="refused" && acttakentimes.length !=0){
+        else{
+          if(medtakenstats=="refused" && acttakentimes.length !=0 && med.administerdate !=null && med.administerdate ==formattoday){
          
             med.dates![dStr] = splitted.map(t => ({
             time:t +" (refused at"+" "+acttakentimes[0]+")",
-            status: medtakenstats.value,//med.temporaryStatus,
+            status: medtakenstats,//med.temporaryStatus,
             dosage: dosageNum,
-            earlyReason: med.earlyReason,
+            earlyReason: finalreason,//med.earlyReason,
             locked:lockedstatus,
-            temporaryStatus:medtakenstats.value
+            temporaryStatus:medtakenstats
             }));
           
-           /* med.dates![dStr] = splitted.map(t => ({
+            /* med.dates![dStr] = splitted.map(t => ({
             time:t +" (taken at"+" "+acttakentimes[0]+")",
             status: medtakenstats.value,//med.temporaryStatus,
             dosage: dosageNum,
@@ -2242,27 +2505,23 @@ const length = ref<number>(0);
           }));*/
           console.log("Supposed to be here");
           console.log(med.dates[dStr]);
+            }
+
+            if(med.earlyReason !=null && med.earlyReason !=", " && medtakenstats=="taken" && med.administerdate !=null && med.administerdate==formattoday){
+              med.dates![dStr] = splitted.map(t => ({
+                time:t +" (taken at"+" "+acttakentimes+") ( "+med.earlyReason+" ))",
+                status: medtakenstats,//med.temporaryStatus,
+                dosage: dosageNum,
+                earlyReason: med.earlyReason,
+                locked:lockedstatus,
+                temporaryStatus:medtakenstats
+              }));
+            }
+
         }
-        else if(med.earlyReason !="" && med.earlyReason !=", " && medtakenstats.value=="taken"){
-          med.dates![dStr] = splitted.map(t => ({
-            time:t +" (taken at"+" "+acttakentimes[0]+") ( "+med.earlyReason+" ))",
-            status: medtakenstats.value,//med.temporaryStatus,
-            dosage: dosageNum,
-            earlyReason: med.earlyReason,
-            locked:lockedstatus,
-            temporaryStatus:medtakenstats.value
-          }));
-        }
-        else{
-          med.dates![dStr] = splitted.map(t => ({
-            time:t +" (taken at"+" "+acttakentimes[0]+")",
-            status: medtakenstats.value,//med.temporaryStatus,
-            dosage: dosageNum,
-            earlyReason: med.earlyReason,
-            locked:lockedstatus,
-            temporaryStatus:medtakenstats.value
-          }));
-        }
+         
+         
+        
        
       } 
       else{
