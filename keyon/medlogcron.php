@@ -8,7 +8,7 @@ require_once("processClass.php");
 
 //lets check todays's date | Set EST Time setting below
 date_default_timezone_set('America/New_York'); 
-$today = date("Y-m-d");
+$today = date("Y-m-d", strtotime('+1 day'));
 
 
 //now lets pass today's date to the process and SqlClass functions to get a list of all the patients active medications that are being logged

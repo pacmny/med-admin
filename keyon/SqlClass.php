@@ -334,6 +334,27 @@ class SQLData{
             return $msgar;
         }
     }
+    public function grabOldMedLogbyID($medentryid,$patientid,$ordernumber)
+    {
+      $sql="SELECT * FROM medicationlog WHERE medicationid =:medid AND patientid =:patid AND ordernumber =:ordnum";
+      $stmnt = $this->con->prepare($sql);
+      $stmnt->bindParam(":medid",$medentryid);
+      $stmnt->bindParam(":patid",$patientid);
+      $stmnt->bindParam(":ordnum",$ordernumber);
+      try{
+         if($stmnt->execute())
+         {
+          $records = $stmnt->fetchAll();
+          $msgar = array("status"=>"200-Successful","results"=>$records,"count"=>count($records));
+          return $msgar;
+         }
+      }
+      catch(PDOException $e)
+      {
+        $msgar = array("code"=>"700-SQL error","error"=>$e->__toString());
+        return $msgar;
+      }
+    }
     public function holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid)
     {
        //var_dump($medentryid);
@@ -521,6 +542,41 @@ class SQLData{
             $msgar = array("code"=>"700-Sql Error","message"=>$e->__toString());
             return $msgar;
         }
+    }
+    /*Medlogtimes with Status value Insert */
+    public function insertHoldMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$status,$provinitials,$provsignature,$medholdstdate,$medholdenddt,$medholdreason)
+    {
+       
+        $sql="INSERT INTO `medlogtimes`(`accountnumber`, `patientid`, `medid`, `administerdate`, `time`,`status`, `medholdreason`,`holdstartdate`,`holdenddate`, `providinitials`, `provsignature`) 
+        VALUES (:accnt,:patid,:med,:adminDt,:admintimes,:stat,:medhldreason,:medholdstdt,:medholdenddt,:provinit,:provsig)";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":med",$medid);
+        $stmnt->bindParam(":adminDt",$adminDate);
+        $stmnt->bindParam(":admintimes",$admintimes);
+        $stmnt->bindParam(":stat",$status);
+        $stmnt->bindParam(":medhldreason",$medholdreason);
+        $stmnt->bindParam(":medholdstdt",$medholdstdate);
+        $stmnt->bindParam(":medholdenddt",$medholdenddt);
+        $stmnt->bindParam(":provinit",$provinitials);
+        $stmnt->bindParam(":provsig",$provsignature);
+        try{
+
+            if($stmnt->execute())
+            {
+                $response ="Inserted";
+              
+                $msg = array("code"=>"200-Succuessfull","results"=>$response);
+                return $msg;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msg = array("code"=>"700-SQL Error","error"=>$e->__toString());
+            return $msg;
+        }
+
     }
     public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
     {
@@ -7715,7 +7771,7 @@ public function transformMedFilterData($records)
                 if($updatePendingMed["status"]=="Updated" && $updatePendingDiag["status"]=="Updated")
                 {
                     $msg = "Inserted";
-                    $result = array("result"=>$msg);
+                    $result = array("result"=>$msg,"ordernumber"=>$ordnum);
                     return json_encode($result);
                 }
             }

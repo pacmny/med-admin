@@ -802,31 +802,59 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$dtrange = json_encode($mmdata->MedicationAdmin->holdobjec->dateRange);//should be an array 
 	$medtimes = json_encode($mmdata->MedicationAdmin->holdobjec->times);//should be an array also 
 	$meadchangereason = $mmdata->MedicationAdmin->holdobjec->reason; //Reason we held the medication 
-	$medchangedates = $mmdata->MedicationAdmin->holdobjec->
-	$holdtype = $mmdata->MedicationAdmin->holdobjec->type; //Hold ty
+	$medchangedates = $mmdata->MedicationAdmin->holdobjec;
+	$holdtype = $mmdata->MedicationAdmin->holdobjec->type; //Hold ty (specific or all or the values being sent over)
 	$medentryid = $mmdata->MedicationAdmin->holdobjec->medentryid;
-	//var_dump($medentryid);
+	/* Need to now use Json decode to turn cast type or turn the string array into actual arrays so that I can access their values*/
+  //$medtimes = json_decode($medtimes,true); //Will need to be formated because they are in UTC Date Time Format 
+ // $dtrange = json_decode($dtrange,true); Not here because medication table needs this in JSON format. Move this down inside the switch case loop
+  //var_dump($dtrange);exit();
+ // var_dump($dtrange); debug
+  //var_dump($medtimes); debug
+ // var_dump($holdtype); debug
+  //$graboldmedlog = $processData->grabOldMedLogbyID($medentryid,$patientid,$ordernumber); 
+  //var_dump($graboldmedlog); exit();
+ /* $yrdmed = json_decode($graboldmedlog["results"][0]["yearmedtime"]);
+  var_dump($yrdmed);
+  foreach($medtimes as $m)
+  {
+    foreach($yrdmed as $y)
+    {
+      // its in the array so lets update the status and hold that time 
+      if($y->time ==$m)
+      {
+       var_dump("lets insert the new medtime entry");//$y->status=$medstatus;
+      }
+     // $nwjsondata[] = array("time"=>$m,"dosage"=>)
+
+    }
+  } */
+  
+ // exit();
 	$medchangestat = $mmdata->MedicationAdmin->holdobjec->status;
+  $medarchivestat =$medchangestat."-archive";
 	//var_dump($medchangestat);exit();
 	//find the medication id of the active medication by name 
-	$findmedid = $processData->changedMedicationStatusByAPMID($patientid,$accountnumber,$medname,$medentryid,$medchangestat,$meadchangereason,$medtimes,$dtrange);
+	$findmedid = $processData->changedMedicationStatusByAPMID($patientid,$accountnumber,$medname,$medentryid,$medarchivestat,$meadchangereason,$medtimes,$dtrange);
 	//var_dump($findmedid);
 	if(!empty($findmedid) && $findmedid["results"]=="Updated")
 	{
 		//Now lets update the automated framework (orders,)
-		$holdorder = $processData->HoldOrderByOrdnumPatId($accountnumber,$patientid,$ordernumber,$medchangestat);
+		$holdorder = $processData->HoldOrderByOrdnumPatId($accountnumber,$patientid,$ordernumber,$medarchivestat);
 		//var_dump($holdorder);
 		if(!empty($holdorder) && $holdorder["results"]=="Updated")
 		{
 			//now update the medicationlog table 
-			$updatemedlog = $processData->holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid);
+			$updatemedlog = $processData->holdMedlogstatus($accountnumber,$patientid,$medarchivestat,$medentryid);
 			//var_dump($updatemedlog);
 			if(!empty($updatemedlog) && $updatemedlog["results"]=="Updated")
 			{
 				/* Now Lets Create a new Change Order to Actually Hold the Order (Prev code just updated the prev order status) */
 				$cloneprevorder = $processData->cloneOrderInfo($accountnumber,$patientid,$ordernumber);
 				$graboldmedlist = $processData->grabOldMedListByMedId($accountnumber,$ordernumber,$medentryid,$patientid);
-        //var_dump($graboldmedlist);
+        $graboldmedlog = $processData->grabOldMedLogbyID($medentryid,$patientid,$ordernumber); //grab old medlog data to make a clone/copy
+        //var_dump($graboldmedlog);
+      
 				$getNum = $processData->GetGlobalOrderNumber();
 				$ordsendtophyscians="1";
 				$verbalorder="1";
@@ -865,13 +893,131 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
             //var_dump($sendemail);
 						//Now Add the New Medication that corresponds with the new Order that was created (medID and Order ID should match n order for the admin app to pull )
 						/*Step 5 We need to Add a new Medications with the updated times and frequency here */
+            $medendDt="1971-01-01";
             $insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
 						$graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$graboldmedlist["results"][0]["med_frequency"],$graboldmedlist["results"][0]["med_amount"],
 						$medname,$graboldmedlist["results"][0]["instruction"],$ordstatus,$graboldmedlist["results"][0]["via_med"],$graboldmedlist["results"][0]["rate"],$graboldmedlist["results"][0]["ivhowlong"],$$graboldmedlist["results"][0]["fluidType"],
-						$graboldmedlist["results"][0]["totalVolum"],$graboldmedlist["results"][0]["totalVolumnUnit"],$graboldmedlist["results"][0]["ivstarttime"],$graboldmedlist["results"][0]["ivendtime"]);
+						$graboldmedlist["results"][0]["totalVolum"],$graboldmedlist["results"][0]["totalVolumnUnit"],$graboldmedlist["results"][0]["ivstarttime"],$graboldmedlist["results"][0]["ivendtime"],$medendDt);
 						if($insertmed["result"]=="Inserted")
 						{
 							//All is done and Add Successfully
+              /* Lets add A new MediationLog Entry - Iet shold Match the new Medicationid that was created when a new Medication item was added to the */ 
+              $todayadministerdate = date("Y-m-d"); //New Administer date
+              $medstatus = "hold-medtime"; //New Status
+              $medlogcurstatus="pending";//could be pending 
+              $addmedlogentry = $processData->InsertMedLog( $graboldmedlog["results"][0]["accountnumber"],$graboldmedlog["results"][0]["patientid"],$graboldmedlog["results"][0]["patientname"],$getNum["ordernumber"],
+              $graboldmedlog["results"][0]["providername"],$graboldmedlog["results"][0]["providerid"],$insertmed["newEntryId"],$todayadministerdate,$graboldmedlog["results"][0]["time"],
+              $medlogcurstatus,$graboldmedlog["results"][0]["yearmedtime"],$graboldmedlog["results"][0]["notes"],$graboldmedlog["results"][0]["providersignature"],$graboldmedlog["results"][0]["provinitials"]);
+              /*8/16/25 - Checking to see if Medlog entry exist and if so lets clone and create a new */ 
+              if($addmedlogentry["results"]=="Inserted")
+              {
+                 //lets add a new medlog and medlogtimes entries with the appropriate hold time or times 
+                 /*--Medlogtime Entry - Check Hold type and execute appropriate code */ 
+                 switch($holdtype)
+                 {
+                  case"specific":
+                    {
+                      $yrdmed = json_decode($graboldmedlog["results"][0]["yearmedtime"]);
+                      $medholdstdate="";
+                      $medholdenddt="";
+                      $formatstartdate="";
+                      $formatenddate="";
+                      $dtrange = json_decode($dtrange,true);//should now be an array
+                      $medtimes = json_decode($medtimes,true);//should now be an array
+                      $adminDate = date('Y-m-d');
+                      $getinit = explode(" ",$graboldmedlog["results"][0]["providersignature"]);
+                      $finalInit = substr($getinit[0],1)." ".substr($getinit[1],1);
+                      if(isset($dtrange) && is_array($dtrange))
+                      {
+                        $medholdstdate = $dtrange[0];
+                        $formatstartdate = new DateTime($medholdstdate);
+                        $formatstartdate = $formatstartdate->format('Y-m-d');
+                        $medholdenddt = $dtrange[1];
+                        $formatenddate= new DateTime($medholdenddt);
+                        $formatenddate = $formatenddate->format('Y-m-d');
+                      }
+                      foreach($medtimes as $m)
+                      {
+                        foreach($yrdmed as $y)
+                        {
+                          // its in the array so lets update the status and hold that time 
+                          if($y->time ==$m)
+                          {
+                          // var_dump("lets insert the new medtime entry");//$y->status=$medstatus;
+                            $insertnwtime  = $processData->insertHoldMedlogtableInfo($accountnumber,$patientid,$insertmed["newEntryId"],$adminDate,$m,
+                            $medstatus,$finalInit,$graboldmedlog["results"][0]["providersignature"],$formatstartdate,$formatenddate,$meadchangereason);
+                            if($insertnwtime["results"]=="Inserted")
+                            {
+
+                            }
+                            else{
+                              $ermsg = array("error"=>$insertnwtime);
+                              print(json_encode($ermsg,JSON_PRETTY_PRINT));
+                            }
+                          }
+                         // $nwjsondata[] = array("time"=>$m,"dosage"=>)
+                    
+                        }
+                      }
+                      $upar = array("status"=>"200-Successfull","results"=>"Updated");
+                      print(json_encode($upar,JSON_PRETTY_PRINT));
+                      break;
+                    }
+                  case"all":
+                    {
+                      $yrdmed = json_decode($graboldmedlog["results"][0]["yearmedtime"]);
+                      $medholdstdate="";
+                      $medholdenddt="";
+                      $formatstartdate="";
+                      $formatenddate="";
+                      $dtrange = json_decode($dtrange,true);//should now be an array
+                      $medtimes = json_decode($medtimes,true);//should now be an array
+                      $adminDate = date('Y-m-d');
+                      $getinit = explode(" ",$graboldmedlog["results"][0]["providersignature"]);
+                      $finalInit = substr($getinit[0],1)." ".substr($getinit[1],1);
+                      if(isset($dtrange) && is_array($dtrange))
+                      {
+                        $medholdstdate = $dtrange[0];
+                        $formatstartdate = new DateTime($medholdstdate);
+                        $formatstartdate = $formatstartdate->format('Y-m-d');
+                        $medholdenddt = $dtrange[1];
+                        $formatenddate= new DateTime($medholdenddt);
+                        $formatenddate = $formatenddate->format('Y-m-d');
+                      }
+                       //loop through all the times and and entry and auto automatically add medstatus to each entry 
+                       foreach($yrdmed as $y)
+                        {
+                          // Insert the new time and entry and status  
+                          $insertnwtime  = $processData->insertHoldMedlogtableInfo($accountnumber,$patientid,$insertmed["newEntryId"],$adminDate,$y->time,
+                            $medstatus,$finalInit,$graboldmedlog["results"][0]["providersignature"],$formatstartdate,$formatenddate,$meadchangereason);
+                            if($insertnwtime["results"]=="Inserted")
+                            {
+
+                            }
+                            else{
+                              $ermsg = array("error"=>$insertnwtime);
+                              print(json_encode($ermsg,JSON_PRETTY_PRINT));
+                            }
+                        }
+                        $upar = array("status"=>"200-Successfull","results"=>"Updated");
+                      print(json_encode($upar,JSON_PRETTY_PRINT));
+                      break;
+                    }
+                 }
+               
+               
+                 //now update the JSON data to reflect the data 
+                 
+
+              }
+              else{
+                //the hold type is all and we can go in and update all time entries in the yrdmedtime value to hold status 
+                
+                   $msg="Meciation Med Log Table didn't insert successfully. Please check logs - Internal issue";
+                   $errorar = array("error"=>"Internal Error with Code","message"=>$msg,"errorMsg"=>$addmedlogentry);
+                   print(json_encode($errorar,JSON_PRETTY_PRINT));
+                
+              }
 							print(json_encode($updatemedlog,JSON_PRETTY_PRINT));
 						}
 					}
@@ -881,7 +1027,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				
 			}
 			else{
-				print(json_encode($updatemedlog,JSON_PRETTY_PRINT));
+				print(json_encode($updatemedlog,JSON_PRETTY_PRINT)); //this should print out the error if it reaches this far
 			}
 			
 		}

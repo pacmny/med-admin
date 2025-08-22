@@ -287,6 +287,11 @@ public function grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$p
 	$getmedlist = $this->sclass->grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$patientid);
 	return $getmedlist;
 }
+public function grabOldMedLogbyID($medentryid,$patientid,$ordernumber)
+{
+  $getmedloglist = $this->sclass->grabOldMedLogbyID($medentryid,$patientid,$ordernumber);
+  return $getmedloglist;
+}
 public function InsertMedLog( $accountnumber,$patientid,$patientname,$ordernumber,
 $providername,$providerid,$medicationid,$administrated_at,$time,$status,$yearmedtime,$notes,$providersignature,$provinitials)
 {
@@ -343,6 +348,13 @@ public function checklastmedlogtime($medid,$accountnumber)
 {
 	$getlastime = $this->sclass->checklastmedlogtime($medid,$accountnumber);
 	return $getlastime;
+}
+public function insertHoldMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$medstatus,$provinitials,$provsignature,$medholdstdate,$medholdenddt,$medholdreason)
+{
+	require_once("SqlClass.php");
+	$sclass = new SQLData();
+	$findpharm = $sclass->insertHoldMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$medstatus,$provinitials,$provsignature,$medholdstdate,$medholdenddt,$medholdreason);
+	return $findpharm;
 }
 public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
 {
