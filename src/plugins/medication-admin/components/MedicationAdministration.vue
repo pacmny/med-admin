@@ -393,6 +393,8 @@
 												? '#f9b3b3'
 												: timeObj.locked &&  timeObj.status ==='hold' || med.status==='hold'
 												? '#fff3cd'
+                        : timeObj.locked &&  timeObj.status ==='hold-medtime' || med.status==='hold-medtime'
+												? '#fff3cd'
                         : timeObj.status =='New' || med.medchangetype=='New'
                         ? '#869dcd'
                         :timeObj.locked && timeObj.status ==='discontinued'
@@ -2416,6 +2418,18 @@ function populateMedicationTable() {
                         med.dates![dStr] = splitted.map((t, index) => ({
                           
                             time: `${t} (taken at ${acttakentimes[index]}) (${medearlysplit[index]})`,
+                            status: medsplitted[index] || '',
+                            dosage: dosageNum,
+                            earlyReason: medearlysplit[index],
+                            locked: lckstat[index],
+                            temporaryStatus: medsplitted[index]
+                        }));
+                    }
+                    else if (medtakenstats === "taken" || medtakenstats=="hold" || medtakenstats =="hold-medtime") {
+                     // alert(medsplitted[idx]);
+                        med.dates![dStr] = splitted.map((t, index) => ({
+                          
+                            time:t,
                             status: medsplitted[index] || '',
                             dosage: dosageNum,
                             earlyReason: medearlysplit[index],
