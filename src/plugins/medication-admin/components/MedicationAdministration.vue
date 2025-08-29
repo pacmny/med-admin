@@ -1528,7 +1528,8 @@ async function loadMedications() {
         API_Meth: "GetPatientMeds",
         pid: "709081242",
         accountId: "904575107",
-        providerid:"123456789"
+        providerid:"123456789",
+        proflicensenumber:"609382"
         }
       };
        // axios.post('http://20.231.24.137/med-admin/keyon/medlogcron.php', content) test cron job script

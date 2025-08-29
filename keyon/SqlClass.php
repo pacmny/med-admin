@@ -24,6 +24,7 @@ class SQLData{
     }
     public function grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$patientid)
     {
+     
         $sql="SELECT * FROM medications WHERE medentryid=:medid AND accountnumber=:accnt AND patient_id=:patid AND order_number=:ordnumber";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":medid",$medicationid);
@@ -85,6 +86,7 @@ class SQLData{
     }
     public function cloneOrderInfo($accountnumber,$patientid,$ordernumber)
     {
+        
         $sql="SELECT * FROM orders WHERE ordernumber=:ordnumb AND accountnumber=:accnt AND patientid=:patid LIMIT 1";
         $stmnt= $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
@@ -966,6 +968,27 @@ class SQLData{
             $msg = array("code"=>"700-Sql","error"=>$errmsg);
             return $msg;
         }
+    }
+    public function FindOrderNumberByMedId($patientid,$accountnumber,$medid)
+    {
+      $sql="SELECT * FROM `medications` WHERE patient_id=:patid AND accountnumber=:accnt AND medentryid=:medid";
+      $stmnt = $this->con->prepare($sql);
+      $stmnt->bindParam(":patid",$patientid);
+      $stmnt->bindParam(":accnt",$accountnumber);
+      $stmnt->bindParam(":medid",$medid);
+      try{
+         if($stmnt->execute())
+         {
+          $records = $stmnt->fetchAll();
+          $msg = array("status"=>"200-Successfull","results"=>$records,"count"=>count($records));
+          return $msg;
+         }
+      }
+      catch(PDOException $e)
+      {
+        $msg = array("status"=>"700-SQL","error"=>$e->__toString());
+        return $msg;
+      }
     }
     public function GetOrdersNumber()
     {
@@ -2770,6 +2793,61 @@ class SQLData{
         $ermsg = $e->__toString();
         $ermsgar = array("code"=>"SQL-700","message"=>"SQL Error","error"=>$ermsg);
         return $ermsgar;
+    }
+  }
+  //Grabbing all log entries that have a medication time hold (8/25/25)
+  public function CheckHoldMedDurationDateByAccntPatID($accountnumber,$patientid)
+  {
+    //checking to make sure Grab meds on hold by patient and account number 
+    $sql="SELECT * FROM medlogtimes
+    LEFT JOIN medicationlog ON medicationlog.medicationid = medlogtimes.medid
+    WHERE medlogtimes.patientid =:patid 
+    AND medlogtimes.accountnumber =:accnt 
+    AND medlogtimes.status='hold-medtime' 
+    AND medicationlog.status='Active' ";
+    $stmnt = $this->con->prepare($sql);
+    $stmnt->bindParam(":patid",$patientid);
+    $stmnt->bindParam(":accnt",$accountnumber);
+    try{
+        if($stmnt->execute())
+        {
+          $records = $stmnt->fetchAll();
+          $msgar = array("status"=>"200-Successfull","results"=>$records);
+          return $msgar;
+        }
+    }
+    catch(PDOException $e)
+    {
+      $msgar = array("error"=>"700-sql error","message"=>$e->__toString());
+      return $msgar;
+    }
+    
+  }
+  //Updating the Medhold Status column after duration has ended
+  public function UpdsateHoldMedTimesDuration($accountnumber,$patientid,$logid,$status)
+  {
+    
+    $sql="UPDATE `medlogtimes`
+    SET `medlogtimes`.`status`=:stat 
+    WHERE `medlogtimes`.patientid=:patid
+    AND `medlogtimes`.accountnumber=:accnt
+    AND `medlogtimes`.logid=:lid";
+    $stmnt = $this->con->prepare($sql);
+    $stmnt->bindParam(":patid",$patientid);
+    $stmnt->bindParam(":accnt",$accountnumber);
+    $stmnt->bindParam(":lid",$logid);
+    $stmnt->bindParam(":stat",$status);
+    try{
+      if($stmnt->execute())
+      {
+        $msg="Updated";
+        $msgar = array("status"=>"200-Successfull","results"=>$msg);
+        return $msgar;
+      }
+    }
+    catch(PDOException $e){
+      $msgar = array("status"=>"700-SQL","error"=>$e->__toString());
+      return $msgar;
     }
   }
   //Find MedbyName and Active Status for AdministrationApplication 
@@ -6418,7 +6496,8 @@ public function transformMedFilterData($records)
     }
     public function GetProviderInformation($providerid)
     {
-        $sql="Select * FROM providers WHERE providerid=:pid";
+     
+        $sql="SELECT * FROM `providers` WHERE providerid=:pid";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":pid",$providerid);
         try{

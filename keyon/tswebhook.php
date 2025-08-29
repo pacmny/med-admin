@@ -631,8 +631,130 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
     $accountnumber = $mmdata->MedicationAdmin->accountId;
     $npinumber = $mmdata->MedicationAdmin->providerid;
     $patientid = $mmdata->MedicationAdmin->pid;
-    //$providerid = $mmdata->MedicationAdmin->providerid;
-   
+    $proflicense = $mmdata->MedicationAdmin->proflicensenumber;
+    /*
+    8/25/25 - Add code that looks for holdtimes and evaluates date ranges to see if the hold needs to be updated 
+    */
+    $checkmedtimeshold = $processData->CheckHoldMedDurationDateByAccntPatID($accountnumber,$patientid);
+    //var_dump($checkmedtimeshold);
+    if(is_array($checkmedtimeshold) && !empty($checkmedtimeshold) && isset($checkmedtimeshold["results"]))
+    {
+      $completeitems = array();
+      $medIDchangeorder = array();
+      foreach($checkmedtimeshold["results"] as $mtime)
+      {
+          //fid hold dates (start and end) and pass them to the processClass to be evaluated to see if they are within 1 da of expiring or if it actualy expired
+        $holdstdate = $mtime["holdstartdate"];
+        $holdenddate = $mtime["holdenddate"];
+        $medid = $mtime["medid"];
+        $logtimeId = $mtime["logid"];
+        $holdendDate = $mtime["holdenddate"];
+        $evaluate = $processData->evalholduration($holdstdate,$holdenddate,$medid,$holdendDate);
+        //var_dump($evaluate);
+        //set multi-demensional array  to house times, ordernum, for med times that will need to be update and Updated. SHoud remi the issue
+        if(!empty($evaluate)&& is_array($evaluate))
+        {
+          switch($evaluate["holdstatus"])
+          {
+            case"complete":
+              {
+                  //update the medlogtimes DB to resume Medication | (Automoae flow - Update old and create new order
+                 
+                  $medarchivestat ="hold-archive";
+                  //update indiv logtime entry 
+                  $updtTimeEntry = $processData->UpdateIndivLogTimes($logtimeId,$accountnumber,$medid,$patientid,$medarchivestat);//Update with params passed over 
+                  if(isset($updtTimeEntry["results"]) && $updtTimeEntry["results"]=="Updated")
+                  {
+                    $storedId = $logId."-".$medid;
+                    array_push($completeitems,$storedId); // #of items in the array should tell us how many items were updated
+                    if(!in_array($medid,$medIDchangeorder))
+                    {
+                      array_push($medIDchangeorder,$medid);//push in the med ID's that need a change order due to the Hold Expiring
+                      break;
+                    }
+                  }
+                  else{
+                    //there was an error so we may need to log and or notify someone later 
+                    var_dump($updtTimeEntry);
+                    break;
+                  }
+
+                 
+                 // var_dump($updatesystem);exit();
+                  break;
+              }
+            case"not-complete":
+              {
+                //do nothing because the medication is still on hold 
+                break;
+              }
+            case"1 day before complete":
+              {
+                 //Send out Email/Texst notifiction 1. Get Provider Info
+                 $getprovInfo = $processData->LookUpInternalProvider($npinumber);
+                 if(isset($getprovInfo["provider"]) && ! empty($getprovInfo["provider"]))
+                 {
+                   $getprovEmail = $getprovInfo["provider"][0]["email"];
+                   $provfname = $getprovInfo["provider"][0]["firstname"];
+                   $provlname = $getprovInfo["provider"][0]["lastname"];
+                   $provfullname = $provfname." ".$provlname;
+                   if($getprovEmail !=null || $getprovEmail !="")
+                   {
+                    //Send email - Iet works commenting it out while I work on the actual update code. 
+                    $sendemail = $processData->OnDayMedHoldEmailTemplate($patientid,$getprovEmail,$provfullname,$medid,$accountnumber);
+                    break;
+                   
+                   }
+                 }
+                 else{
+                   //send system admin an email that a notification couldn't be sent due to the provider info not being correct. We'll handle this later
+                   //do nothing for now;
+                   var_dump("do nothing");
+                   break;
+                 }
+                // var_dump($getprovInfo);exit();
+                break;
+              }
+          }
+          
+        }
+      }
+     //How we can check the medid and ordernum in completeitems and autoupdate only items in the arary
+     $updateCO = array();
+     $cosuccessar = array();//successfull system automated updates array
+      foreach($medIDchangeorder as $up)
+      {
+        if(!in_array($up,$updateCO))
+        {
+          
+          //run automated CO Process & update updateCO changeorder 
+          array_push($updateCO,$up); //updating the holding array that should be evaluated during the nexst loop
+           $updatesystem = $processData->findOrderNumberByMedId($patientid,$accountnumber,$up); 
+         
+          if(is_array($updatesystem["results"]) && !empty($updatesystem["results"]))
+          {
+            $ordernum = $updatesystem["results"][0]["order_number"];
+            $medname = $updatesystem["results"][0]["medname"];
+            $medidd = $updatesystem["results"][0]["medentryid"];
+            //Now Update/Hold Order 
+           $autoupdate = $processData->AutoChangeMedHoldTimes($ordernum,$patientid,$accountnumber,$medarchivestat,$medidd,$medname,$proflicense);
+          
+            if($autoupdate["status"]=="Inserted")
+            {
+              //var_dump("Auto Update Successfull");
+              array_push($cosuccessar,"Inserted");
+              
+            }
+            else{
+              //there is an error- We don't want to stop the over function of the MEdAdminApp - so we need to log error 
+              var_dump($autoupdate);
+            }   
+          
+          }
+        }
+      }
+    }
+   /* Now that Hold Status Actions should be completed - Lets now look up all Active Meds and Send them Client side*/
     $findactivemedorders = $processData->findpatientactiveMedOrders($accountnumber,$npinumber,$patientid);
     //var_dump($findactivemedorders);
 	if(count($findactivemedorders["records"]) >=1)
