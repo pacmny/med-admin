@@ -736,8 +736,9 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
             $ordernum = $updatesystem["results"][0]["order_number"];
             $medname = $updatesystem["results"][0]["medname"];
             $medidd = $updatesystem["results"][0]["medentryid"];
+            $setnewstatus="hold-archive";
             //Now Update/Hold Order 
-           $autoupdate = $processData->AutoChangeMedHoldTimes($ordernum,$patientid,$accountnumber,$medarchivestat,$medidd,$medname,$proflicense);
+           $autoupdate = $processData->AutoChangeMedHoldTimes($ordernum,$patientid,$accountnumber,$setnewstatus,$medidd,$medname,$proflicense);
           
             if($autoupdate["status"]=="Inserted")
             {
@@ -927,6 +928,12 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 	$medchangedates = $mmdata->MedicationAdmin->holdobjec;
 	$holdtype = $mmdata->MedicationAdmin->holdobjec->type; //Hold ty (specific or all or the values being sent over)
 	$medentryid = $mmdata->MedicationAdmin->holdobjec->medentryid;
+  $holdDiscstat = $mmdata->MedicationAdmin->holdobjec->status;
+  /* 
+  * 9/2/5 Addeding Additional Code to check for Discontinue Status and if so Rund a different function 
+  */
+ //var_dump($holdDiscstat);
+  //var_dump($holdtype);exit();
 	/* Need to now use Json decode to turn cast type or turn the string array into actual arrays so that I can access their values*/
   //$medtimes = json_decode($medtimes,true); //Will need to be formated because they are in UTC Date Time Format 
  // $dtrange = json_decode($dtrange,true); Not here because medication table needs this in JSON format. Move this down inside the switch case loop
@@ -954,9 +961,16 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
   
  // exit();
 	$medchangestat = $mmdata->MedicationAdmin->holdobjec->status;
-  $medarchivestat =$medchangestat."-archive";
+  if($medchangestat=="hold")
+  {
+    $medarchivestat =$medchangestat."-archive";
+  }
+  else{
+    $medarchivestat = "discontinue";
+  }
+  
 	//var_dump($medchangestat);exit();
-	//find the medication id of the active medication by name 
+	//Updating the current Medication Table by medentryid,patientid and status 
 	$findmedid = $processData->changedMedicationStatusByAPMID($patientid,$accountnumber,$medname,$medentryid,$medarchivestat,$meadchangereason,$medtimes,$dtrange);
 	//var_dump($findmedid);
 	if(!empty($findmedid) && $findmedid["results"]=="Updated")
@@ -994,7 +1008,22 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				$ordertime = date('H:i:s');
 				$ordertype ="Nurses Order";
 				$abndelivered=0;
-				$ordstatus="Hold";
+        if($medchangestat=="hold")
+        {
+          $ordstatus="Hold";
+        }
+        else{
+          //this should be discontinue as the alternative to hold
+          if($holdtype=="specific")
+          {
+             $ordstatus="Active";
+          }
+          else{
+              $ordstatus="Discontinue";
+          }
+          
+        }
+				
 				$provsigdate ="1971-01-01";
       
 				$ordar = array("accountnumber"=>$accountnumber,"ordDate"=>$verbalorderdt,"ordTime"=>$ordertime,"ordtype"=>$ordertype,"abndeliv"=>$abndelivered,"readback"=>$cloneprevorder["records"][0]["readorderback"],
@@ -1011,7 +1040,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 					if($jdata->result == "Inserted")
 					{
 						//Send Email Notification 
-						$sendemail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
+						$sendemail = $processData->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);//conditional language to send out CO or Discontiue Email needs to be added
             //var_dump($sendemail);
 						//Now Add the New Medication that corresponds with the new Order that was created (medID and Order ID should match n order for the admin app to pull )
 						/*Step 5 We need to Add a new Medications with the updated times and frequency here */
@@ -1025,8 +1054,25 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 							//All is done and Add Successfully
               /* Lets add A new MediationLog Entry - Iet shold Match the new Medicationid that was created when a new Medication item was added to the */ 
               $todayadministerdate = date("Y-m-d"); //New Administer date
-              $medstatus = "hold-medtime"; //New Status
-              $medlogcurstatus="pending";//could be pending 
+             
+              if($medchangestat=="hold")
+              {
+                 $medstatus = "hold-medtime"; //New Status
+                $medlogcurstatus="pending";//could be pending 
+              }
+              else{
+                $medstatus="discontinue-medtime";
+                if($holdtype=="specific") //if specific that means we are dc a specifc time and not the entire medication
+                {
+                  
+                  $medlogcurstatus="pending";
+                }
+                else{
+                  $medlogcurstatus="discontinue";
+                }
+                
+              }
+              
               $addmedlogentry = $processData->InsertMedLog( $graboldmedlog["results"][0]["accountnumber"],$graboldmedlog["results"][0]["patientid"],$graboldmedlog["results"][0]["patientname"],$getNum["ordernumber"],
               $graboldmedlog["results"][0]["providername"],$graboldmedlog["results"][0]["providerid"],$insertmed["newEntryId"],$todayadministerdate,$graboldmedlog["results"][0]["time"],
               $medlogcurstatus,$graboldmedlog["results"][0]["yearmedtime"],$graboldmedlog["results"][0]["notes"],$graboldmedlog["results"][0]["providersignature"],$graboldmedlog["results"][0]["provinitials"]);
@@ -1077,8 +1123,22 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
                               print(json_encode($ermsg,JSON_PRETTY_PRINT));
                             }
                           }
+                          else{
+                            //Insert medlogtime with no Hold status | Should add the reamining logtimes that matches the yearmedtime
+                            $medstatus="";//were going to go with an empty string for now | May need to change this to Null later 
+                            $insertnwtime  = $processData->insertHoldMedlogtableInfo($accountnumber,$patientid,$insertmed["newEntryId"],$adminDate,$y->time,
+                            $medstatus,$finalInit,$graboldmedlog["results"][0]["providersignature"],$formatstartdate,$formatenddate,$meadchangereason);
+                            if($insertnwtime["results"]=="Inserted")
+                            {
+
+                            }
+                            else{
+                              $ermsg = array("error"=>$insertnwtime);
+                              print(json_encode($ermsg,JSON_PRETTY_PRINT));
+                            }
+                          }
                          // $nwjsondata[] = array("time"=>$m,"dosage"=>)
-                    
+                            
                         }
                       }
                       $upar = array("status"=>"200-Successfull","results"=>"Updated");

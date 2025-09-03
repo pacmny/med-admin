@@ -153,6 +153,11 @@ public function holdMedlogstatus($accountnumber,$patientid,$medchangestat,$meden
 	$updatestat = $this->sclass->holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid);
 	return $updatestat;
 }
+public function changeMedicationStatusBy3Parms($accountnumber,$patientid,$medentryid,$nwstatus)
+{
+  $sr = $this->sclass->changeMedicationStatusBy3Parms($accountnumber,$patientid,$medentryid,$nwstatus);
+  return $sr;
+}
 public function HoldOrderByOrdnumPatId($accountnumber,$pid,$ordernum,$status)
 {
 	$holdorder = $this->sclass->HoldOrderByOrdnumPatId($accountnumber,$pid,$ordernum,$status);
@@ -442,7 +447,7 @@ public function findOrderNumberByMedid($patientid,$accountnumber,$medid)
 }
 public function UpdateIndivLogTimes($logtime,$accntnumber,$medid,$patientid,$status)
 {
-   $updattetime = $this->sclass->UpdsateHoldMedTimesDuration($accntnumber,$patientid,$logtime,$medid,$status);
+   $updattetime = $this->sclass->UpdsateHoldMedTimesDuration($accntnumber,$patientid,$logtime,$status);
    return $updattetime;
 }
 public function AutoChangeMedHoldTimes($ordernumber,$patientid,$accountnumber,$medarchivestat,$medentryid,$medname,$proflicense)
@@ -451,6 +456,10 @@ public function AutoChangeMedHoldTimes($ordernumber,$patientid,$accountnumber,$m
   //var_dump($holdorder);
   if(!empty($holdorder) && $holdorder["results"]=="Updated")
   {
+    /* 9/2/25 We forgot to Update the Medication Table so we are going to do it now */ 
+     $updatemedtable = $this->changeMedicationStatusBy3Parms($accountnumber,$patientid,$medentryid,$medarchivestat);
+     if($updatemedtable["results"]=="Updated")
+     {
     //now update the medicationlog table 
     $updatemedlog = $this->holdMedlogstatus($accountnumber,$patientid,$medarchivestat,$medentryid);
     //var_dump($updatemedlog);
@@ -479,7 +488,7 @@ public function AutoChangeMedHoldTimes($ordernumber,$patientid,$accountnumber,$m
       $ordertime = date('H:i:s');
       $ordertype ="Nurses Order";
       $abndelivered=0;
-      $ordstatus="Hold";
+      $ordstatus="pending"; //Truning it pending so the provider can sign off on the Automated order Other wise it should be active
       $provsigdate ="1971-01-01";
       $physician= $cloneprevorder["records"][0]["primary_physician"];
       $ordar = array("accountnumber"=>$accountnumber,"ordDate"=>$verbalorderdt,"ordTime"=>$ordertime,"ordtype"=>$ordertype,"abndeliv"=>$abndelivered,"readback"=>$cloneprevorder["records"][0]["readorderback"],
@@ -505,9 +514,10 @@ public function AutoChangeMedHoldTimes($ordernumber,$patientid,$accountnumber,$m
           //Now Add the New Medication that corresponds with the new Order that was created (medID and Order ID should match n order for the admin app to pull )
           /*Step 5 We need to Add a new Medications with the updated times and frequency here */
           $medendDt="1971-01-01";
+          $medicationstat="pending";
           $insertmed = $this->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
           $graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$graboldmedlist["results"][0]["med_frequency"],$graboldmedlist["results"][0]["med_amount"],
-          $medname,$graboldmedlist["results"][0]["instruction"],$ordstatus,$graboldmedlist["results"][0]["via_med"],$graboldmedlist["results"][0]["rate"],$graboldmedlist["results"][0]["ivhowlong"],$$graboldmedlist["results"][0]["fluidType"],
+          $medname,$graboldmedlist["results"][0]["instruction"],$medicationstat,$graboldmedlist["results"][0]["via_med"],$graboldmedlist["results"][0]["rate"],$graboldmedlist["results"][0]["ivhowlong"],$$graboldmedlist["results"][0]["fluidType"],
           $graboldmedlist["results"][0]["totalVolum"],$graboldmedlist["results"][0]["totalVolumnUnit"],$graboldmedlist["results"][0]["ivstarttime"],$graboldmedlist["results"][0]["ivendtime"],$medendDt);
           // var_dump($insertmed);
           if($insertmed["result"]=="Inserted")
@@ -527,7 +537,10 @@ public function AutoChangeMedHoldTimes($ordernumber,$patientid,$accountnumber,$m
             {
              
                //lets add a new medlog and medlogtimes entries with the appropriate hold time or times 
-               /*--Medlogtime Entry - JUST NEED TO UPDATE THIS SECTION Don't need switchase here */ 
+               /*--Medlogtime Entry - JUST NEED TO UPDATE THIS SECTION 
+               ** NOTE: The time entries are set to Active because its an update CO after a medication hold date has expired and 
+               * We are now turning the medication back active. 
+               */ 
                $yrdmed = json_decode($graboldmedlog["results"][0]["yearmedtime"]);
                $medholdstdate="1970-01-01";
                $medholdenddt="1970-01-01";
@@ -590,6 +603,11 @@ public function AutoChangeMedHoldTimes($ordernumber,$patientid,$accountnumber,$m
     else{
       print(json_encode($updatemedlog,JSON_PRETTY_PRINT)); //this should print out the error if it reaches this far
     }
+    } //end of the first ifelse 
+    else{
+      print(json_encode($updatemedtable,JSON_PRETTY_PRINT));// this shoud print out the ChangeMediationStatusBy3Param
+    }
+
     
   }
   else{

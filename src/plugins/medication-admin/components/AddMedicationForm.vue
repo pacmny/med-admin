@@ -1941,7 +1941,7 @@ function preSetDurationData(dosage:string,frequency:string,duration:string,table
 
   if(iftimeinar.includes(frequency,0))
   {
-    alert("Ha....its here"+" "+frequency);
+    //alert("Ha....its here"+" "+frequency);
     let nwfreq = mapFrequency(frequency);
     if(dosage !="" && duration !="" && Number(tablets) <=1)
     {
@@ -2283,11 +2283,11 @@ watch( [() =>props.ifStatusIsChange],
   () => {
   if(props.ifStatusIsChange==false)
   {
-    alert("False");
+    //alert("False");
      ifStatusIsChange.value=props.ifStatusIsChange;
   }
   else{
-    alert("True");
+   // alert("True");
     ifStatusIsChange.value=props.ifStatusIsChange;
   }
 })

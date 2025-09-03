@@ -383,7 +383,7 @@
 											v-if="sortBy !== 'time' || extractBaseTime(timeObj.time) === category"
 											:key="timeObj.time"
 											class="time-entry"
-											:class="[timeObj.status, timeObj.temporaryStatus, { discontinued: timeObj.status === 'discontinue' }]"
+											:class="[timeObj.status, timeObj.temporaryStatus, { discontinued: timeObj.status === 'discontinue-medtime' }]"
 											@click="!timeObj.locked && openActionPopup(dateObj, timeObj, med)"
 											:style="{
 											backgroundColor:
@@ -395,6 +395,8 @@
 												? '#fff3cd'
                         : timeObj.locked &&  timeObj.status ==='hold-medtime' || med.status==='hold-medtime'
 												? '#fff3cd'
+                        : timeObj.locked && timeObj.status ==='discontinue-medtime' || med.status=='discontinue'
+                        ? '#f8d7da'
                         : timeObj.status =='New' || med.medchangetype=='New'
                         ? '#869dcd'
                         :timeObj.locked && timeObj.status ==='discontinued'
@@ -2363,6 +2365,11 @@ function populateMedicationTable() {
                     lckstat.push(true);
                     return q;
                   }
+                  if(medsplitted[index]==="discontinue-medtime" && med.administerdate ===formattoday)
+                  {
+                    lckstat.push(true);
+                    return q;
+                  }
                   if(medsplitted[index]==="not-taken" && med.administerdate === formattoday)
                   {
                     lckstat.push(false);
@@ -2426,7 +2433,8 @@ function populateMedicationTable() {
                             temporaryStatus: medsplitted[index]
                         }));
                     }
-                    else if (medtakenstats === "taken" || medtakenstats=="hold" || medtakenstats =="hold-medtime") {
+                    else if (medtakenstats === "taken" || medtakenstats=="hold" || medtakenstats =="hold-medtime" || medtakenstats =="discontinue"
+                    || medtakenstats =="discontinue-medtime") {
                      // alert(medsplitted[idx]);
                         med.dates![dStr] = splitted.map((t, index) => ({
                           

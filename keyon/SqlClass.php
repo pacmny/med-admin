@@ -387,7 +387,7 @@ class SQLData{
     public function HoldOrderByOrdnumPatId($accountnumber,$pid,$ordernum,$status)
     {
        // var_dump($pid." ".$medentryid." ".$ordernum." ".$dcdate." ".$transtype);
-        $sql="UPDATE orders SET status=:chngstatus WHERE patientid=:patid and accountnumber=:accnt AND ordernumber=:ordnum";
+        $sql="UPDATE `orders` SET `orders`.`status`=:chngstatus WHERE patientid=:patid and accountnumber=:accnt AND ordernumber=:ordnum";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":chngstatus",$status);
         $stmnt->bindParam(":patid",$pid);
@@ -407,6 +407,29 @@ class SQLData{
             $msar = array("error"=>$e->__toString(),"message"=>"Sorry, the app is experiencing technical difficulties and please notify you're administrator should the problem persist.");
             return $msar;
         }
+    }
+    public function changeMedicationStatusBy3Parms($accountnumber,$patientid,$medentryid,$nwstatus)
+    {
+      $sql="UPDATE `medications` SET `medications`.`status`=:medchngstatus WHERE accountnumber=:accnt AND patient_id=:patid AND medentryid=:mid";
+      $stmnt = $this->con->prepare($sql);
+      $stmnt->bindParam(":medchngstatus",$nwstatus);
+      $stmnt->bindParam(":accnt",$accountnumber);
+      $stmnt->bindParam(":patid",$patientid);
+      $stmnt->bindParam(":mid",$medentryid);
+      try{
+
+          if($stmnt->execute())
+          {
+              $msgar = array("code"=>"200 Successfull","results"=>"Updated");
+              return $msgar;
+          }
+      }
+      catch(PDOException $e)
+      {
+          $msgar = array("code"=>"700-Sql error","error"=>$e->__toString(),"message"=>"Sorry, we're not able to hold this medication at this time due to system failaure. Please contact 
+          you system administrator should this error persist");
+          return $msgar;
+      }
     }
     public function changedMedicationStatusByAPMID($patientid,$accountnumber,$medname,$medentryid,$medchangestat,$medchangereason,$medtimes,$dtrange)
     {
@@ -2825,7 +2848,7 @@ class SQLData{
   }
   //Updating the Medhold Status column after duration has ended
   public function UpdsateHoldMedTimesDuration($accountnumber,$patientid,$logid,$status)
-  {
+  {  
     
     $sql="UPDATE `medlogtimes`
     SET `medlogtimes`.`status`=:stat 
