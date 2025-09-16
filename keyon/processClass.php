@@ -148,6 +148,12 @@ public function checkActiveMedLogDates($today)
   $checkstatus = $this->sclass->checkActiveMedLogDates($today);
   return $checkstatus;
 }
+public function checkPreviousTimeSolots($accountnumber,$medid,$actdate)
+{
+  var_dump($accountnumber);
+  $checkdates = $this->sclass->checkPreviousTimeSolots($accountnumber,$medid,$actdate);
+  return $checkdates;
+}
 public function holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid)
 {
 	$updatestat = $this->sclass->holdMedlogstatus($accountnumber,$patientid,$medchangestat,$medentryid);
@@ -292,6 +298,11 @@ public function grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$p
 	$getmedlist = $this->sclass->grabOldMedListByMedId($accountnumber,$ordnumber,$medicationid,$patientid);
 	return $getmedlist;
 }
+public function grabOldMedLogTime($medentryid,$adminDt)
+{
+  $getEntries = $this->sclass->grabOldMedLogTime($medentryid,$adminDt);
+  return $getEntries;
+}
 public function grabOldMedLogbyID($medentryid,$patientid,$ordernumber)
 {
   $getmedloglist = $this->sclass->grabOldMedLogbyID($medentryid,$patientid,$ordernumber);
@@ -361,11 +372,16 @@ public function insertHoldMedlogtableInfo($accountnumber,$patientid,$medid,$admi
 	$findpharm = $sclass->insertHoldMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$medstatus,$provinitials,$provsignature,$medholdstdate,$medholdenddt,$medholdreason);
 	return $findpharm;
 }
-public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
+public function insertMedlogtableInfo2($accountnumber,$patientid,$medid,$adminDate,$admintimes,$status,$provinitials,$provsignature,$holdstartdt,$holdenddt)
+{
+  $insertmeddata = $this->sclass->insertMedlogtableInfo2($accountnumber,$patientid,$medid,$adminDate,$admintimes,$status,$provinitials,$provsignature,$holdstartdt,$holdenddt);
+  return $insertmeddata;
+}
+public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$status,$provinitials,$provsignature)
 {
 	require_once("SqlClass.php");
 	$sclass = new SQLData();
-	$findpharm = $sclass->insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature);
+	$findpharm = $sclass->insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$status,$provinitials,$provsignature);
 	return $findpharm;
 }
 public function findPharmacy($accountnumber,$pharmacyname,$npinumber)
@@ -449,6 +465,184 @@ public function UpdateIndivLogTimes($logtime,$accntnumber,$medid,$patientid,$sta
 {
    $updattetime = $this->sclass->UpdsateHoldMedTimesDuration($accntnumber,$patientid,$logtime,$status);
    return $updattetime;
+}
+public function AutoChangeDiscontinueTimes($ordernumber,$patientid,$accountnumber,$disstat,$medentryid,$medname,$proflicense)
+{
+  $disconar = $this->HoldOrderByOrdnumPatId($accountnumber,$patientid,$ordernumber,$disstat);
+  if(!empty($disconar) && $disconar["results"]=="Updated")
+  {
+    $updatemedtbl = $this->changeMedicationStatusBy3Parms($accountnumber,$patientid,$medentryid,$disstat);//just archived the old medlist item
+    if($updatemedtbl["results"]=="Updated")
+    {
+      //now update the medicationlog table 
+      $updatemedlog = $this->holdMedlogstatus($accountnumber,$patientid,$disstat,$medentryid);
+      if(!empty($updatemedlog) && $updatemedlog["results"]=="Updated")
+      {
+        //Now Create New Change order (Prev Order should all be updated now)
+        date_default_timezone_set("America/New_York");
+        $adminDt = date("Y-m-d");
+        $cloneprevorder = $this->cloneOrderInfo($accountnumber,$patientid,$ordernumber);
+        $graboldmedlist = $this->grabOldMedListByMedId($accountnumber,$ordernumber,$medentryid,$patientid);
+        $graboldmedlog = $this->grabOldMedLogbyID($medentryid,$patientid,$ordernumber);//old medlog clone data
+        $graboldmedtimeslog = $this->grabOldMedLogTime($medentryid,$adminDt);
+        $getNum = $this->GetGlobalOrderNumber();
+        $ordersendtophyscians="1";
+        $verbalorder="1";
+        $verbalorderdt = date("Y-m-d");
+        $getnursesig = $this->GetIndividualNurse($accountnumber,$proflicense);
+        if(!empty($getnursesig))
+        {
+          $nurseSignature = $getnursesig["results"]["firstname"]." ". $getnursesig["results"]["lastname"];
+        }
+        else{
+          
+          $nurseSignature="Signature Needed";
+        }
+        //Lets Create The New Order Here 
+         //now build the order Array 
+        $ordertime = date('H:i:s');
+        $ordertype ="Nurses Order"; //Needs Updating when conected. Could Be Providr or Nurse but for now its hard coded as a nurse 
+        $abndelivered=0;
+        $ordstatus="pending"; //Truning it pending so the provider can sign off on the Automated order Other wise it should be active
+        $provsigdate ="1971-01-01";
+        $physician= $cloneprevorder["records"][0]["primary_physician"];
+        $ordar = array("accountnumber"=>$accountnumber,"ordDate"=>$verbalorderdt,"ordTime"=>$ordertime,"ordtype"=>$ordertype,"abndeliv"=>$abndelivered,"readback"=>$cloneprevorder["records"][0]["readorderback"],
+        "primephysician"=>$cloneprevorder["records"][0]["primary_physician"],"secphysician"=>$cloneprevorder["records"][0]["sec_physician"],"email"=>$cloneprevorder["records"][0]["email"],"npi"=>$cloneprevorder["records"][0]["npinumber"],
+        "address"=>$cloneprevorder["records"][0]["address"],"phone"=>$cloneprevorder["records"][0]["phone"],"fax"=>$cloneprevorder["records"][0]["fax"],"sendtophysician"=>$cloneprevorder["records"][0]["sendtophys"],"woundcare"=>$cloneprevorder["records"][0]["woundcare"],
+        "verbaloffer"=>$verbalorder,"verbalOrderDt"=>$verbalorderdt,"verbalOrderTime"=>$ordertime,"hasmed"=>$medname,
+        "hasdiag"=>$cloneprevorder["records"][0]["diagnosis"],"hassupplies"=>'',"hasValueSign"=>'',"description"=>$cloneprevorder["records"][0]["orderdescription"],"status"=>$ordstatus,"ordernumber"=>$getNum["ordernumber"],"writer"=>'system',
+          "nursesigname"=>$nurseSignature,"nursesigdate"=>$verbalorderdt,"providersignature"=>'',"provsigdate"=>$provsigdate);
+        //if have orderar has value/matches ID then don't run 
+        $createOrder =  $this->InsertOrderTemplate($patientid,$ordar);
+        $jdata = json_decode($createOrder);
+         //now send out notification via Mandrill 
+         $jdata = json_decode($createOrder);
+        
+         if($jdata->result == "Inserted")
+         {
+           
+           //Send Email Notification 
+           $sendemail = $this->SendPhysicianEmailTemplate($getNum["ordernumber"],$physician);
+           //var_dump($sendemail);
+           //Now Add the New Medication that corresponds with the new Order that was created (medID and Order ID should match n order for the admin app to pull )
+           /*Step 5 We need to Add a new Medications with the updated times and frequency here */
+           $medendDt="1971-01-01";
+           $medicationstat="pending";
+           $insertmed = $this->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$graboldmedlist["results"][0]["ndcnumber"],$graboldmedlist["results"][0]["rxnorns"],$graboldmedlist[0]["prn"],
+           $graboldmedlist["results"][0]["additional_settings"],$graboldmedlist["results"][0]["total"],$graboldmedlist["results"][0]["alt_route"],$graboldmedlist["results"][0]["diagnose_code"],$graboldmedlist["results"][0]["med_frequency"],$graboldmedlist["results"][0]["med_amount"],
+           $medname,$graboldmedlist["results"][0]["instruction"],$medicationstat,$graboldmedlist["results"][0]["via_med"],$graboldmedlist["results"][0]["rate"],$graboldmedlist["results"][0]["ivhowlong"],$$graboldmedlist["results"][0]["fluidType"],
+           $graboldmedlist["results"][0]["totalVolum"],$graboldmedlist["results"][0]["totalVolumnUnit"],$graboldmedlist["results"][0]["ivstarttime"],$graboldmedlist["results"][0]["ivendtime"],$medendDt);
+           // var_dump($insertmed);
+           if($insertmed["result"]=="Inserted")
+           {
+               /* Lets add A new MediationLog Entry - It should Match the new Medicationid that was created when a new Medication item was added to the */ 
+               /*Get/Reformat New YearMedtime Before Creating New Mediation Log*/
+              $nwyrmedtime = $graboldmedlog["results"]["0"]["yearmedtime"];
+              $formattype="Discontinue";
+               $reformatjsontime="";
+              //loop through the medtimeslog in order to compare the time 
+              $logidar = array();
+              $discremovar = array();
+              //var_dump($graboldmedtimeslog); debug
+              foreach( $graboldmedtimeslog["results"] as $m)
+              {
+                var_dump($m["status"]);
+                //lets push all discontinue-medtime rec into array and then update the reformat function to take an array of times that I can do at once 
+                if(!in_array($m["logid"],$logidar) && $m["administerdate"]==$adminDt && $m["status"]==$disstat) //Note: administerdate will need to be replaced with dscondate column when added to db
+                {
+                  array_push($logidar,$m["status"]);
+                  array_push($discremovar,$m["time"]);
+                }
+              }
+              //I should have my reformat array remove times now 
+              if(!empty($discremovar))
+              {
+               
+                $remat = $this->reformatYearmedtimeJSON($formattype,$nwyrmedtime,$discremovar);//an array of time vs 1 single time now | New Update
+                if(!empty($remat))
+                {
+                    $reformatjsontime = $remat;
+                }
+                else{
+                  
+                  $reformatjsontime = $graboldmedlog["results"][0]["yearmedtime"];
+                   
+                }
+                
+              }
+             // var_dump($reformatjsontime); debug
+              $todayadministerdate = date("Y-m-d"); //New Administer date
+              $medstatus = "Active"; //New Status
+              $medlogcurstatus="pending";//could be pending 
+            
+              $addmedlogentry = $this->InsertMedLog( $graboldmedlog["results"][0]["accountnumber"],$graboldmedlog["results"][0]["patientid"],$graboldmedlog["results"][0]["patientname"],$getNum["ordernumber"],
+              $graboldmedlog["results"][0]["providername"],$graboldmedlog["results"][0]["providerid"],$insertmed["newEntryId"],$todayadministerdate,$graboldmedlog["results"][0]["time"],
+              $medlogcurstatus,$reformatjsontime,$graboldmedlog["results"][0]["notes"],$graboldmedlog["results"][0]["providersignature"],$graboldmedlog["results"][0]["provinitials"]);
+              /*9/15/25 - Checking to see if Medlog entry exist and if so lets clone and create a new */ 
+              //var_dump($addmedlogentry);debug
+              if($addmedlogentry["results"]=="Inserted")
+              {
+                  //lets add a new medlog and medlogtimes entries with the appropriate hold time or times 
+               /*--Medlogtime Entry - JUST NEED TO UPDATE THIS SECTION 
+               ** NOTE: The time entries are set to Active because its an update CO after a medication hold date has expired and 
+               * 
+               */ 
+               $yrdmed = json_decode($reformatjsontime);
+               $medholdstdate="1970-01-01";
+               $medholdenddt="1970-01-01";
+               $adminDate = date('Y-m-d');
+               $getinit = explode(" ",$graboldmedlog["results"][0]["providersignature"]);
+               $finalInit = substr($getinit[0],1)." ".substr($getinit[1],1);
+               $medholdreason="";
+               $insrtar = array();
+               foreach($yrdmed as $y)
+                {
+                  // its in the array so lets update the status and hold that time 
+                  
+                  // var_dump("lets insert the new medtime entry");//$y->status=$medstatus;
+                    $insertnwtime  = $this->insertHoldMedlogtableInfo($accountnumber,$patientid,$insertmed["newEntryId"],$adminDate,$y->time,
+                    $medstatus,$finalInit,$graboldmedlog["results"][0]["providersignature"],$medholdstdate,$medholdenddt,$medholdreason);
+                    if($insertnwtime["results"]=="Inserted")
+                    {
+                      array_push($insrtar,"Insert-".$insertmed["newEntryId"]);
+                    }
+                    else{
+                      $ermsg = array("error"=>$insertnwtime,"message"=>"Insert Not Successfull");
+                      return $ermsg;
+                    }
+                 
+                  // $nwjsondata[] = array("time"=>$m,"dosage"=>)
+            
+                }
+                if((count(array_filter($insrtar)) >0))
+                {
+                  //let send an update array back 
+                  $msg = array("status"=>"Inserted","message"=>"Times inserted successfully");
+                  return $msg;
+
+                }
+              }
+              else{
+                //the hold type is all and we can go in and update all time entries in the yrdmedtime value to hold status 
+                
+                   $msg="Meciation Med Log Table didn't insert successfully. Please check logs - Internal issue";
+                   $errorar = array("error"=>"Internal Error with Code","message"=>$msg,"errorMsg"=>$addmedlogentry);
+                   return $errorar;
+                
+              }
+              $msg = array("status"=>"Not Expected","message"=>"Should have never gotten here - go back and evaulate isue");
+              return $msg;
+           }
+          }//endINsert ifelse
+          else{
+            var_dump($jdata);
+          }
+      }
+    }
+  }
+  else{
+    print(json_encode($disconar,JSON_PRETTY_PRINT));
+  }
 }
 public function AutoChangeMedHoldTimes($ordernumber,$patientid,$accountnumber,$medarchivestat,$medentryid,$medname,$proflicense)
 {
@@ -647,10 +841,95 @@ public function DoesMedExist($accountnumber,$ordernumber,$npinumber,$patientid,$
   $activemed = $sclass->DoesMedExist($accountnumber,$ordernumber,$npinumber,$patientid,$medname,$status);
   return $activemed;
 }
+public function InsertAlertNotification($accountnumber,$alertname,$alertsent,$alertviewed,$dtalertsent)
+{
+  $getstatInfo = $this->sclass->InsertAlertNotification($accountnumber,$alertname,$alertsent,$alertviewed,$dtalertsent);
+  return $getstatInfo;
+}
+public function CheckAlertNotification($alertname,$accountnumber,$chckingStat)
+{
+  $checkalert = $this->sclass->CheckAlertNotification($alertname,$accountnumber,$chckingStat);
+  return $checkalert;
+}
 public function CheckHoldMedDurationDateByAccntPatID($accountnumber,$patientid)
 {
    $findholds = $this->sclass->CheckHoldMedDurationDateByAccntPatID($accountnumber,$patientid);
    return $findholds;
+}
+/*9/11/25 Medtime Discontinue Process function */
+public function updateMedTimeDiscontinue($logtime,$medid,$accountnumber,$patientid,$admindt)
+{
+  date_default_timezone_set("America/New_York");//if we need it 
+  $today = date("Y-m-d");// todays date 
+  $adminDt = $admindt;//should be the administerdate 
+  //if the dates match up then begin the process of CO and updating the appropriate tables 
+  if($adminDt==$today)
+  {
+    //lets go ahead and Update the medlogstatus table with discontinue-archive
+     $medarchivestat="discontinue-archive";
+        $updatemedlogtimes = $this->UpdateIndivLogTimes($logtime,$accountnumber,$medid,$patientid,$medarchivestat);
+        if(isset($updatemedlogtimes["results"]) && $updatemedlogtimes["results"]=="Updated")
+        {
+          $news = array("status"=>"200 Successfull","results"=>"Updated");
+          return $news;
+        }
+        else{
+          $news = array("status"=>"700-Sql Error","error"=>$updatemedlogtimes);
+          return $news;
+        }
+    //lets reformat the yearmedtime json data 
+   
+    
+  }
+  var_dump("Dates don't match");
+}
+private function reformatYearmedtimeJSON($formattype="", $yearmedtime="", $addorRemovetime)
+{
+  /*AddorRemovetime is now an array vs a single value as of 9/15/25*/
+ 
+  if(!empty($formattype) && count((array)$yearmedtime)!=0)
+  {
+    $reformatitems[] = array();
+    switch($formattype)
+    {
+      case"Discontinue":
+        {
+          $yrar = json_decode($yearmedtime);
+          $holdtimesft = array();
+          //var_dump($addorRemovetime);
+          foreach($addorRemovetime as $tm) //loop through the times that needs to be removed 
+          {
+            foreach($yrar as $y)
+            {
+              if (strpos($y->time, ':') !== false && substr_count($y->time, ':') == 1) {   
+                  $y->time .= ':00'; // Add seconds if not present In order to evaluate time appropriately 
+              }
+              if($y->time==$tm)
+              {
+                //lets do nothing and leave out the time and values that match in orer to reformat the JSON
+                array_push($holdtimesft,$tm);
+              }
+              else{
+                //Now push items into new array 
+                if(!in_array($y->time,$holdtimesft))
+                {
+                  $reformatitems[] = array("time"=>$y->time,"dosage"=>$y->dosage,"status"=>"pending");
+                }
+              
+              }
+            
+            }
+          }
+          $codejson = array_filter($reformatitems);
+           return $jr = json_encode($codejson);
+          break;
+        }
+    }
+  }
+  else{
+    $msgar = array("code"=>"1313-Empty Variables","message"=>"Cant Format Empty Values");
+    return $msgar;
+  }
 }
 public function evalholduration($holdstdate,$holdenddate,$medid,$holdendDate)
 {
@@ -658,9 +937,9 @@ public function evalholduration($holdstdate,$holdenddate,$medid,$holdendDate)
   $startDate = new DateTime($holdstdate);  //setting this but I don't thin we need this in any of our evauation or condition logic
   // Get today's date    
    $today = new DateTime('now');  
-   $today->setTime(0, 0); //set to midnight (to evalualute equally without time interferring )
+   $today->setTime(0, 0,0); //set to midnight (to evalualute equally without time interferring )
   $endDate = new DateTime($holdenddate);  
-  $endDate->setTime(0,0); //set to midnight (same as today)
+  $endDate->setTime(23,59,59); //set to midnight (same as today)
    // Calculate the difference between today and the end date   
    $difference = $today->diff($endDate); 
   // var_dump("Difference"." ".$difference->days); //debug
@@ -670,10 +949,21 @@ public function evalholduration($holdstdate,$holdenddate,$medid,$holdendDate)
     {
       case"0":
         {
-          $msg = array("medid"=>$medid,"holdstatus"=>"complete","action"=>"Resume Med","durationEnd"=>$difference->days,"holdendDate"=>$holdendDate);
-          return $msg;
+          if($today >=$endDate)
+          {
+           
+            $msg = array("medid"=>$medid,"holdstatus"=>"complete","action"=>"Resume Med","durationEnd"=>$difference->days,"holdendDate"=>$holdendDate);
+            return $msg;
+            break;
+          }
+          else{
+            $msg = array("medid"=>$medid,"holdstatus"=>"not-complete","action"=>"Continue Med Hold","durationEnd"=>$difference->days);     
+            return $msg;
+            break;
+          }
+         
           
-          break;
+         // break;
         }
         case"1":
           {
@@ -693,15 +983,15 @@ public function evalholduration($holdstdate,$holdenddate,$medid,$holdendDate)
     } 
    
   } 
-  if($today <= $endDate)
+  if($today < $endDate)
   {
-    //var_dump(" we need to keep the meds on hold"); debug - remove production
+    var_dump(" we need to keep the meds on hold -last if else block"); //debug - remove production
     $msg = array("medid"=>$medid,"holdstatus"=>"not-complete","action"=>"Continue Med Hold","durationEnd"=>$difference->days);     
     return $msg; // or perform any action  
   } 
   elseif($today >= $endDate)
   {
-   //var_dump(" Medication expiration date is over:"." ".$medid); debug -remove production
+   var_dump(" Medication expiration date is over -last elseif block:"." ".$medid); //debug -remove production
    $msg = array("medid"=>$medid,"holdstatus"=>"complete","action"=>"Resume Med","durationEnd"=>$difference->days,"holdendDate"=>$holdendDate);
    return $msg;
   }

@@ -336,6 +336,26 @@ class SQLData{
             return $msgar;
         }
     }
+    public function grabOldMedLogTime($medentryid,$adminDt)
+    {
+      $sql="SELECT * FROM `medlogtimes` WHERE administerdate=:admindt AND medid=:medid";
+      $stmnt = $this->con->prepare($sql);
+      $stmnt->bindParam(":admindt",$adminDt);
+      $stmnt->bindParam(":medid",$medentryid);
+      try{
+        if($stmnt->execute())
+        {
+          $records = $stmnt->fetchAll();
+          $msgar = array("code"=>"200-Successfull","results"=>$records);
+          return $msgar;
+        }
+      }
+      catch(PDOException $e)
+      {
+        $msgar = array("code"=>"700-Sql Error","message"=>$e->__toString());
+        return $msgar;
+      }
+    }
     public function grabOldMedLogbyID($medentryid,$patientid,$ordernumber)
     {
       $sql="SELECT * FROM medicationlog WHERE medicationid =:medid AND patientid =:patid AND ordernumber =:ordnum";
@@ -603,17 +623,147 @@ class SQLData{
         }
 
     }
-    public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$provinitials,$provsignature)
+    /*9/9/25 System Alert SQL System */ 
+    public function InsertAlertNotification($accountnumber,$alertname,$alertsent,$alertviewed,$dtalertsent)
     {
-       
-        $sql="INSERT INTO `medlogtimes`(`accountnumber`, `patientid`, `medid`, `administerdate`, `time`, `providinitials`, `provsignature`) 
-        VALUES (:accnt,:patid,:med,:adminDt,:admintimes,:provinit,:provsig)";
+      $sql="INSERT INTO `systemalerts`(`accountnumber`, `alertname`, `alertsent`, `alertviewed`, `datealert_sent`)
+       VALUES (:accnt,:alrtname,:alrtsent,:alrtvwd,:dtalrtsent)";
+       $stmnt = $this->con->prepare($sql);
+       $stmnt->bindParam(":accnt",$accountnumber);
+       $stmnt->bindParam(":alrtname",$alertname);
+       $stmnt->bindParam(":alrtsent",$alertsent);
+       $stmnt->bindParam(":alrtvwd",$alertviewed);
+       $stmnt->bindParam(":dtalrtsent",$dtalertsent);
+       try{
+        if($stmnt->execute())
+        {
+          $msg="Inserted";
+          $msgar = array("code"=>"200-Successful","results"=>$msg);
+          return $msgar;
+        }
+     }
+     catch(PDOException $e)
+     {
+       $msgar = array("code"=>"700-SQL","error"=>$e->__toString());
+       return $msgar;
+     }
+    }
+    public function CheckAlertNotification($alertname,$accountnumber,$chckingStat)
+    {
+      $sql="SELECT * FROM `systemalerts` 
+      WHERE (`alertviewed`='true'
+      OR `alertsent`=:alrtsent )
+      AND accountnumber=:accnt 
+      AND alertname=:alrtname";
+      $stmnt = $this->con->prepare($sql);
+      $stmnt->bindParam(":accnt",$accountnumber);
+      $stmnt->bindParam(":alrtname",$alertname);
+      $stmnt->bindParam(":alrtsent",$chckingStat);
+      try{
+         if($stmnt->execute())
+         {
+           $records= $stmnt->fetchAll();
+           $msgar = array("code"=>"200-Successful","results"=>$records);
+           return $msgar;
+         }
+      }
+      catch(PDOException $e)
+      {
+        $msgar = array("code"=>"700-SQL","error"=>$e->__toString());
+        return $msgar;
+      }
+    }
+    public function ViewedAlertNotification($alertviewed,$accountnumber,$alertname)
+    {
+      $sql="UPDATE `systemalerts` SET `alertviewed`=:alrtvwd, WHERE accountnumber=:acnt AND alertname=:alrtname";
+      $stmnt = $this->con->prepare($sql);
+      $stmnt->bindParam(":alrtvwd",$alertviewed);
+      $stmnt->bindParam(":accnt",$accountnumber);
+      $stmnt->bindParam(":alrtname",$alertname);
+
+      try{
+         if($stmnt->execute())
+         {
+           $msg="Updated";
+           $msgar = array("code"=>"200-Successful","results"=>$msg);
+           return $msgar;
+         }
+      }
+      catch(PDOException $e)
+      {
+        $msgar = array("code"=>"700-SQL","error"=>$e->__toString());
+        return $msgar;
+      }
+    }
+    public function ViewedAlertSentNotification($alertsent,$accountnumber,$alertname)
+    {
+      $sql="UPDATE `systemalerts` SET `alertsent`=:alrtsent, WHERE accountnumber=:accnt AND alertname=:alrtname";
+      $stmnt = $this->con->prepare($sql);
+      $stmnt->bindParam(":alrtsent",$alertsent);
+      $stmnt->bindParam(":accnt",$accountnumber);
+      $stmnt->bindParam(":alrtname",$alertname);
+
+      try{
+         if($stmnt->execute())
+         {
+           $msg="Updated";
+           $msgar = array("code"=>"200-Successful","results"=>$msg);
+           return $msgar;
+         }
+      }
+      catch(PDOException $e)
+      {
+        $msgar = array("code"=>"700-SQL","error"=>$e->__toString());
+        return $msgar;
+      }
+    }
+    /*9/8/25 clone */
+    public function insertMedlogtableInfo2($accountnumber,$patientid,$medid,$adminDate,$admintimes,$status,$provinitials,$provsignature,$holdstartdt,$holdenddt)
+    {
+       /*9/4/25 Added status to this sql query to account for the potential hold-medtime and discontinue-medtime values */ 
+        $sql="INSERT INTO `medlogtimes`(`accountnumber`, `patientid`, `medid`, `administerdate`, `time`, `status`, `providinitials`, `provsignature`,`holdstartdate`,`holdenddate`) 
+        VALUES (:accnt,:patid,:med,:adminDt,:admintimes,:stat,:provinit,:provsig,:hldstrtdt,:hldenddt)";
         $stmnt = $this->con->prepare($sql);
         $stmnt->bindParam(":accnt",$accountnumber);
         $stmnt->bindParam(":patid",$patientid);
         $stmnt->bindParam(":med",$medid);
         $stmnt->bindParam(":adminDt",$adminDate);
         $stmnt->bindParam(":admintimes",$admintimes);
+        $stmnt->bindParam(":stat",$status);
+        $stmnt->bindParam(":provinit",$provinitials);
+        $stmnt->bindParam(":provsig",$provsignature);
+        $stmnt->bindParam(":hldstrtdt",$holdstartdt);
+        $stmnt->bindParam(":hldenddt",$holdenddt);
+        try{
+
+            if($stmnt->execute())
+            {
+                $response ="Insert";
+              
+                $msg = array("code"=>"200-Succuessfull","results"=>$response);
+                return $msg;
+            }
+        }
+        catch(PDOException $e)
+        {
+            $msg = array("code"=>"700-SQL Error","error"=>$e->__toString());
+            return $msg;
+        }
+
+    }
+    /*end Clone */
+    public function insertMedlogtableInfo($accountnumber,$patientid,$medid,$adminDate,$admintimes,$status,$provinitials,$provsignature)
+    {
+       /*9/4/25 Added status to this sql query to account for the potential hold-medtime and discontinue-medtime values */ 
+        $sql="INSERT INTO `medlogtimes`(`accountnumber`, `patientid`, `medid`, `administerdate`, `time`, `status`, `providinitials`, `provsignature`) 
+        VALUES (:accnt,:patid,:med,:adminDt,:admintimes,:stat,:provinit,:provsig)";
+        $stmnt = $this->con->prepare($sql);
+        $stmnt->bindParam(":accnt",$accountnumber);
+        $stmnt->bindParam(":patid",$patientid);
+        $stmnt->bindParam(":med",$medid);
+        $stmnt->bindParam(":adminDt",$adminDate);
+        $stmnt->bindParam(":admintimes",$admintimes);
+        $stmnt->bindParam(":stat",$status);
         $stmnt->bindParam(":provinit",$provinitials);
         $stmnt->bindParam(":provsig",$provsignature);
         try{
@@ -747,7 +897,7 @@ class SQLData{
                 return $msgar;
             }
         }
-        catch(PODException $e)
+        catch(PDOException $e)
         {
             $msgar = array("code"=>"700-Sql","error"=>$e->__toString());
             return $msgar;
@@ -875,6 +1025,68 @@ class SQLData{
         return $msgar;
       }
       
+    }
+    /* 9/4/25 Adding to look up medlogtimes taken status - to see if an entry is discontinued or hold */
+    public function checkPreviousTimeSolots($accountnumber,$medid,$actdate)
+    {
+      var_dump($actdate);
+      var_dump($medid);
+      var_dump($actdate);
+      var_dump($accountnumber);
+      $firstat="hold-medtime";
+      $secondstat="discontinue-medtime";
+      $arcell[] = array();
+      /*$sql="SELECT * FROM `medlogtimes` 
+      WHERE (status='hold-medtime' OR status='discontinue-medtime') 
+      AND administerdate='2025-09-06' 
+      AND medid='139' 
+      AND accountnumber='904575107'";*/
+
+      $sql="SELECT * FROM medlogtimes
+      WHERE (status='hold-medtime' OR status='discontinue-medtime') 
+      AND medid=:medID 
+      AND accountnumber=:accnt
+      AND administerdate=:tdate"; 
+     // var_dump($sql);
+      $stmnt = $this->con->prepare($sql);
+      /*$stmnt->bindParam(":fstat",$firstat);
+      $stmnt->bindParam(":sstat",$secondstat);*/
+      $stmnt->bindParam(":medID",$medid);
+      $stmnt->bindParam(":accnt",$accountnumber);
+      $stmnt->bindParam(":tdate",$actdate); 
+      try{
+         if($stmnt->execute())
+         {
+          //success now fetch the records 
+          $records = $stmnt->fetchAll();
+         // var_dump($records);
+          $reccount = count($records);
+         // var_dump($reccount);
+          //loop through and find records and push them tinto an array to be returned
+          if(!empty($records) && $reccount >=1)
+          {
+            foreach($records as $r)
+            {
+              if($r["status"]=="hold-medtime" || $r["status"]=="discontinue-medtime")
+              {
+                //push into array 
+                $msgar = array("medid"=>$r["medid"],"status"=>$r["status"],"logid"=>$r["logid"],"accountnumber"=>$r["accountnumber"],"time"=>$r["time"],"holdstartdate"=>$r["holdstartdate"],
+              "holdenddate"=>$r["holdenddate"]);
+                array_push($arcell,$msgar);
+              }
+            }
+            //now send the arcell array back 
+           
+            return array_filter($arcell); //if its empty an empty array will be returned 
+          }
+         }
+      }
+      catch(PDOException $e)
+      {
+        $msgar = array("code"=>"700-SQL","message"=>$e->__toString());
+        return $msgar;
+      }
+
     }
     /*5/9/2025 Adding Administration Medication Function */
     public function InsertAdminMecationInfo($accountnumber,$ordernumber,$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
@@ -2821,16 +3033,22 @@ class SQLData{
   //Grabbing all log entries that have a medication time hold (8/25/25)
   public function CheckHoldMedDurationDateByAccntPatID($accountnumber,$patientid)
   {
+    date_default_timezone_set('America/New_York');
+    $today = date("Y-m-d");
+  // var_dump($today);
     //checking to make sure Grab meds on hold by patient and account number 
     $sql="SELECT * FROM medlogtimes
     LEFT JOIN medicationlog ON medicationlog.medicationid = medlogtimes.medid
     WHERE medlogtimes.patientid =:patid 
     AND medlogtimes.accountnumber =:accnt 
-    AND medlogtimes.status='hold-medtime' 
+    AND (medlogtimes.status='hold-medtime' OR medlogtimes.status='discontinue-medtime')
+    AND medlogtimes.administerdate=:tdt
     AND medicationlog.status='Active' ";
+   
     $stmnt = $this->con->prepare($sql);
     $stmnt->bindParam(":patid",$patientid);
     $stmnt->bindParam(":accnt",$accountnumber);
+    $stmnt->bindParam(":tdt",$today);
     try{
         if($stmnt->execute())
         {

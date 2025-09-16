@@ -1910,7 +1910,7 @@ else{
             return;
           }
           else{
-            alert("Shit went wrong"+" "+ response.data.results);
+            alert("Thinsd went wrong"+" "+ response.data.results);
             return;
           }
              
@@ -2941,7 +2941,7 @@ async function handleNewMedication(medication: Partial<Medication>, nwtimeInputs
   if(isEditForm.value ==true)
   {
     //lets run hanldeSave function 
-    alert("Lets redirect");
+   // alert("Lets redirect");
     handleSave(medication,nwtimeInputs,freq);
     //return;//should be finished now and no more code should execute
   }
