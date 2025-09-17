@@ -639,6 +639,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
       $medIDchangeorder = array();
       $discontinuear = array();//hold all  the discontinous logs with a mashup of medid and logid to make a UID
       $disconMedID = array();
+      $transactsuccessar = array();//success transaction log | Activity log for later adjustment
       foreach($checkmedtimeshold["results"] as $mtime)
       {
           //fid hold dates (start and end) and pass them to the processClass to be evaluated to see if they are within 1 da of expiring or if it actualy expired
@@ -739,7 +740,9 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
                           $insertAlrt = $processData->InsertAlertNotification($accountnumber,$alertname,$chckingStat,$alertviewed,$notificationDt);
                           if($insertAlrt["results"]=="Inserted")
                           {
-                            var_dump("Alert Successfullyu Inserted");
+                            //var_dump("Alert Successfullyu Inserted"); debug
+                            $msg= $alertname." logged";
+                            array_push($transactsuccessar,$msg);
                             break;
                           }
                           else{
@@ -1510,7 +1513,7 @@ if(isset($_POST)|| is_object($mmdata) || !empty($postdata))//if the post variabl
 				$insertmed = $processData->InsertAdminMecationInfo($accountnumber,$getNum["ordernumber"],$patientid,$ndcnumber,$rx,$prn,$newmedsettings,$totalTabs,$route,$diagnois,$freq,$dosage,$medname,$instruction,$medchangetype,
 			    $via,$fluidrate,$howLong,$fluidType,$totalVolume,$totalVolumeUnit,$startTime,$endTime,$endformatDt);
 				
-				var_dump($insertmed); //debug
+				//var_dump($insertmed); //debug
 				if($insertmed["result"]=="Inserted")
 				{
 					//Now Insert Prescreption Information 

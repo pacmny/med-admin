@@ -3016,7 +3016,7 @@ async function handleNewMedication(medication: Partial<Medication>, nwtimeInputs
           //now lets update the information and call axios again
           content.MedicationAdmin.medsetting="update";
           let updatemed = updateMedAdminSetting(content);
-          //alert(updatemed);
+          alert(updatemed);
          }
          else{
           // do nothing because 
@@ -3032,7 +3032,8 @@ async function handleNewMedication(medication: Partial<Medication>, nwtimeInputs
          }
          else{
            //now lets add the information to the Appropriate tables 
-           alert("now sure why its running");
+           console.log("now sure why its running - but there is an error somwhere with the returned payload");
+           errorMessage.value ="There is a system error - with returned payload. Look into logs";
          }
           medications.value = response.data.records
           errorMessage.value = ""; // Clear any previous error messages     

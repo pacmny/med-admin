@@ -1845,7 +1845,7 @@ function preSetDurationData(dosage:string,frequency:string,duration:string,table
    }
    case"2 times daily":
    {
-    alert("2 time daily");
+    console.log("2 time daily");//debug
     //now do logic
     if(dosage !="" && duration !="" && tablets !=0)
     {
@@ -1876,7 +1876,7 @@ function preSetDurationData(dosage:string,frequency:string,duration:string,table
    }
    case"3 times daily":
    {
-    alert("3 times daily");
+    console.log("3 times daily");//debug
     // now do logic
     if(dosage !="" && duration !="" && tablets !=0)
     {
@@ -1907,7 +1907,7 @@ function preSetDurationData(dosage:string,frequency:string,duration:string,table
    }
    case"4 times daily":
    {
-    alert("4 times daily");
+    console.log("4 times daily");//debug
     if(dosage !="" && duration !="" && tablets !=0)
     {
       //let days = duration.split(" ");
@@ -2383,7 +2383,7 @@ function handleSave() {
   if(props.isEditMedication)
   {
     //lets make sure the time in puts are in the formData before we send it over
-    alert("Its definitely an edit");
+   
     if(timeInputs.value.length > 0 )
     {
      
